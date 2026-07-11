@@ -2,7 +2,7 @@
 
 > A handoff document describing the whole project: what it is, what's been built,
 > how it's architected, and the conventions/gotchas an agent or developer needs
-> before making changes. Last updated: **2026-07-11**, end of **Milestone 13**.
+> before making changes. Last updated: **2026-07-11**, **Milestone 14 (deploy prep)**.
 
 ---
 
@@ -68,7 +68,8 @@ asks not to build ahead of the current milestone).
 | 10 | **Admin + tables redesign & polish** | ✅ | `/admin` rebuilt in the premium theme: platform-overview stats, restaurant **cards** (replacing the overflowing table), **"+ Add restaurant" modal** (native `<dialog>`, centered via `m-auto`). New `getPlatformStats()`. Owner **`/r/[slug]/tables`** redesigned to cards too. **Every page now uses the premium white theme.** (Scrollbars are now **fully hidden** app-wide in `globals.css`.) |
 | 11 | **Operator delete restaurant** | ✅ | Each admin card has a **Delete** that opens a confirmation modal showing the blast radius; the operator must **type the slug** to confirm (server re-checks it, operator-only). `deleteRestaurantCascade(id)` removes feedback → tables → owners → restaurant in one `$transaction` (FKs are `RESTRICT`, so children go first). |
 | 12 | **Edit, password, landing page, 404** | ✅ | Operator **edit** restaurant (name/slug/Google URL/threshold; slug-change warns about NFC chips; slug uniqueness excludes self) — `updateRestaurant` + `EditRestaurantForm` + edit modal. Owner **change own password** (verify current → update; session-scoped) — `changePassword` action + `ChangePassword` modal + `updateOwnerPassword`. Real **marketing landing page** at `/`. **404** page redesigned to the premium theme. |
-| 13 | **Password reset + feedback spam guard** | ✅ (this milestone) | Operator **resets an owner's password** from `/admin` (no email; operator sets it, owner changes it after) — `resetOwnerPassword` + `ResetPasswordButton`. Public **feedback API spam guard**: a **honeypot** field, **dedupe** (same order # within 10 min), and **per-IP rate-limit** (15/min, 120/hr; hashed IP via new `Feedback.ipHash`; lenient so shared restaurant Wi-Fi isn't blocked). Helpers `countRecentByIpHash` / `hasRecentDuplicate`. |
+| 13 | **Password reset + feedback spam guard** | ✅ | Operator **resets an owner's password** from `/admin` (no email; operator sets it, owner changes it after) — `resetOwnerPassword` + `ResetPasswordButton`. Public **feedback API spam guard**: a **honeypot** field, **dedupe** (same order # within 10 min), and **per-IP rate-limit** (15/min, 120/hr; hashed IP via new `Feedback.ipHash`; lenient so shared restaurant Wi-Fi isn't blocked). Helpers `countRecentByIpHash` / `hasRecentDuplicate`. |
+| 14 | **Deploy prep** | 🚧 code ready | Target: **free** Vercel (Hobby) + reuse current Neon DB + `*.vercel.app` domain. `prisma/seed.ts` is now **prod-safe**: operator from `OPERATOR_EMAIL`/`OPERATOR_PASSWORD` env, demo restaurants only when `SEED_DEMO=true`. `package.json` pins Node ≥20. The **live deploy itself** (GitHub push, Vercel import + env vars, secure operator password) is the user's click-through — see the plan file. |
 
 **Not yet done / deferred:** AI-generated chips + AI insight summaries (Claude, needs API key + deploy);
 **deploying to a live domain** (NFC/QR links + real Google links only work once deployed); per-table

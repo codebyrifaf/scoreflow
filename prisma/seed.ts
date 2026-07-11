@@ -8,6 +8,15 @@
  * test value below — handy if you forget it.
  *
  * Run it with:  npm run seed
+ *
+ * Production (Milestone 14): this seed is prod-safe.
+ *   - The operator email/password come from OPERATOR_EMAIL / OPERATOR_PASSWORD
+ *     (falling back to the local dev values), so a prod run sets a STRONG secret.
+ *   - The demo restaurants (fucco / bella-pizza) are only created when
+ *     SEED_DEMO=true — a real production seed adds no demo data, just the operator.
+ *
+ * Prod example:
+ *   DATABASE_URL="<prod>" OPERATOR_PASSWORD="<strong-secret>" npm run seed
  */
 
 // The seed runs as a plain script (outside Next.js), so we load `.env` ourselves
@@ -23,9 +32,12 @@ import { prisma } from "../lib/prisma";
 const SALT_ROUNDS = 10;
 
 async function main() {
-  // Each restaurant comes with ONE owner login account (Milestone 5).
-  // These are TEST credentials for local development only.
-  const restaurants = [
+  // Demo restaurants (fucco / bella-pizza) with their owner + tables — ONLY seeded
+  // when SEED_DEMO=true, so a real production seed adds no demo data. These are
+  // TEST credentials for local development only.
+  const includeDemo = process.env.SEED_DEMO === "true";
+  const restaurants = includeDemo
+    ? [
     {
       slug: "fucco",
       name: "Fucco",
@@ -47,7 +59,14 @@ async function main() {
       owner: { email: "owner@bella-pizza.test", password: "bella-dev-2026" },
       tables: ["1", "2"],
     },
-  ];
+      ]
+    : [];
+
+  if (!includeDemo) {
+    console.log(
+      "No demo restaurants seeded (set SEED_DEMO=true to include fucco/bella-pizza)."
+    );
+  }
 
   for (const r of restaurants) {
     // 1. Upsert the restaurant and keep the returned row so we know its `id`
@@ -105,10 +124,13 @@ async function main() {
 
   // ── Platform operator (Milestone 6) ─────────────────────────────────────────
   // A single admin login used to manage restaurants at /admin. It is NOT tied to
-  // any restaurant. TEST credentials for local development only.
+  // any restaurant. Credentials come from env for production (OPERATOR_EMAIL /
+  // OPERATOR_PASSWORD), falling back to the local dev values.
   const operator = {
-    email: "operator@scoreflow.test",
-    password: "operator-dev-2026",
+    email: (process.env.OPERATOR_EMAIL ?? "operator@scoreflow.test")
+      .trim()
+      .toLowerCase(),
+    password: process.env.OPERATOR_PASSWORD ?? "operator-dev-2026",
   };
   const operatorPasswordHash = await bcrypt.hash(operator.password, SALT_ROUNDS);
   await prisma.operator.upsert({
