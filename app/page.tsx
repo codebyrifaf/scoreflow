@@ -85,8 +85,8 @@ export default function Home() {
             className="animate-rise mt-9 flex flex-wrap items-center justify-center gap-6"
             style={{ "--rise-delay": "270ms" } as React.CSSProperties}
           >
-            <Link href="/login" className={BTN_DARK}>
-              Sign in
+            <Link href="/signup" className={BTN_DARK}>
+              Start free trial
             </Link>
             <Link
               href="#story"
@@ -170,12 +170,11 @@ export default function Home() {
               Put it on the table.
             </h2>
             <p className="mx-auto mt-5 max-w-md text-[17px] leading-relaxed text-[#6E6E73]">
-              Sign in to your dashboard, or ask your ScoreFlow operator to set up
-              your restaurant.
+              Start your free trial today — 14 days free, no card needed.
             </p>
             <div className="mt-9">
-              <Link href="/login" className={BTN_DARK}>
-                Sign in
+              <Link href="/signup" className={BTN_DARK}>
+                Start free trial
               </Link>
             </div>
           </Reveal>

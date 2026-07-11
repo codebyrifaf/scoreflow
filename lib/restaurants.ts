@@ -20,42 +20,12 @@ export async function getRestaurantBySlug(slug: string) {
   return prisma.restaurant.findUnique({ where: { slug } });
 }
 
-/**
- * List every restaurant for the operator admin dashboard (Milestone 6).
- *
- * Oldest first. For each restaurant we also pull the owner email(s) and a COUNT
- * of feedback rows (`_count.feedback`) — enough for the admin table without
- * loading every feedback row.
- */
-export async function getAllRestaurantsForAdmin() {
-  return prisma.restaurant.findMany({
-    orderBy: { createdAt: "asc" },
-    include: {
-      owners: { select: { email: true }, orderBy: { id: "asc" } },
-      _count: { select: { feedback: true, tables: true } },
-    },
-  });
-}
-
-/**
- * Platform-wide totals for the operator's overview cards (Milestone 10):
- * how many restaurants, how many feedback responses in total, and the average
- * rating across ALL restaurants (null when there's no feedback yet).
- */
-export async function getPlatformStats() {
-  const [restaurantCount, agg] = await Promise.all([
-    prisma.restaurant.count(),
-    prisma.feedback.aggregate({
-      _count: { _all: true },
-      _avg: { rating: true },
-    }),
-  ]);
-  return {
-    restaurantCount,
-    responseCount: agg._count._all,
-    avgRating: agg._avg.rating, // number | null
-  };
-}
+// NOTE (M22): `getAllRestaurantsForAdmin()` and `getPlatformStats()` lived here to
+// feed the old `/admin` area, where the operator created and edited every account
+// by hand. That whole area has been RETIRED — restaurants now sign themselves up,
+// change their own settings, reset their own passwords, and close their own
+// accounts. The operator's console is sales-only (see lib/operator-stats.ts), so
+// these functions had no callers left and were removed rather than left to rot.
 
 /**
  * Create a new restaurant AND its owner login in one atomic step (Milestone 6).

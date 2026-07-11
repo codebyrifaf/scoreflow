@@ -10,6 +10,7 @@
  */
 
 import { useActionState } from "react";
+import Link from "next/link";
 import { login, type LoginState } from "./actions";
 
 // Style tokens shared with the customer feedback page, so the two feel like one
@@ -19,7 +20,11 @@ const FIELD_CLASS =
 const PRIMARY_BTN_CLASS =
   "w-full rounded-2xl bg-amber-500 px-6 py-4 text-base font-semibold text-white shadow-sm transition-all duration-150 hover:bg-amber-600 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-[#E5E7EB] disabled:text-[#9CA3AF] disabled:shadow-none disabled:active:scale-100";
 
-export default function LoginForm() {
+export default function LoginForm({
+  defaultEmail = "",
+}: {
+  defaultEmail?: string;
+}) {
   // `useActionState` wires the form to our server action:
   //   state   → whatever `login` returned last (an error, or undefined)
   //   action  → what we hand to <form action={...}>
@@ -42,6 +47,7 @@ export default function LoginForm() {
           type="email"
           autoComplete="email"
           required
+          defaultValue={defaultEmail}
           placeholder="owner@example.test"
           className={FIELD_CLASS}
         />
@@ -49,9 +55,17 @@ export default function LoginForm() {
 
       {/* Password ------------------------------------------------------------ */}
       <div className="flex flex-col gap-2">
-        <label htmlFor="password" className="text-sm font-medium text-[#111827]">
-          Password
-        </label>
+        <div className="flex items-baseline justify-between">
+          <label htmlFor="password" className="text-sm font-medium text-[#111827]">
+            Password
+          </label>
+          <Link
+            href="/forgot"
+            className="text-sm font-medium text-amber-600 hover:underline"
+          >
+            Forgot?
+          </Link>
+        </div>
         <input
           id="password"
           name="password"

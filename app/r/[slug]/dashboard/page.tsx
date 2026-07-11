@@ -19,6 +19,7 @@ import { requireDashboardAccess } from "@/lib/auth-guard";
 import { logout } from "@/app/login/actions";
 import ChangePassword from "./ChangePassword";
 import NeedsAttention from "./NeedsAttention";
+import SubscriptionLocked from "@/app/SubscriptionLocked";
 import type { FeedbackRecord } from "@/lib/types";
 
 // Always render on each request so the owner sees the latest feedback.
@@ -154,7 +155,11 @@ export default async function DashboardPage({
   // ── SECURITY GATE ───────────────────────────────────────────────────────────
   const access = await requireDashboardAccess(slug);
   if (!access.authorized) {
-    return <NotAuthorized homeHref={access.homeHref} />;
+    return access.reason === "subscription" ? (
+      <SubscriptionLocked state={access.state} />
+    ) : (
+      <NotAuthorized homeHref={access.homeHref} />
+    );
   }
 
   const restaurant = await getRestaurantBySlug(slug);
@@ -249,6 +254,15 @@ export default async function DashboardPage({
             <Link href={`/r/${slug}/settings`} className={PILL_BTN_CLASS}>
               Settings
             </Link>
+            {/* The ACCOUNT OWNER's way to grow (M22). A one-location owner is routed
+                straight here and never sees the multi-location console, so without
+                this link they had no way to add a second restaurant at all. A branch
+                manager doesn't get it — it isn't their account. */}
+            {access.isAccountOwner && access.accountSlug && (
+              <Link href={`/b/${access.accountSlug}`} className={PILL_BTN_CLASS}>
+                + Add location
+              </Link>
+            )}
             <ChangePassword />
             <span className="text-sm text-[#9CA3AF]">{access.ownerEmail}</span>
             <form action={logout}>

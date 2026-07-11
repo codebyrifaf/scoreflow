@@ -16,6 +16,7 @@ import { requireDashboardAccess } from "@/lib/auth-guard";
 import { getRestaurantBySlug } from "@/lib/restaurants";
 import { getOwnerByEmail } from "@/lib/owners";
 import { emailIsConfigured } from "@/lib/email";
+import SubscriptionLocked from "@/app/SubscriptionLocked";
 import SettingsForm from "./SettingsForm";
 
 // Always fresh — settings change and must show their new values immediately.
@@ -52,7 +53,11 @@ export default async function SettingsPage({
   // ── SECURITY GATE — runs before any of this restaurant's data is loaded ─────
   const access = await requireDashboardAccess(slug);
   if (!access.authorized) {
-    return <NotAuthorized homeHref={access.homeHref} />;
+    return access.reason === "subscription" ? (
+      <SubscriptionLocked state={access.state} />
+    ) : (
+      <NotAuthorized homeHref={access.homeHref} />
+    );
   }
 
   const restaurant = await getRestaurantBySlug(slug);
@@ -95,14 +100,31 @@ export default async function SettingsPage({
         />
 
         {/* The slug is NOT editable here, on purpose — see actions.ts. Say why,
-            so the owner doesn't go hunting for it or ask the operator. */}
+            so the owner doesn't go hunting for it. */}
         <p className="mt-6 rounded-2xl border border-[#E5E7EB] bg-[#F9FAFB] p-4 text-sm text-[#6B7280]">
           Your feedback link is{" "}
           <span className="font-mono text-[#111827]">/r/{slug}/feedback</span>. It
-          can&apos;t be changed here because it&apos;s written onto the NFC chips on
-          your tables — changing it would stop every chip working. Ask ScoreFlow if
-          you really need it changed.
+          can&apos;t be changed, because it&apos;s written onto the NFC chips on your
+          tables — changing it would stop every chip working.
         </p>
+
+        {/* Danger zone — ACCOUNT OWNER only. A branch manager must never be able to
+            delete their employer's whole company (M22). */}
+        {me?.brandId && (
+          <section className="mt-8 rounded-2xl border border-red-200 p-5">
+            <h2 className="text-lg font-semibold text-[#111827]">Close account</h2>
+            <p className="mt-1 text-sm text-[#6B7280]">
+              Permanently delete this account, every location, and all of your diner
+              feedback. This can&apos;t be undone.
+            </p>
+            <Link
+              href="/account/close"
+              className="mt-4 inline-block rounded-xl border border-red-200 px-4 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-50"
+            >
+              Close my account
+            </Link>
+          </section>
+        )}
       </div>
     </main>
   );

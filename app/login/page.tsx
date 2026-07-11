@@ -15,7 +15,11 @@ import { redirect } from "next/navigation";
 import { signedInHomeHref } from "@/lib/auth-guard";
 import LoginForm from "./LoginForm";
 
-export default async function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ verified?: string; reset?: string; email?: string }>;
+}) {
   // Already signed in? Skip the form and send them to their own home (operator →
   // /admin, brand owner → /b/<slug>, branch manager → their dashboard).
   //
@@ -28,6 +32,12 @@ export default async function LoginPage() {
   if (home && home !== "/login") {
     redirect(home);
   }
+
+  // Friendly banners after finishing signup or a password reset.
+  const sp = await searchParams;
+  const justVerified = sp.verified === "1";
+  const justReset = sp.reset === "1";
+  const prefillEmail = sp.email ?? "";
 
   return (
     // Same premium white aesthetic as the customer feedback page.
@@ -54,7 +64,22 @@ export default async function LoginPage() {
           </h1>
         </header>
 
-        <LoginForm />
+        {(justVerified || justReset) && (
+          <p className="mb-6 rounded-2xl bg-green-50 px-4 py-3 text-center text-sm font-medium text-green-700">
+            {justVerified
+              ? "Email verified — sign in to start your free trial."
+              : "Password updated — sign in with your new password."}
+          </p>
+        )}
+
+        <LoginForm defaultEmail={prefillEmail} />
+
+        <p className="mt-6 text-center text-sm text-[#6B7280]">
+          New to ScoreFlow?{" "}
+          <Link href="/signup" className="font-medium text-amber-600 hover:underline">
+            Get started
+          </Link>
+        </p>
       </div>
     </main>
   );

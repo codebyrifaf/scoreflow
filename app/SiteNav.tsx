@@ -45,12 +45,20 @@ export default function SiteNav() {
         >
           ScoreFlow
         </Link>
-        <Link
-          href="/login"
-          className="link-underline text-[14px] font-medium text-[#6E6E73] transition-colors hover:text-[#1D1D1F]"
-        >
-          Sign in
-        </Link>
+        <div className="flex items-center gap-4">
+          <Link
+            href="/login"
+            className="link-underline text-[14px] font-medium text-[#6E6E73] transition-colors hover:text-[#1D1D1F]"
+          >
+            Sign in
+          </Link>
+          <Link
+            href="/signup"
+            className="rounded-full bg-[#1D1D1F] px-4 py-2 text-[14px] font-medium text-white transition-colors hover:bg-black"
+          >
+            Get started
+          </Link>
+        </div>
       </nav>
     </header>
   );

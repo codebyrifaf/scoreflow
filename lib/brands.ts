@@ -7,6 +7,8 @@
  */
 
 import { prisma } from "./prisma";
+import { newTrialEndsAt } from "./subscriptions";
+import { uniqueRestaurantSlug } from "./slug";
 
 /** Look up a brand by its URL slug (e.g. "kfc"), or null. */
 export async function getBrandBySlug(slug: string) {
@@ -14,27 +16,33 @@ export async function getBrandBySlug(slug: string) {
 }
 
 /**
- * All brands for the operator admin: name, slug, brand-owner email(s), and each
- * branch (name/slug + its feedback & table counts). The operator manages a brand's
- * lifecycle here — the delete confirmation needs to spell out exactly what the
- * cascade will destroy, which is why we pull the branches and their counts.
+ * Where a brand OWNER's home is (Milestone 20 — single-venue routing).
+ *
+ * The account model reuses `Brand` for everyone, but a customer with ONE location
+ * shouldn't be dropped into a "chain" console — they should just land on their
+ * restaurant's dashboard and never see brand/branch language. So:
+ *   • exactly 1 restaurant → that restaurant's dashboard;
+ *   • 2 or more            → the multi-location console.
  */
-export async function getAllBrandsForAdmin() {
-  return prisma.brand.findMany({
+export async function brandOwnerHome(
+  brandId: number,
+  brandSlug: string
+): Promise<string> {
+  const restaurants = await prisma.restaurant.findMany({
+    where: { brandId },
+    select: { slug: true },
     orderBy: { createdAt: "asc" },
-    include: {
-      owners: { select: { email: true }, orderBy: { id: "asc" } },
-      restaurants: {
-        orderBy: { createdAt: "asc" },
-        select: {
-          name: true,
-          slug: true,
-          _count: { select: { feedback: true, tables: true } },
-        },
-      },
-    },
+    take: 2,
   });
+  if (restaurants.length === 1) {
+    return `/r/${restaurants[0].slug}/dashboard`;
+  }
+  return `/b/${brandSlug}`;
 }
+
+// NOTE (M22): `getAllBrandsForAdmin()` fed the retired `/admin` area. The operator
+// no longer manages customer accounts at all — see lib/operator-stats.ts for what
+// they DO see (money + usage, never content).
 
 /** Brand-wide totals for the overview cards. */
 export async function getBrandStats(brandId: number) {
@@ -88,35 +96,76 @@ export async function getBranchesForBrand(brandId: number) {
   }));
 }
 
+// NOTE (M22): `createBrandWithOwner()` was how the OPERATOR hand-created an account.
+// Accounts are now born from a verified self-serve signup — see
+// `createAccountFromSignup()` above, which is the only way an account comes into
+// existence. (If the operator is standing in the restaurant, they just fill in the
+// signup form WITH the owner, so the account is the customer's from minute one.)
+
 /**
- * Create a Brand + its brand-owner login in one transaction (operator action).
- * The brand owner is brand-scoped (`brandId` set, `restaurantId` null).
+ * Create a brand-new self-serve ACCOUNT from a verified signup (Milestone 20).
+ *
+ * One transaction creates three linked rows:
+ *   • a `Brand` — the paying account, started on a 14-day free TRIAL;
+ *   • the owner `Owner` — brand-scoped, already `emailVerified` (the OTP is how we
+ *     got here). Given instant-alert defaults, because a fresh account has exactly
+ *     ONE location so the owner IS effectively its manager and wants to hear about
+ *     unhappy diners right away (they can switch to a digest later if they add
+ *     locations);
+ *   • one `Restaurant` under the brand — the customer's single venue. It has NO
+ *     separate branch-manager; the account owner manages it directly (the M16
+ *     brand-owner guard already allows that).
+ *
+ * The brand slug and the restaurant slug are both derived from the name. The
+ * caller has already checked the email is free and verified the code.
  */
-export async function createBrandWithOwner(input: {
-  name: string;
-  slug: string;
+export async function createAccountFromSignup(input: {
   ownerEmail: string;
   ownerPasswordHash: string;
+  restaurantName: string;
 }) {
+  // Resolve unique slugs BEFORE opening the transaction (these do their own reads).
+  const restaurantSlug = await uniqueRestaurantSlug(input.restaurantName);
+  // The brand slug shares the restaurant's namespace only loosely; reuse the same
+  // base but guarantee brand-uniqueness separately.
+  let brandSlug = restaurantSlug;
+  let n = 1;
+  while (await prisma.brand.findUnique({ where: { slug: brandSlug } })) {
+    n += 1;
+    brandSlug = `${restaurantSlug}-${n}`.slice(0, 40);
+  }
+
   return prisma.$transaction(async (tx) => {
     const brand = await tx.brand.create({
-      data: { name: input.name, slug: input.slug },
+      data: {
+        name: input.restaurantName,
+        slug: brandSlug,
+        subStatus: "trialing",
+        trialEndsAt: newTrialEndsAt(),
+      },
     });
+
     await tx.owner.create({
       data: {
         email: input.ownerEmail,
         passwordHash: input.ownerPasswordHash,
         brandId: brand.id,
-        // NOTIFICATION DEFAULTS (M18) — the inverse of a branch manager's.
-        // A brand owner oversees several branches, so instant alerts from all of
-        // them would mean a flood of email every day; they'd mute it and then see
-        // nothing. They get ONE daily digest instead, and can opt into instant
-        // alerts from their settings if they want them.
-        alertsEnabled: false,
-        digestEnabled: true,
+        emailVerified: true,
+        // Single-venue owner → wants the instant alert, not a digest.
+        alertsEnabled: true,
+        digestEnabled: false,
       },
     });
-    return brand;
+
+    const restaurant = await tx.restaurant.create({
+      data: {
+        name: input.restaurantName,
+        slug: restaurantSlug,
+        brandId: brand.id,
+      },
+    });
+
+    return { brand, restaurant };
   });
 }
 
@@ -146,9 +195,16 @@ export async function deleteBrandCascade(brandId: number) {
     await tx.table.deleteMany({ where: { restaurantId: { in: branchIds } } });
     await tx.owner.deleteMany({ where: { restaurantId: { in: branchIds } } }); // branch managers
 
-    // 2) The branches themselves, then the brand-owner login(s), then the brand.
+    // 2) The branches themselves, then the brand-owner login(s).
     await tx.restaurant.deleteMany({ where: { brandId } });
     await tx.owner.deleteMany({ where: { brandId } });
+
+    // 3) The account's PAYMENT ledger (Milestone 21). This FK is ON DELETE
+    //    RESTRICT like every other, so forgetting it here would make deleting any
+    //    account that ever paid us fail outright.
+    await tx.payment.deleteMany({ where: { brandId } });
+
+    // 4) Finally the brand itself.
     await tx.brand.delete({ where: { id: brandId } });
   });
 }

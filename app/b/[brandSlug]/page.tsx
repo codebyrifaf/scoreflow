@@ -12,6 +12,7 @@ import { requireBrandAccess } from "@/lib/auth-guard";
 import { getBrandBySlug, getBrandStats, getBranchesForBrand } from "@/lib/brands";
 import { logout } from "@/app/login/actions";
 import ChangePassword from "@/app/r/[slug]/dashboard/ChangePassword";
+import SubscriptionLocked from "@/app/SubscriptionLocked";
 import BrandBranches from "./BrandBranches";
 
 export const dynamic = "force-dynamic";
@@ -59,7 +60,11 @@ export default async function BrandPage({
 
   const access = await requireBrandAccess(brandSlug);
   if (!access.authorized) {
-    return <NotAuthorized homeHref={access.homeHref} />;
+    return access.reason === "subscription" ? (
+      <SubscriptionLocked state={access.state} />
+    ) : (
+      <NotAuthorized homeHref={access.homeHref} />
+    );
   }
 
   const brand = await getBrandBySlug(brandSlug);

@@ -13,6 +13,7 @@ import { notFound } from "next/navigation";
 import { requireDashboardAccess } from "@/lib/auth-guard";
 import { getRestaurantBySlug } from "@/lib/restaurants";
 import { getTablesForRestaurant } from "@/lib/tables";
+import SubscriptionLocked from "@/app/SubscriptionLocked";
 import TablesManager from "./TablesManager";
 
 export const dynamic = "force-dynamic";
@@ -48,7 +49,11 @@ export default async function TablesPage({
   // Same security gate as the dashboard — runs before any data loads.
   const access = await requireDashboardAccess(slug);
   if (!access.authorized) {
-    return <NotAuthorized homeHref={access.homeHref} />;
+    return access.reason === "subscription" ? (
+      <SubscriptionLocked state={access.state} />
+    ) : (
+      <NotAuthorized homeHref={access.homeHref} />
+    );
   }
 
   const restaurant = await getRestaurantBySlug(slug);

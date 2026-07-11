@@ -61,6 +61,11 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { getOwnerById } from "@/lib/owners";
 import { getOperatorById } from "@/lib/operators";
+import { brandOwnerHome } from "@/lib/brands";
+import {
+  subscriptionState,
+  type SubscriptionState,
+} from "@/lib/subscriptions";
 
 export type SessionUser = {
   role?: "operator" | "brand" | "owner";
@@ -79,7 +84,7 @@ export type SessionUser = {
  * session's (possibly stale) slugs, because the worst case is an unhelpful link.
  */
 export function homeHrefFor(user: SessionUser): string {
-  if (user.role === "operator") return "/admin";
+  if (user.role === "operator") return "/operator";
   if (user.role === "brand" && user.brandSlug) return `/b/${user.brandSlug}`;
   if (user.role === "owner" && user.restaurantSlug) {
     return `/r/${user.restaurantSlug}/dashboard`;
@@ -139,11 +144,37 @@ export async function signedInHomeHref(): Promise<string | null> {
   return account ? homeHrefForAccount(account) : null;
 }
 
-/** Home href derived from the FRESH database row (not the session's snapshot). */
-function homeHrefForAccount(account: Account): string {
-  if (account.kind === "operator") return "/admin";
+/**
+ * The subscription that governs a restaurant, or `null` if it's a legacy
+ * standalone (no brand → comped, never gated). Used by the guards to lock a
+ * lapsed account out of the private dashboards. Milestone 20.
+ */
+type GoverningBrand = {
+  subStatus: string;
+  trialEndsAt: Date | null;
+  currentPeriodEnd: Date | null;
+} | null;
+
+function gateFor(brand: GoverningBrand): SubscriptionState | null {
+  if (!brand) return null; // legacy/standalone → comped
+  const state = subscriptionState(brand);
+  return state.live ? null : state; // null = fine; a state = blocked
+}
+
+/**
+ * Home href derived from the FRESH database row (not the session's snapshot).
+ *
+ * Async because a brand owner's home depends on how many locations they have
+ * (single venue → their restaurant dashboard; 2+ → the console) — see
+ * `brandOwnerHome`.
+ */
+async function homeHrefForAccount(account: Account): Promise<string> {
+  // The operator's home is their SALES dashboard (M21), not the ops toolbox.
+  if (account.kind === "operator") return "/operator";
   const { owner } = account;
-  if (owner.brandId && owner.brand) return `/b/${owner.brand.slug}`;
+  if (owner.brandId && owner.brand) {
+    return brandOwnerHome(owner.brandId, owner.brand.slug);
+  }
   if (owner.restaurantId && owner.restaurant) {
     return `/r/${owner.restaurant.slug}/dashboard`;
   }
@@ -153,17 +184,30 @@ function homeHrefForAccount(account: Account): string {
 // ── Branch dashboard / tables ────────────────────────────────────────────────
 
 export type DashboardAccess =
-  | { authorized: true; ownerEmail: string; restaurantSlug: string }
-  | { authorized: false; homeHref: string };
+  | {
+      authorized: true;
+      ownerEmail: string;
+      restaurantSlug: string;
+      /** True for the ACCOUNT OWNER; false for a branch manager they employ. Only
+       *  the account owner may add locations or close the account (M22). */
+      isAccountOwner: boolean;
+      /** The account's slug, for linking to the multi-location console. */
+      accountSlug: string | null;
+    }
+  | { authorized: false; reason: "unauthorized"; homeHref: string }
+  | { authorized: false; reason: "subscription"; state: SubscriptionState };
 
 /**
  * May the current visitor view the branch at `slug`?
  *
  * - Not logged in, or session revoked → REDIRECTS to /login (never returns).
- * - Logged in but not allowed → `{ authorized: false, homeHref }`; the caller
+ * - Logged in but not allowed → `{ reason: "unauthorized", homeHref }`; the caller
  *   renders "Not authorized" — and returns BEFORE loading any of that branch's
  *   data, so nothing leaks.
- * - Allowed (own branch, or a branch of the brand you own) → `{ authorized: true }`.
+ * - Own restaurant but the account's TRIAL/SUBSCRIPTION has lapsed →
+ *   `{ reason: "subscription", state }`; the caller renders a "subscribe" screen.
+ * - Allowed (own branch, or a branch of the brand you own, and paid/on-trial) →
+ *   `{ authorized: true }`.
  */
 export async function requireDashboardAccess(
   slug: string
@@ -173,20 +217,25 @@ export async function requireDashboardAccess(
     redirect("/login");
   }
 
-  const denied = {
+  const denied = async () => ({
     authorized: false as const,
-    homeHref: homeHrefForAccount(account),
-  };
+    reason: "unauthorized" as const,
+    homeHref: await homeHrefForAccount(account),
+  });
 
   // The operator is not an owner of branch pages — they use /admin.
-  if (account.kind === "operator") return denied;
+  if (account.kind === "operator") return denied();
 
   const { owner } = account;
 
-  // Resolve the restaurant in the URL against the DB. We compare IDs, never the
+  // Resolve the restaurant in the URL against the DB, WITH its brand (the brand is
+  // the paying account, so it carries the subscription). We compare IDs, never the
   // slug, so a renamed or re-used slug can't be used to walk into another tenant.
-  const restaurant = await prisma.restaurant.findUnique({ where: { slug } });
-  if (!restaurant) return denied; // unknown slug — say nothing about whether it exists
+  const restaurant = await prisma.restaurant.findUnique({
+    where: { slug },
+    include: { brand: true },
+  });
+  if (!restaurant) return denied(); // unknown slug — reveal nothing
 
   // Which kind of owner is this? Derived from the DATABASE row, not the session,
   // so re-scoping an account takes effect on their very next request.
@@ -198,12 +247,72 @@ export async function requireDashboardAccess(
     : // Branch manager → only their own single branch.
       owner.restaurantId !== null && restaurant.id === owner.restaurantId;
 
-  if (!allowed) return denied;
+  if (!allowed) return denied();
+
+  // Authorized to SEE it — but is the account still paid up? The subscription
+  // lives on the brand; a lapsed account locks the whole team out of the private
+  // dashboard (the public feedback page is never gated — see the feedback route).
+  const blocked = gateFor(restaurant.brand);
+  if (blocked) {
+    return { authorized: false, reason: "subscription", state: blocked };
+  }
 
   return {
     authorized: true,
     ownerEmail: owner.email,
     restaurantSlug: restaurant.slug,
+    isAccountOwner: isBrandOwner,
+    accountSlug: restaurant.brand?.slug ?? null,
+  };
+}
+
+// ── The account owner (M22) ──────────────────────────────────────────────────
+
+export type AccountOwnerAccess =
+  | {
+      authorized: true;
+      ownerEmail: string;
+      brandId: number;
+      brandSlug: string;
+      brandName: string;
+    }
+  | { authorized: false; homeHref: string };
+
+/**
+ * Is the visitor the OWNER of an account (not a branch manager they employ)?
+ *
+ * Used by the "close my account" page. Two deliberate properties:
+ *
+ *   • A BRANCH MANAGER is refused. They run one location; they must never be able
+ *     to delete the whole company out from under their employer.
+ *
+ *   • It is NOT subscription-gated — on purpose. Every other private page locks
+ *     when a trial lapses, but if closing your account locked too, a lapsed
+ *     customer would be trapped in a room with no exit: unable to use the product
+ *     AND unable to leave or take their data out. You must always be able to go.
+ */
+export async function requireAccountOwner(): Promise<AccountOwnerAccess> {
+  const account = await currentAccount();
+  if (!account) {
+    redirect("/login");
+  }
+
+  if (account.kind === "operator") {
+    return { authorized: false, homeHref: await homeHrefForAccount(account) };
+  }
+
+  const { owner } = account;
+  if (!owner.brandId || !owner.brand) {
+    // A branch manager — not their account to close.
+    return { authorized: false, homeHref: await homeHrefForAccount(account) };
+  }
+
+  return {
+    authorized: true,
+    ownerEmail: owner.email,
+    brandId: owner.brandId,
+    brandSlug: owner.brand.slug,
+    brandName: owner.brand.name,
   };
 }
 
@@ -211,11 +320,12 @@ export async function requireDashboardAccess(
 
 export type BrandAccess =
   | { authorized: true; ownerEmail: string; brandSlug: string }
-  | { authorized: false; homeHref: string };
+  | { authorized: false; reason: "unauthorized"; homeHref: string }
+  | { authorized: false; reason: "subscription"; state: SubscriptionState };
 
 /**
  * May the current visitor use the brand console at `/b/[brandSlug]`?
- * Only the brand's own brand-owner. Everyone else → not authorized.
+ * Only the brand's own brand-owner, and only while the account is paid/on-trial.
  */
 export async function requireBrandAccess(
   brandSlug: string
@@ -225,19 +335,25 @@ export async function requireBrandAccess(
     redirect("/login");
   }
 
-  const denied = {
+  const denied = async () => ({
     authorized: false as const,
-    homeHref: homeHrefForAccount(account),
-  };
+    reason: "unauthorized" as const,
+    homeHref: await homeHrefForAccount(account),
+  });
 
-  if (account.kind === "operator") return denied;
+  if (account.kind === "operator") return denied();
 
   const { owner } = account;
-  if (!owner.brandId) return denied; // a branch manager has no brand console
+  if (!owner.brandId) return denied(); // a branch manager has no brand console
 
   // Same principle as above: resolve the brand and compare NUMERIC ids.
   const brand = await prisma.brand.findUnique({ where: { slug: brandSlug } });
-  if (!brand || brand.id !== owner.brandId) return denied;
+  if (!brand || brand.id !== owner.brandId) return denied();
+
+  const blocked = gateFor(brand);
+  if (blocked) {
+    return { authorized: false, reason: "subscription", state: blocked };
+  }
 
   return { authorized: true, ownerEmail: owner.email, brandSlug: brand.slug };
 }
@@ -249,16 +365,21 @@ export type OperatorAccess =
   | { authorized: false; homeHref: string };
 
 /**
- * May the current visitor use the operator admin area (`/admin`)? Operators only.
+ * May the current visitor use an operator area (`/operator`, `/admin`)? Operators
+ * only.
+ *
+ * Note the redirect target (M21): a signed-out visitor is sent to the OPERATOR's
+ * own login door, not the customers' one. The two are separate front doors for the
+ * same hardened auth backend — the real protection is this role check, not the URL.
  */
 export async function requireOperator(): Promise<OperatorAccess> {
   const account = await currentAccount();
   if (!account) {
-    redirect("/login");
+    redirect("/operator/login");
   }
 
   if (account.kind !== "operator") {
-    return { authorized: false, homeHref: homeHrefForAccount(account) };
+    return { authorized: false, homeHref: await homeHrefForAccount(account) };
   }
 
   return { authorized: true, operatorEmail: account.operator.email };

@@ -13,6 +13,7 @@ import { redirect } from "next/navigation";
 import { signIn, signOut } from "@/auth";
 import { getOwnerByEmail } from "@/lib/owners";
 import { getOperatorByEmail } from "@/lib/operators";
+import { brandOwnerHome } from "@/lib/brands";
 
 /** Shape the login form reads back: an error message, or nothing on success. */
 export type LoginState = { error: string } | undefined;
@@ -60,15 +61,22 @@ export async function login(
   // session cookie we just set isn't readable within this same request yet.
   // (redirect() must be OUTSIDE the try/catch: it works by throwing a special
   // signal that Next.js catches, so we don't want our catch block to swallow it.)
+  // An operator CAN still sign in here (deliberately kept as a fallback so the
+  // operator can never lock themselves out if the operator door has a problem) —
+  // but they're sent to their own sales dashboard, and nothing on this page
+  // advertises that an operator console exists. Their real door is /operator/login.
   const operator = await getOperatorByEmail(email);
   if (operator) {
-    redirect("/admin");
+    redirect("/operator");
   }
   const owner = await getOwnerByEmail(email);
-  // Brand owner → the brand console; branch manager → their branch dashboard.
+  // Brand owner → their account home: a single-venue account goes straight to that
+  // restaurant's dashboard (never sees "brand" language); 2+ locations → the
+  // multi-location console (Milestone 20).
   if (owner?.brand) {
-    redirect(`/b/${owner.brand.slug}`);
+    redirect(await brandOwnerHome(owner.brand.id, owner.brand.slug));
   }
+  // Branch manager → their one branch.
   const slug = owner?.restaurant?.slug;
   redirect(slug ? `/r/${slug}/dashboard` : "/");
 }

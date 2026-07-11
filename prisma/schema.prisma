@@ -119,6 +119,10 @@ model Owner {
   //                    emails a day would just mute everything and see nothing)
   alertsEnabled Boolean    @default(true)
   digestEnabled Boolean    @default(false)
+  // EMAIL VERIFICATION (Milestone 20). Self-serve signups must confirm a one-time
+  // code before their account is created, so by the time an Owner row exists it's
+  // already verified → default true. (Existing owners predate signup, also true.)
+  emailVerified Boolean    @default(true)
   createdAt    DateTime    @default(now())
 }
 
@@ -135,6 +139,119 @@ model Brand {
   createdAt   DateTime     @default(now())
   restaurants Restaurant[] // back-relation: the brand's branches
   owners      Owner[] // back-relation: brand-scoped login(s)
+
+  // ── SUBSCRIPTION (Milestone 20) ────────────────────────────────────────────
+  // The Brand is the paying ACCOUNT (a self-serve signup creates a Brand + one
+  // restaurant; "KFC-style chains" are just an account with several). Since online
+  // recurring billing isn't available to a Bangladeshi business yet, the app only
+  // models the LIFECYCLE here; the actual charge is manual (customer pays via
+  // bKash, the operator flips the account to "active") until a real gateway lands.
+  //
+  //   trialing → active → expired / canceled
+  //
+  // ⚠️ The gate lives in lib/auth-guard.ts and locks only the PRIVATE dashboards.
+  // The public /r/<slug>/feedback page is NEVER gated — the NFC chips are physical,
+  // so blocking diners would punish the wrong people.
+  //
+  // NOTE on legacy accounts: brands created before M20 (operator-made) have
+  // subStatus "trialing" by column default but a NULL trialEndsAt. The gate treats
+  // "no trialEndsAt and not active" as COMPED (operator-managed), so they're never
+  // locked — only real self-serve signups (which always set trialEndsAt) are gated.
+  subStatus        String    @default("trialing") // trialing | active | expired | canceled
+  trialEndsAt      DateTime? // set at signup to now + 14 days; NULL = comped/legacy
+  currentPeriodEnd DateTime? // end of the current paid period (manual for now)
+  activatedBy      String? // operator email who manually marked this account paid
+  activatedAt      DateTime?
+  // What this account pays per month, in BDT (Milestone 21). 0 = not priced yet.
+  // Set when the operator records a payment; drives the MRR figure on the sales
+  // dashboard.
+  monthlyPrice     Int       @default(0)
+  payments         Payment[] // back-relation: the money actually collected
+}
+
+/// An OPERATOR's use of a privileged lever (Milestone 22).
+///
+/// The operator no longer manages customer accounts — but two emergency powers are
+/// unavoidable for a platform owner: rescuing a customer who lost access to their
+/// login email, and deleting an abusive account. Both are dangerous, and the rescue
+/// lever in particular COULD be misused to take over an account and read a
+/// customer's feedback.
+///
+/// We can't prevent that (whoever holds the database can read anything), so instead
+/// we make it VISIBLE: every use is recorded here, and the affected customer is
+/// emailed. Misuse becomes detectable rather than silent.
+///
+/// ⚠️ Deliberately NO foreign key to Brand. Two reasons:
+///   1. an audit record must SURVIVE the thing it describes — a delete-for-abuse
+///      log entry is worthless if deleting the account erases the evidence;
+///   2. an FK here would be ON DELETE RESTRICT like every other, and would silently
+///      break `deleteBrandCascade` (exactly the trap M21 hit with Payment).
+model OperatorAudit {
+  id            Int      @id @default(autoincrement())
+  operatorEmail String // who did it
+  action        String // "rescue_email" | "delete_account"
+  targetBrandId Int // plain Int, NOT a relation — see above
+  targetLabel   String // the account's name/slug, kept readable after deletion
+  detail        String // e.g. "old@x.com → new@y.com"
+  createdAt     DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+/// A payment actually RECEIVED from a customer (Milestone 21).
+///
+/// Money moves out of band (bKash) because online recurring billing isn't
+/// available to a Bangladeshi business yet, so the operator records each payment
+/// here by hand. This is the ledger the sales dashboard adds up — real collected
+/// revenue, not a guess derived from statuses.
+///
+/// When a real gateway lands, its webhook writes rows here instead of the operator,
+/// and nothing else has to change.
+model Payment {
+  id         Int      @id @default(autoincrement())
+  brandId    Int
+  brand      Brand    @relation(fields: [brandId], references: [id])
+  amountBdt  Int // what they actually paid, in taka
+  periodDays Int // what it bought them (30 / 90 / 365)
+  recordedBy String // operator email who logged it
+  createdAt  DateTime @default(now())
+
+  @@index([brandId])
+  @@index([createdAt]) // revenue-over-time queries
+}
+
+/// A one-time verification code (Milestone 20) — used BOTH for confirming a new
+/// signup's email AND for "forgot password" resets.
+///
+/// The 6-digit code is stored HASHED (sha256), never in plaintext, so a database
+/// leak can't be used to hijack a signup or a reset. Codes are short-lived
+/// (10 minutes) and attempt-capped (5 tries) so they can't be brute-forced, and a
+/// background sweep deletes expired rows.
+model VerificationCode {
+  id        Int      @id @default(autoincrement())
+  email     String // normalised (trimmed + lowercased)
+  codeHash  String // sha256 of the 6-digit code
+  purpose   String // "signup" | "reset"
+  expiresAt DateTime
+  attempts  Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([email, purpose])
+  @@index([expiresAt]) // for the cleanup sweep
+}
+
+/// A signup that hasn't verified its email yet (Milestone 20).
+///
+/// We deliberately DON'T create the real Brand/Owner/Restaurant until the emailed
+/// code is confirmed — so an unverified (or bot) signup never becomes a real tenant
+/// and never squats a slug or an email. Once verified, this row is promoted into a
+/// real account and deleted. `email` is unique so re-submitting just refreshes it.
+model PendingSignup {
+  id             Int      @id @default(autoincrement())
+  email          String   @unique // normalised
+  passwordHash   String // bcrypt hash — never the raw password
+  restaurantName String
+  createdAt      DateTime @default(now())
 }
 
 /// A platform OPERATOR's login account (Milestone 6 — admin dashboard).
