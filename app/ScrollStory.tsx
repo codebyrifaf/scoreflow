@@ -1,21 +1,29 @@
 "use client";
 
 /**
- * The pinned scroll story (Milestone 15) — the page's centrepiece.
+ * The pinned scroll story — the page's centrepiece (M15; rewritten in M23).
  *
- * A tall section holds a **sticky** phone. As you scroll through it, the phone
- * stays put while its SCREEN cross-dissolves through five real product screens,
- * and the copy beside it changes in sync:
+ * A tall section holds a **sticky** phone. As you scroll, the phone stays put while
+ * its SCREEN cross-dissolves through five real product screens, and the copy beside
+ * it changes in sync.
  *
- *   1. the feedback form   2. a score picked   3. happy → Google
- *   4. unhappy → private   5. the owner dashboard
+ * ⚠️ WHY THIS WAS REWRITTEN. The old story sold a product we no longer ship — and
+ * deliberately no longer ship:
  *
- * This replaces the old "Not every rating…" and "How it works" sections — it tells
- * both stories, better, and nothing repeats.
+ *     step 3: "Happy guests go to Google."
+ *     step 4: "Unhappy ones come to you."   ← and their screen had NO review button
  *
- * Mechanics: JS only computes which step is active (from scroll position) and sets
- * `data-active`; all the actual motion lives in CSS (`.story-layer` in globals.css),
- * so we only ever animate `opacity` + `transform`.
+ * That is **review gating**, and M23 removed it (it breaches Google's review policy
+ * and UK rules on misleading reviews). So the landing page was advertising the one
+ * behaviour we'd just torn out. Worse, it was burying the feature that actually
+ * sells the product: **the instant alert.**
+ *
+ * The story now matches reality, and leads with the thing an owner actually buys:
+ *   1. tap  2. ten seconds  3. EVERY guest is invited to review  4. you're told
+ *   immediately  5. it all lands on your dashboard
+ *
+ * Mechanics unchanged: JS only computes which step is active and sets `data-active`;
+ * all motion lives in CSS (`.story-layer`), so we only animate opacity + transform.
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -26,23 +34,23 @@ const RATINGS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 const STEPS = [
   {
     title: "It starts with a tap.",
-    copy: "A guest taps the NFC chip on the table. The feedback form opens instantly — no app, no sign-up.",
+    copy: "A guest taps the chip on the table. The form opens instantly — no app, no sign-up, no QR to squint at.",
   },
   {
-    title: "Ten seconds, no typing.",
-    copy: "They pick a score from one to ten and tap a couple of quick reasons. That's the whole thing.",
+    title: "Ten seconds. No typing.",
+    copy: "They score the meal out of ten and tap a couple of reasons. That's the whole thing — which is why they actually finish it.",
   },
   {
-    title: "Happy guests go to Google.",
-    copy: "A great meal becomes a public review, while the memory is still fresh.",
+    title: "Every guest is invited to review you.",
+    copy: "Including the unhappy ones. Hiding the review link from people who didn't enjoy it is review gating — against Google's rules, and against UK law. We don't do it, and we never will.",
   },
   {
-    title: "Unhappy ones come to you.",
-    copy: "A poor experience arrives privately — before it ever becomes a one-star.",
+    title: "If someone's unhappy, you know now.",
+    copy: "An email reaches you within seconds — while they're still at the table, still holding the bill. That's the difference between a fixed meal and a one-star review.",
   },
   {
-    title: "It all lands on your dashboard.",
-    copy: "Ratings, comments, order numbers and trends. Visible only to you.",
+    title: "And it all lands on your dashboard.",
+    copy: "Every score, every comment, every table. What's going wrong, and whether you're fixing it.",
   },
 ];
 
@@ -63,7 +71,14 @@ function ScreenHeader() {
   );
 }
 
-/** Steps 1 & 2: the form — optionally with a score picked and reasons tapped. */
+/**
+ * Steps 1 & 2: the form.
+ *
+ * `picked` shows a 3 selected — deliberately a LOW score, because the whole point
+ * of steps 3 and 4 is what happens to an unhappy guest. The reasons that appear are
+ * the real negative chips, and the question is the real one ("What could be
+ * better?"), exactly as the product behaves below the positive threshold.
+ */
 function FormScreen({ picked }: { picked: boolean }) {
   return (
     <div className="flex h-full flex-col px-4 py-5">
@@ -81,7 +96,7 @@ function FormScreen({ picked }: { picked: boolean }) {
       </p>
       <div className="mt-1.5 grid grid-cols-5 gap-1">
         {RATINGS.map((n) => {
-          const on = picked && n === 9;
+          const on = picked && n === 3;
           return (
             <div
               key={n}
@@ -101,21 +116,22 @@ function FormScreen({ picked }: { picked: boolean }) {
         <span>Great</span>
       </div>
 
-      {/* The quick-tap reasons appear once a score is picked. */}
+      {/* The quick-tap reasons appear once a score is picked. A low score gets the
+          "what went wrong" set — exactly like the real form. */}
       <div
         className={`mt-3 transition-opacity duration-500 ${
           picked ? "opacity-100" : "opacity-0"
         }`}
       >
         <p className="text-[10px] font-semibold text-[#1D1D1F]">
-          What did you love?
+          What could be better?
         </p>
         <div className="mt-1.5 flex flex-wrap gap-1">
-          {["Delicious", "Great service", "Cozy vibe"].map((t, i) => (
+          {["Slow service", "Food was cold", "Too pricey"].map((t, i) => (
             <span
               key={t}
               className={`rounded-full px-2 py-1 text-[9px] font-medium ${
-                i === 0
+                i === 1
                   ? "bg-amber-500 text-white"
                   : "bg-[#F2F2F7] text-[#1D1D1F]"
               }`}
@@ -128,9 +144,7 @@ function FormScreen({ picked }: { picked: boolean }) {
 
       <div
         className={`mt-auto rounded-lg py-2.5 text-center text-[11px] font-semibold transition-colors duration-500 ${
-          picked
-            ? "bg-amber-500 text-white"
-            : "bg-[#F2F2F7] text-[#AEAEB2]"
+          picked ? "bg-amber-500 text-white" : "bg-[#F2F2F7] text-[#AEAEB2]"
         }`}
       >
         Submit feedback
@@ -139,30 +153,94 @@ function FormScreen({ picked }: { picked: boolean }) {
   );
 }
 
-/** Steps 3 & 4: the two outcomes. */
-function OutcomeScreen({ happy }: { happy: boolean }) {
+/**
+ * Step 3: the thank-you an UNHAPPY guest sees.
+ *
+ * This screen is the proof of the compliance claim, so it must be exactly what the
+ * product renders: a private acknowledgement AND the same Google review button
+ * everyone else gets. If you're going to say "we don't gate reviews", the picture
+ * had better show it.
+ */
+function ThankYouScreen() {
   return (
     <div className="flex h-full flex-col items-center justify-center gap-3 px-5 text-center">
-      <div
-        className={`flex h-14 w-14 items-center justify-center rounded-full text-2xl ${
-          happy ? "bg-green-50 text-green-600" : "bg-[#F2F2F7] text-[#8E8E93]"
-        }`}
-      >
+      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#F2F2F7] text-2xl text-[#8E8E93]">
         ✓
       </div>
       <p className="text-[14px] font-semibold text-[#1D1D1F]">
-        {happy ? "Thanks for your feedback" : "Thank you — we hear you"}
+        Thank you — we hear you
       </p>
       <p className="text-[11px] leading-relaxed text-[#6E6E73]">
-        {happy
-          ? "We really appreciate you taking the time to help Fucco improve."
-          : "We're sorry your experience fell short. Your feedback goes straight to the Fucco team."}
+        We&apos;re sorry your experience at Fucco fell short.
       </p>
-      {happy && (
-        <div className="mt-1 w-full rounded-lg bg-amber-500 py-2.5 text-[11px] font-semibold text-white">
-          Leave us a Google review
+
+      <p className="w-full rounded-lg bg-[#F2F2F7] px-3 py-2 text-[10px] leading-relaxed text-[#3A3A3C]">
+        What you told us has gone straight to the Fucco team so they can put it
+        right.
+      </p>
+
+      {/* The same invite everyone gets — shown here to a 3/10. That's the point. */}
+      <div className="mt-1 w-full rounded-lg bg-amber-500 py-2.5 text-[11px] font-semibold text-white">
+        Leave a review on Google
+      </div>
+      <p className="text-[9px] text-[#AEAEB2]">
+        Sharing your honest experience publicly is entirely up to you.
+      </p>
+    </div>
+  );
+}
+
+/**
+ * Step 4: the alert.
+ *
+ * The feature that actually sells the product, and it was nowhere on the old page.
+ * Shown as the email landing on the owner's phone, seconds later.
+ */
+function AlertScreen() {
+  return (
+    <div className="flex h-full flex-col px-4 py-5">
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-[#AEAEB2]">
+        Inbox
+      </p>
+
+      <div className="mt-3 rounded-xl border border-[#E5E5EA] p-3 shadow-sm">
+        <div className="flex items-center gap-2">
+          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#1D1D1F] text-[10px] font-semibold text-white">
+            S
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[11px] font-semibold text-[#1D1D1F]">
+              ScoreFlow
+            </p>
+            <p className="text-[9px] text-[#AEAEB2]">now</p>
+          </div>
         </div>
-      )}
+
+        <p className="mt-2.5 text-[11px] font-semibold leading-snug text-[#1D1D1F]">
+          Fucco: an unhappy diner (3/10)
+        </p>
+
+        <div className="mt-2 rounded-lg bg-[#F2F2F7] p-2">
+          <p className="text-[10px] font-semibold text-[#1D1D1F]">
+            3/10 — order 1042, table 7
+          </p>
+          <p className="mt-0.5 text-[9px] text-[#6E6E73]">
+            Tagged: Food was cold
+          </p>
+        </div>
+
+        <div className="mt-2.5 rounded-lg bg-amber-500 py-2 text-center text-[10px] font-semibold text-white">
+          Open dashboard
+        </div>
+      </div>
+
+      <p className="mt-auto text-center text-[10px] leading-relaxed text-[#6E6E73]">
+        They&apos;re still at table 7.
+        <br />
+        <span className="font-semibold text-[#1D1D1F]">
+          You have about four minutes.
+        </span>
+      </p>
     </div>
   );
 }
@@ -175,20 +253,30 @@ function DashboardScreen() {
       <p className="text-[13px] font-semibold text-[#1D1D1F]">Fucco</p>
       <p className="text-[10px] text-[#6E6E73]">Feedback dashboard</p>
 
-      <div className="mt-3 inline-flex w-fit rounded-full bg-[#F2F2F7] p-0.5 text-[9px] font-medium">
-        {["All", "Today", "Week", "Month"].map((t, i) => (
-          <span
-            key={t}
-            className={`rounded-full px-2 py-1 ${
-              i === 2 ? "bg-white text-[#1D1D1F] shadow-sm" : "text-[#6E6E73]"
-            }`}
-          >
-            {t}
+      {/* Needs attention — the worklist, which is what an owner actually opens. */}
+      <div className="mt-3 rounded-lg border border-red-200 bg-red-50/50 p-2.5">
+        <div className="flex items-center gap-1.5">
+          <p className="text-[10px] font-semibold text-[#1D1D1F]">
+            Needs attention
+          </p>
+          <span className="rounded-full bg-red-100 px-1.5 py-0.5 text-[8px] font-bold text-red-700">
+            1
           </span>
-        ))}
+        </div>
+        <div className="mt-1.5 flex gap-2">
+          <span className="flex h-7 w-7 flex-none items-center justify-center rounded-md bg-red-100 text-[10px] font-bold text-red-700">
+            3
+          </span>
+          <div className="min-w-0">
+            <p className="truncate text-[9px] font-semibold text-[#1D1D1F]">
+              Order 1042 · Table 7
+            </p>
+            <p className="truncate text-[9px] text-[#6E6E73]">Food was cold</p>
+          </div>
+        </div>
       </div>
 
-      <div className="mt-3 grid grid-cols-2 gap-2">
+      <div className="mt-2.5 grid grid-cols-2 gap-2">
         <div className="rounded-lg border border-[#E5E5EA] p-2.5">
           <p className="text-[9px] text-[#6E6E73]">Responses</p>
           <p className="text-[17px] font-bold text-[#1D1D1F]">128</p>
@@ -201,7 +289,7 @@ function DashboardScreen() {
 
       <div className="mt-2.5 rounded-lg border border-[#E5E5EA] p-2.5">
         <p className="text-[9px] text-[#6E6E73]">Last 7 days</p>
-        <div className="mt-2 flex h-12 items-end gap-1">
+        <div className="mt-2 flex h-11 items-end gap-1">
           {bars.map((v, i) => (
             <div key={i} className="flex-1">
               <div
@@ -210,18 +298,6 @@ function DashboardScreen() {
               />
             </div>
           ))}
-        </div>
-      </div>
-
-      <div className="mt-2.5 flex gap-2 rounded-lg border border-[#E5E5EA] p-2.5">
-        <span className="flex h-8 w-8 flex-none items-center justify-center rounded-md bg-green-50 text-[11px] font-bold text-green-700">
-          9
-        </span>
-        <div className="min-w-0">
-          <p className="truncate text-[10px] font-semibold text-[#1D1D1F]">
-            Order 1042 · Table 7
-          </p>
-          <p className="truncate text-[10px] text-[#6E6E73]">Delicious</p>
         </div>
       </div>
     </div>
@@ -245,7 +321,6 @@ export default function ScrollStory() {
         const rect = section.getBoundingClientRect();
         const total = rect.height - window.innerHeight;
         if (total <= 0) return;
-        // 0 → 1 across the whole pinned section.
         const p = Math.min(Math.max(-rect.top / total, 0), 1);
         const idx = Math.min(Math.floor(p * STEPS.length), STEPS.length - 1);
         setActive((prev) => (prev === idx ? prev : idx));
@@ -265,8 +340,8 @@ export default function ScrollStory() {
   const screens = [
     <FormScreen key="form" picked={false} />,
     <FormScreen key="rated" picked />,
-    <OutcomeScreen key="happy" happy />,
-    <OutcomeScreen key="private" happy={false} />,
+    <ThankYouScreen key="thanks" />,
+    <AlertScreen key="alert" />,
     <DashboardScreen key="dash" />,
   ];
 
@@ -294,21 +369,18 @@ export default function ScrollStory() {
 
             {/* The copy — changes in sync. */}
             <div className="order-2 lg:order-1">
-              {/* Step indicator */}
               <div className="mb-7 flex gap-1.5 lg:mb-9">
                 {STEPS.map((_, i) => (
                   <span
                     key={i}
                     className={`story-tick h-[3px] rounded-full ${
-                      i === active
-                        ? "w-8 bg-[#1D1D1F]"
-                        : "w-4 bg-[#D2D2D7]"
+                      i === active ? "w-8 bg-[#1D1D1F]" : "w-4 bg-[#D2D2D7]"
                     }`}
                   />
                 ))}
               </div>
 
-              <div className="relative h-[150px] lg:h-[190px]">
+              <div className="relative h-[210px] lg:h-[250px]">
                 {STEPS.map((s, i) => (
                   <div
                     key={i}
@@ -318,7 +390,7 @@ export default function ScrollStory() {
                     <h3 className="text-[26px] font-semibold leading-[1.1] tracking-[-0.02em] text-[#1D1D1F] lg:text-[40px]">
                       {s.title}
                     </h3>
-                    <p className="mt-3 max-w-md text-[15px] leading-relaxed text-[#6E6E73] lg:mt-5 lg:text-[18px]">
+                    <p className="mt-3 max-w-md text-[15px] leading-relaxed text-[#6E6E73] lg:mt-5 lg:text-[17px]">
                       {s.copy}
                     </p>
                   </div>

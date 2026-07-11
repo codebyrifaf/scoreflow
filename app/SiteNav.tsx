@@ -45,7 +45,15 @@ export default function SiteNav() {
         >
           ScoreFlow
         </Link>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-5">
+          {/* Pricing in the nav is not decoration: an SMB buyer who can't find a
+              price assumes it's expensive and leaves. */}
+          <Link
+            href="/#pricing"
+            className="link-underline hidden text-[14px] font-medium text-[#6E6E73] transition-colors hover:text-[#1D1D1F] sm:block"
+          >
+            Pricing
+          </Link>
           <Link
             href="/login"
             className="link-underline text-[14px] font-medium text-[#6E6E73] transition-colors hover:text-[#1D1D1F]"
