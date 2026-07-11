@@ -35,6 +35,13 @@ model Restaurant {
   // the public-review nudge; ratings below it get a private "sorry" screen and
   // are NEVER nudged toward a public review. Default 8 → 8/9/10 go to Google.
   reviewThreshold Int        @default(8)
+  // COMPLAINT level (Milestone 18): a rating AT OR BELOW this means the diner is
+  // genuinely unhappy — it lands in the owner's "Needs attention" list and fires an
+  // alert. Deliberately SEPARATE from `reviewThreshold` (8), which only decides who
+  // gets nudged toward Google. If we alerted on "didn't earn a Google invite", a
+  // 7/10 — a perfectly good meal — would email the owner, they'd drown in noise and
+  // mute alerts within a week. Two different jobs, two different numbers.
+  alertThreshold  Int        @default(5)
   createdAt       DateTime   @default(now())
   feedback        Feedback[] // back-relation: all feedback for this restaurant
   owners          Owner[] // back-relation: the login accounts that own this restaurant (Milestone 5)
@@ -102,6 +109,16 @@ model Owner {
   // on EVERY request. Bump this (password change / reset) and every existing
   // session for this account dies instantly, on every device.
   tokenVersion Int         @default(0)
+  // NOTIFICATION PREFERENCES (Milestone 18) — per PERSON, not per restaurant, so
+  // each manager controls their own inbox.
+  //   • alertsEnabled → email me the moment a diner is unhappy (instant).
+  //   • digestEnabled → email me ONE summary a day instead.
+  // The defaults differ by scope and are set at ACCOUNT CREATION, not here:
+  //   branch manager → instant on, digest off  (they can fix it tonight)
+  //   brand owner    → instant OFF, digest on  (a 4-branch owner getting 20 instant
+  //                    emails a day would just mute everything and see nothing)
+  alertsEnabled Boolean    @default(true)
+  digestEnabled Boolean    @default(false)
   createdAt    DateTime    @default(now())
 }
 
@@ -195,10 +212,21 @@ model Feedback {
   // hash, never the raw IP, and use it to rate-limit submissions. Null for older
   // rows / when no IP is available.
   ipHash       String?
+  // THE "NEEDS ATTENTION" WORKLIST (Milestone 18). A complaint (rating ≤ the
+  // restaurant's alertThreshold) stays OPEN until someone deals with it. This is
+  // what turns a notification into a workflow: the owner works through unhappy
+  // diners and closes them off, rather than just being pinged.
+  resolvedAt   DateTime? // null = still open
+  resolvedBy   String? // the owner email that closed it
+  // Stamped once this row has been included in an alert email, so a diner is never
+  // reported twice (alerts are BATCHED — see lib/notifications.ts).
+  alertedAt    DateTime?
   createdAt    DateTime   @default(now())
 
   // Speeds up the "how many recent submissions from this IP?" rate-limit query.
   @@index([ipHash, createdAt])
+  // The worklist query: "this restaurant's still-open complaints".
+  @@index([restaurantId, resolvedAt])
   // THE app's hottest query: "all feedback for restaurant X" (every dashboard load)
   // and "recent feedback for restaurant X" (the spam guard). Postgres does NOT
   // auto-index a foreign key, so before M17 this was a sequential scan over EVERY

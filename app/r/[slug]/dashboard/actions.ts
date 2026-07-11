@@ -23,9 +23,13 @@
  *    sends them back to sign in.
  */
 
+import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
 import { auth } from "@/auth";
+import { requireDashboardAccess } from "@/lib/auth-guard";
 import { getOwnerById, updateOwnerPassword } from "@/lib/owners";
+import { getRestaurantBySlug } from "@/lib/restaurants";
+import { resolveFeedback as resolveFeedbackRow } from "@/lib/feedback";
 import { validateNewPassword } from "@/lib/passwords";
 
 export type ChangePasswordState = { error: string } | { ok: true } | undefined;
@@ -74,5 +78,61 @@ export async function changePassword(
   // on every device (including this one).
   await updateOwnerPassword(owner.id, newHash);
 
+  return { ok: true };
+}
+
+/** What the "Mark resolved" button reads back. */
+export type ResolveState = { error: string } | { ok: true } | undefined;
+
+/**
+ * Mark one unhappy diner as dealt with (Milestone 18) — the "Needs attention"
+ * worklist. Bound in the client as `markResolved.bind(null, slug, feedbackId)`.
+ *
+ * ⚠️ SECURITY — this is the first action in the app that takes a ROW ID from the
+ * browser, so it's genuinely new attack surface. Two independent defences:
+ *
+ *   1. `requireDashboardAccess(slug)` — are you allowed to touch this restaurant
+ *      at all? (Re-reads the DB; branch manager → own branch, brand owner → their
+ *      brand's branches, everyone else out.)
+ *   2. The write itself is SCOPED: `resolveFeedbackRow` does
+ *      `updateMany({ where: { id, restaurantId } })`. So even a caller who is a
+ *      legitimate owner of restaurant A, forging a feedback id belonging to
+ *      restaurant B, matches ZERO rows and changes nothing.
+ *
+ * Check (1) alone is not enough — it would happily let the owner of A resolve B's
+ * feedback if the id were guessed. It's the pairing that closes it, the same way
+ * `deleteTable` (lib/tables.ts) is written.
+ */
+export async function markResolved(
+  slug: string,
+  feedbackId: number,
+  _prevState: ResolveState,
+  _formData: FormData
+): Promise<ResolveState> {
+  const access = await requireDashboardAccess(slug);
+  if (!access.authorized) {
+    return { error: "You are not authorized to do this." };
+  }
+
+  const restaurant = await getRestaurantBySlug(slug);
+  if (!restaurant) {
+    return { error: "Restaurant not found." };
+  }
+
+  if (!Number.isInteger(feedbackId)) {
+    return { error: "Invalid feedback." };
+  }
+
+  // Scoped write — an id from another restaurant simply matches nothing.
+  const updated = await resolveFeedbackRow(
+    feedbackId,
+    restaurant.id,
+    access.ownerEmail
+  );
+  if (updated === 0) {
+    return { error: "That feedback is no longer open." };
+  }
+
+  revalidatePath(`/r/${slug}/dashboard`);
   return { ok: true };
 }

@@ -127,9 +127,44 @@ export async function updateRestaurant(
     slug: string;
     googleReviewUrl: string | null;
     reviewThreshold: number;
+    alertThreshold?: number;
   }
 ) {
   return prisma.restaurant.update({ where: { id }, data });
+}
+
+/**
+ * The OWNER-SAFE settings update (Milestone 18) — what a restaurant owner may
+ * change about their own venue, without an operator.
+ *
+ * ⚠️ Why this exists instead of just reusing `updateRestaurant`: that function can
+ * change the **slug**, and an owner must never be able to. The slug is baked into
+ * the NFC chips physically stuck to their tables (`/r/<slug>/feedback`), so
+ * renaming it would silently brick every chip in the restaurant and the owner
+ * would have no idea why feedback stopped arriving. Slug changes stay with the
+ * operator, who knows to re-program the chips.
+ *
+ * By listing the allowed fields explicitly, a stray extra field in a form post can
+ * never reach the database either.
+ */
+export async function updateRestaurantSettings(
+  id: number,
+  data: {
+    name: string;
+    googleReviewUrl: string | null;
+    reviewThreshold: number;
+    alertThreshold: number;
+  }
+) {
+  return prisma.restaurant.update({
+    where: { id },
+    data: {
+      name: data.name,
+      googleReviewUrl: data.googleReviewUrl,
+      reviewThreshold: data.reviewThreshold,
+      alertThreshold: data.alertThreshold,
+    },
+  });
 }
 
 export async function deleteRestaurantCascade(id: number) {

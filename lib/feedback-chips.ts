@@ -31,8 +31,18 @@ const POSITIVE_CHIPS = [
   "Will return",
 ];
 
-/** The rating at/above which we show the positive chips (below → negative). */
-export const POSITIVE_FROM = 7;
+/**
+ * Fallback boundary, used only if a caller doesn't pass the restaurant's own
+ * threshold.
+ *
+ * ⚠️ This used to be a hardcoded 7 that decided the chips for EVERY restaurant —
+ * while the thank-you screen routed on `reviewThreshold` (default 8). The two
+ * disagreed, so a diner who rated **7** was cheerfully asked "What did you love?"
+ * and then shown the private *"sorry your experience fell short"* screen. M18
+ * unified them: chips now follow the restaurant's own `reviewThreshold`, so what
+ * the diner is asked always matches where they end up.
+ */
+export const DEFAULT_POSITIVE_FROM = 8;
 
 /**
  * Every chip we will ever accept — the WHITELIST for the public API (M17).
@@ -56,8 +66,16 @@ export function isKnownChip(tag: string): boolean {
 /**
  * Which chips to show for a given rating. Returns an empty array when no rating
  * has been chosen yet (rating 0), so the chip section stays hidden until then.
+ *
+ * `positiveFrom` is the restaurant's own `reviewThreshold` — the SAME number that
+ * decides whether this diner ends up on the Google-review screen or the private
+ * "sorry" screen. Passing it here is what keeps the question we ask ("what did you
+ * love?" vs "what went wrong?") consistent with the screen they'll land on.
  */
-export function chipsForRating(rating: number): string[] {
+export function chipsForRating(
+  rating: number,
+  positiveFrom: number = DEFAULT_POSITIVE_FROM
+): string[] {
   if (rating <= 0) return [];
-  return rating >= POSITIVE_FROM ? POSITIVE_CHIPS : NEGATIVE_CHIPS;
+  return rating >= positiveFrom ? POSITIVE_CHIPS : NEGATIVE_CHIPS;
 }

@@ -17,7 +17,7 @@
 
 import { useState } from "react";
 import type { FeedbackPayload } from "@/lib/types";
-import { chipsForRating, POSITIVE_FROM } from "@/lib/feedback-chips";
+import { chipsForRating } from "@/lib/feedback-chips";
 
 /** The 10 rating values, [1, 2, 3, ... 10], built once so we can `.map()` over them. */
 const RATINGS = Array.from({ length: 10 }, (_, i) => i + 1);
@@ -31,8 +31,13 @@ interface FeedbackFormProps {
   slug: string;
   /** Display name, e.g. "Fucco". */
   restaurantName: string;
-  /** Where the thank-you "Leave us a Google review" link points. */
-  googleReviewUrl: string;
+  /**
+   * Where the thank-you "Leave us a Google review" link points, or `null` if this
+   * restaurant hasn't set one. When it's null we show NO button rather than a dead
+   * one (Milestone 18) — a button that goes nowhere is worse than no button, because
+   * the diner thinks they've left a review and the owner never finds out they haven't.
+   */
+  googleReviewUrl: string | null;
   /**
    * Smart review routing (Milestone 7): the minimum rating (1–10) that gets the
    * Google review nudge. Ratings at/above it → public-review screen; below it →
@@ -88,13 +93,19 @@ export default function FeedbackForm({
 
   // The quick-tap chips to show for the currently selected rating (positive set
   // for high ratings, "what went wrong" set for low; empty until a rating exists).
-  const chips = chipsForRating(rating);
+  // We pass THIS restaurant's reviewThreshold — the same number that decides which
+  // thank-you screen they'll land on — so the question we ask always matches the
+  // outcome. (Before M18 this was hardcoded to 7 while routing used 8, so a 7/10
+  // was asked "what did you love?" and then told "sorry your experience fell short".)
+  const chips = chipsForRating(rating, reviewThreshold);
 
   /** Pick a rating, and drop any selected chips that don't belong to the new
    *  rating's set (e.g. switching from a low to a high score clears "Slow service"). */
   function selectRating(value: number) {
     setRating(value);
-    setSelectedTags((prev) => prev.filter((t) => chipsForRating(value).includes(t)));
+    setSelectedTags((prev) =>
+      prev.filter((t) => chipsForRating(value, reviewThreshold).includes(t))
+    );
   }
 
   /** Toggle a chip on/off. */
@@ -180,10 +191,14 @@ export default function FeedbackForm({
               We really appreciate you taking the time to help {restaurantName}{" "}
               improve.
             </p>
-            {/* Uses THIS restaurant's Google review link (from the database). */}
-            <a href={googleReviewUrl} className={`mt-8 block ${PRIMARY_BTN_CLASS}`}>
-              Leave us a Google review
-            </a>
+            {/* Uses THIS restaurant's Google review link (from the database). If the
+                owner hasn't set one, we show NOTHING here rather than a button that
+                silently goes nowhere. */}
+            {googleReviewUrl && (
+              <a href={googleReviewUrl} className={`mt-8 block ${PRIMARY_BTN_CLASS}`}>
+                Leave us a Google review
+              </a>
+            )}
           </div>
         </main>
       );
@@ -307,7 +322,7 @@ export default function FeedbackForm({
           {chips.length > 0 && (
             <div className="flex flex-col gap-3">
               <span className="text-base font-semibold text-[#111827]">
-                {rating >= POSITIVE_FROM
+                {rating >= reviewThreshold
                   ? "What did you love?"
                   : "What could be better?"}{" "}
                 <span className="font-normal text-[#9CA3AF]">(optional)</span>

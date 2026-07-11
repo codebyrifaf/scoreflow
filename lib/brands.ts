@@ -107,6 +107,13 @@ export async function createBrandWithOwner(input: {
         email: input.ownerEmail,
         passwordHash: input.ownerPasswordHash,
         brandId: brand.id,
+        // NOTIFICATION DEFAULTS (M18) — the inverse of a branch manager's.
+        // A brand owner oversees several branches, so instant alerts from all of
+        // them would mean a flood of email every day; they'd mute it and then see
+        // nothing. They get ONE daily digest instead, and can opt into instant
+        // alerts from their settings if they want them.
+        alertsEnabled: false,
+        digestEnabled: true,
       },
     });
     return brand;

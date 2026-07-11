@@ -26,6 +26,7 @@
  *     the owner's "Top mentions" panel.
  */
 
+import { after } from "next/server";
 import { getRestaurantBySlug } from "@/lib/restaurants";
 import {
   createFeedback,
@@ -35,6 +36,7 @@ import {
 } from "@/lib/feedback";
 import { clientIpHash } from "@/lib/request-ip";
 import { isKnownChip } from "@/lib/feedback-chips";
+import { notifyComplaint } from "@/lib/notifications";
 import type { FeedbackPayload } from "@/lib/types";
 
 /** The JSON body we expect: the customer's input, the slug, and a honeypot. */
@@ -211,6 +213,23 @@ export async function POST(request: Request) {
     );
   }
 
-  // 7. Success. 201 Created is the conventional status for "we made a new record".
+  // 7. Was this diner unhappy? If so, tell whoever should know (Milestone 18).
+  //
+  //    `after()` runs this AFTER the response has been sent. That matters: the
+  //    diner is standing at their table waiting for the thank-you screen, and
+  //    looking up recipients + sending email would add seconds to their tap — and
+  //    if the email provider were down, it would fail their submission entirely.
+  //    Their feedback is already safely saved by this point; notifying is our
+  //    problem, not theirs.
+  //
+  //    Note the threshold: `alertThreshold` (default 5, "genuinely unhappy"), NOT
+  //    `reviewThreshold` (default 8, "earns a Google invite"). Alerting on the
+  //    latter would email the owner about a 7/10 — a good meal — and they'd mute
+  //    alerts within a week.
+  if (payload.rating <= restaurant.alertThreshold) {
+    after(() => notifyComplaint(restaurant.id));
+  }
+
+  // 8. Success. 201 Created is the conventional status for "we made a new record".
   return Response.json({ ok: true }, { status: 201 });
 }

@@ -14,10 +14,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getRestaurantBySlug } from "@/lib/restaurants";
-import { getFeedbackForRestaurant } from "@/lib/feedback";
+import { getFeedbackForRestaurant, getOpenComplaints } from "@/lib/feedback";
 import { requireDashboardAccess } from "@/lib/auth-guard";
 import { logout } from "@/app/login/actions";
 import ChangePassword from "./ChangePassword";
+import NeedsAttention from "./NeedsAttention";
 import type { FeedbackRecord } from "@/lib/types";
 
 // Always render on each request so the owner sees the latest feedback.
@@ -162,7 +163,13 @@ export default async function DashboardPage({
   }
 
   // Fetch ALL feedback once, then derive each view in memory (volumes are small).
-  const all = await getFeedbackForRestaurant(restaurant.id);
+  // The open-complaints worklist is a separate, indexed query (M18) — it ignores
+  // the time-range filter on purpose: an unhappy diner from last week is still
+  // waiting on you, and hiding them behind a "Today" tab would defeat the point.
+  const [all, openComplaints] = await Promise.all([
+    getFeedbackForRestaurant(restaurant.id),
+    getOpenComplaints(restaurant.id, restaurant.alertThreshold),
+  ]);
   const now = Date.now();
   const since = cutoffFor(range, now);
 
@@ -239,6 +246,9 @@ export default async function DashboardPage({
             <Link href={`/r/${slug}/tables`} className={PILL_BTN_CLASS}>
               Tables &amp; NFC links
             </Link>
+            <Link href={`/r/${slug}/settings`} className={PILL_BTN_CLASS}>
+              Settings
+            </Link>
             <ChangePassword />
             <span className="text-sm text-[#9CA3AF]">{access.ownerEmail}</span>
             <form action={logout}>
@@ -248,6 +258,33 @@ export default async function DashboardPage({
             </form>
           </div>
         </header>
+
+        {/* The silent-failure warning (M18). With no Google link set, a happy diner
+            used to tap a button that went nowhere and nobody ever found out. Now the
+            button isn't shown at all — and we tell the owner, who can fix it
+            themselves in one click. */}
+        {!restaurant.googleReviewUrl && (
+          <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+            <p className="text-sm text-amber-900">
+              <b>No Google review link set.</b> Happy diners aren&apos;t being sent
+              anywhere, so you&apos;re not getting any new reviews.{" "}
+              <Link
+                href={`/r/${slug}/settings`}
+                className="font-semibold underline"
+              >
+                Add your link
+              </Link>
+              .
+            </p>
+          </div>
+        )}
+
+        {/* Needs attention — the unhappy diners still waiting on someone. */}
+        <NeedsAttention
+          slug={slug}
+          complaints={openComplaints}
+          alertThreshold={restaurant.alertThreshold}
+        />
 
         {/* Time-range segmented control */}
         <div className="mb-6 inline-flex rounded-full bg-[#F3F4F6] p-1 text-sm">
@@ -357,8 +394,8 @@ export default async function DashboardPage({
                 Lowest-rated orders
               </h2>
               <div className="flex flex-col gap-2">
-                {lowestRated.map((r, i) => (
-                  <FeedbackItem key={`${r.timestamp}-${i}`} record={r} />
+                {lowestRated.map((r) => (
+                  <FeedbackItem key={r.id} record={r} />
                 ))}
               </div>
             </section>
@@ -368,8 +405,8 @@ export default async function DashboardPage({
                 All submissions ({total})
               </h2>
               <div className="flex flex-col gap-2">
-                {mostRecentFirst.map((r, i) => (
-                  <FeedbackItem key={`${r.timestamp}-${i}`} record={r} />
+                {mostRecentFirst.map((r) => (
+                  <FeedbackItem key={r.id} record={r} />
                 ))}
               </div>
             </section>

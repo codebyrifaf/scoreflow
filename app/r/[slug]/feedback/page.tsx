@@ -34,8 +34,13 @@ export default async function FeedbackPage({
     <FeedbackForm
       slug={restaurant.slug}
       restaurantName={restaurant.name}
-      // Fall back to "#" if this restaurant has no review URL set yet.
-      googleReviewUrl={restaurant.googleReviewUrl ?? "#"}
+      // Pass NULL when no review URL is set — never "#" (Milestone 18).
+      // It used to fall back to "#", which meant a happy diner tapped a big amber
+      // "Leave us a Google review" button that went NOWHERE, silently. The whole
+      // point of the product quietly stopped working and nobody found out. Now the
+      // form simply doesn't render the button, and the owner is warned on their
+      // dashboard (which they can now fix themselves, on their settings page).
+      googleReviewUrl={restaurant.googleReviewUrl || null}
       // Smart review routing (M7): ratings at/above this go to the Google nudge.
       reviewThreshold={restaurant.reviewThreshold}
       table={table ?? null}

@@ -50,6 +50,66 @@ export async function getOwnerById(id: number) {
 }
 
 /**
+ * Everyone who should be told when a diner is unhappy at this restaurant
+ * (Milestone 18).
+ *
+ * Two groups, deliberately treated differently:
+ *   • the restaurant's own BRANCH MANAGERS → instant, if they have alerts on. They
+ *     can walk over and fix it tonight.
+ *   • the BRAND OWNER above it → only if they explicitly opted INTO instant alerts.
+ *     By default they get a daily digest instead, because a four-branch owner
+ *     receiving twenty instant emails a day would simply mute everything and then
+ *     see nothing at all.
+ */
+export async function getAlertRecipientsForRestaurant(restaurantId: number) {
+  const restaurant = await prisma.restaurant.findUnique({
+    where: { id: restaurantId },
+    select: { brandId: true },
+  });
+
+  return prisma.owner.findMany({
+    where: {
+      alertsEnabled: true,
+      OR: [
+        { restaurantId }, // the branch's own manager(s)
+        // the brand owner above it — but only if they asked for instant alerts
+        ...(restaurant?.brandId ? [{ brandId: restaurant.brandId }] : []),
+      ],
+    },
+    select: { id: true, email: true },
+  });
+}
+
+/**
+ * Everyone who wants the daily digest (Milestone 18) — brand owners AND branch
+ * managers.
+ *
+ * Brand owners get it by default (one email covering all their branches). A branch
+ * manager can turn it on too, and for them it also acts as the SAFETY NET: instant
+ * alerts are batched with a cooldown, so during a burst some complaints are held
+ * back rather than firing an email each. The digest sweeps up anything the instant
+ * alerts didn't cover, so nothing can quietly go unreported.
+ */
+export async function getDigestRecipients() {
+  return prisma.owner.findMany({
+    where: { digestEnabled: true },
+    select: { id: true, email: true, brandId: true, restaurantId: true },
+  });
+}
+
+/**
+ * Update ONE owner's notification preferences (Milestone 18).
+ * Scoped to a single owner id, which the caller reads from the signed session —
+ * so nobody can change someone else's notification settings.
+ */
+export async function updateNotificationPrefs(
+  id: number,
+  prefs: { alertsEnabled: boolean; digestEnabled: boolean }
+) {
+  return prisma.owner.update({ where: { id }, data: prefs });
+}
+
+/**
  * Change ONE owner's password AND invalidate all of their existing sessions
  * (Milestone 17), atomically.
  *

@@ -33,11 +33,26 @@ export interface FeedbackPayload {
 }
 
 /**
- * One feedback submission as the dashboard consumes it: the customer's input
- * plus the time it was recorded. (The database also stores an `id` and
- * `restaurantId`, but the dashboard doesn't need those, so they're not here.)
+ * One feedback submission as the dashboard consumes it.
+ *
+ * Milestone 18 added `id` and `resolvedAt`. The id used to be deliberately dropped
+ * ("the dashboard doesn't need it") — but that meant NO per-row action was
+ * possible at all: you can't mark a complaint resolved, or link an alert email to
+ * one diner, without being able to name the row. It also forced the React lists to
+ * key on `${timestamp}-${index}`, which is positionally unstable.
+ *
+ * `restaurantId` is still deliberately absent: pages already know which restaurant
+ * they're rendering, and leaving it out means a record can't accidentally be used
+ * to reach across tenants.
  */
 export interface FeedbackRecord extends FeedbackPayload {
+  /** Database id — needed to act on this one row (e.g. "mark resolved"). */
+  id: number;
   /** ISO 8601 timestamp of when the feedback was received. */
   timestamp: string;
+  /**
+   * When someone dealt with this complaint (Milestone 18), or `null` if it's still
+   * open. Only meaningful for ratings at/below the restaurant's `alertThreshold`.
+   */
+  resolvedAt: string | null;
 }
