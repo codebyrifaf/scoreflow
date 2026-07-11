@@ -20,6 +20,7 @@ import {
   type RescueState,
   type DeleteAccountState,
 } from "./actions";
+import { formatGbp } from "@/lib/money";
 
 export interface AccountRow {
   id: number;
@@ -34,12 +35,11 @@ export interface AccountRow {
   subStatus: string;
   live: boolean;
   trialDaysLeft: number | null;
-  monthlyPrice: number;
+  monthlyPricePence: number;
   totalPaid: number;
   currentPeriodEnd: string | null;
 }
 
-const taka = (n: number) => `৳${n.toLocaleString()}`;
 
 function shortDate(iso: string | null) {
   if (!iso) return "—";
@@ -86,7 +86,7 @@ function StatusBadge({ a }: { a: AccountRow }) {
   );
 }
 
-/** "Record payment" modal — logs the taka received and switches them on. */
+/** "Record payment" modal — logs the money received and switches them on. */
 function PaymentDialog({
   target,
   onClose,
@@ -122,21 +122,24 @@ function PaymentDialog({
       <div className="p-6">
         <h2 className="text-xl font-bold text-[#111827]">Record payment</h2>
         <p className="mt-1 text-sm text-[#6B7280]">
-          {target.name} — logs the taka received and switches the account on.
+          {target.name} — logs the money received and switches the account on.
         </p>
 
         <form action={action} className="mt-5 flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="amountBdt" className="text-sm font-medium text-[#111827]">
-              Amount received (৳)
+            <label htmlFor="amountPounds" className="text-sm font-medium text-[#111827]">
+              Amount received (£)
             </label>
+            {/* Typed in POUNDS; the server converts to integer pence exactly once
+                (see lib/money.ts). `step` allows the pence. */}
             <input
-              id="amountBdt"
-              name="amountBdt"
+              id="amountPounds"
+              name="amountPounds"
               type="number"
-              min={1}
+              min={0.01}
+              step={0.01}
               autoFocus
-              placeholder="1500"
+              placeholder="29.99"
               className="w-full rounded-2xl border border-[#E5E7EB] px-4 py-3 text-base outline-none focus:border-[#111827] focus:ring-4 focus:ring-[#111827]/10"
             />
           </div>
@@ -370,13 +373,13 @@ export default function OperatorAccounts({
                 <div>
                   <div className="text-xs text-[#9CA3AF]">Paid to date</div>
                   <div className="font-semibold text-[#111827]">
-                    {a.totalPaid > 0 ? taka(a.totalPaid) : "—"}
+                    {a.totalPaid > 0 ? formatGbp(a.totalPaid) : "—"}
                   </div>
                 </div>
                 <div>
                   <div className="text-xs text-[#9CA3AF]">Per month</div>
                   <div className="font-semibold text-[#111827]">
-                    {a.monthlyPrice > 0 ? taka(a.monthlyPrice) : "—"}
+                    {a.monthlyPricePence > 0 ? formatGbp(a.monthlyPricePence) : "—"}
                   </div>
                 </div>
                 <div>

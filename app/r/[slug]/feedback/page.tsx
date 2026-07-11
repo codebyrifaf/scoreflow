@@ -42,7 +42,7 @@ export default async function FeedbackPage({
       // dashboard (which they can now fix themselves, on their settings page).
       googleReviewUrl={restaurant.googleReviewUrl || null}
       // Smart review routing (M7): ratings at/above this go to the Google nudge.
-      reviewThreshold={restaurant.reviewThreshold}
+      positiveThreshold={restaurant.positiveThreshold}
       table={table ?? null}
     />
   );

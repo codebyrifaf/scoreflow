@@ -44,9 +44,8 @@ export default function SubscriptionLocked({
       <div className="w-full max-w-md rounded-2xl border border-[#E5E7EB] bg-[#F9FAFB] p-5 text-left text-sm text-[#374151]">
         <p className="font-semibold text-[#111827]">To subscribe</p>
         <p className="mt-1">
-          Send your subscription payment via <b>bKash</b>, then message us with your
-          account email and we&apos;ll switch you back on — usually within a few
-          hours.
+          Get in touch with us and we&apos;ll set up your subscription and switch
+          you back on — usually within a few hours. (Card payment is coming soon.)
         </p>
         <p className="mt-3 text-[#6B7280]">
           Your customers&apos; feedback form keeps working the whole time — nothing

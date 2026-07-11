@@ -36,10 +36,10 @@ const POSITIVE_CHIPS = [
  * threshold.
  *
  * ⚠️ This used to be a hardcoded 7 that decided the chips for EVERY restaurant —
- * while the thank-you screen routed on `reviewThreshold` (default 8). The two
+ * while the thank-you screen routed on `positiveThreshold` (default 8). The two
  * disagreed, so a diner who rated **7** was cheerfully asked "What did you love?"
  * and then shown the private *"sorry your experience fell short"* screen. M18
- * unified them: chips now follow the restaurant's own `reviewThreshold`, so what
+ * unified them: chips now follow the restaurant's own `positiveThreshold`, so what
  * the diner is asked always matches where they end up.
  */
 export const DEFAULT_POSITIVE_FROM = 8;
@@ -67,7 +67,7 @@ export function isKnownChip(tag: string): boolean {
  * Which chips to show for a given rating. Returns an empty array when no rating
  * has been chosen yet (rating 0), so the chip section stays hidden until then.
  *
- * `positiveFrom` is the restaurant's own `reviewThreshold` — the SAME number that
+ * `positiveFrom` is the restaurant's own `positiveThreshold` — the SAME number that
  * decides whether this diner ends up on the Google-review screen or the private
  * "sorry" screen. Passing it here is what keeps the question we ask ("what did you
  * love?" vs "what went wrong?") consistent with the screen they'll land on.

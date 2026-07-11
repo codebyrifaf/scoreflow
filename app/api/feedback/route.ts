@@ -223,7 +223,7 @@ export async function POST(request: Request) {
   //    problem, not theirs.
   //
   //    Note the threshold: `alertThreshold` (default 5, "genuinely unhappy"), NOT
-  //    `reviewThreshold` (default 8, "earns a Google invite"). Alerting on the
+  //    `positiveThreshold` (default 8, "earns a Google invite"). Alerting on the
   //    latter would email the owner about a 7/10 — a good meal — and they'd mute
   //    alerts within a week.
   if (payload.rating <= restaurant.alertThreshold) {

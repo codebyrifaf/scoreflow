@@ -91,7 +91,7 @@ export default async function SettingsPage({
           slug={slug}
           name={restaurant.name}
           googleReviewUrl={restaurant.googleReviewUrl ?? ""}
-          reviewThreshold={restaurant.reviewThreshold}
+          positiveThreshold={restaurant.positiveThreshold}
           alertThreshold={restaurant.alertThreshold}
           alertsEnabled={me?.alertsEnabled ?? true}
           digestEnabled={me?.digestEnabled ?? false}

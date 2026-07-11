@@ -15,7 +15,7 @@ interface SettingsFormProps {
   slug: string;
   name: string;
   googleReviewUrl: string;
-  reviewThreshold: number;
+  positiveThreshold: number;
   alertThreshold: number;
   /** The signed-in person's own notification preferences. */
   alertsEnabled: boolean;
@@ -160,25 +160,37 @@ export default function SettingsForm(props: SettingsFormProps) {
           Two different jobs, so two different numbers.
         </p>
 
+        {/* Be upfront with the restaurant that we do NOT gate reviews. It's a
+            selling point, and it's the honest thing to tell someone whose Google
+            listing is on the line. */}
+        <p className="mb-5 rounded-xl bg-[#F9FAFB] px-3 py-2.5 text-sm text-[#6B7280]">
+          <b className="text-[#111827]">Every guest is invited to review you.</b>{" "}
+          We never hide the review link from unhappy diners — showing it only to happy
+          ones breaches Google&apos;s policy and UK review rules, and puts{" "}
+          <i>your</i> listing at risk. Complaints still come straight to you, first.
+        </p>
+
         <div className="flex flex-col gap-5">
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="reviewThreshold" className={LABEL}>
-              Ask for a Google review at
+            <label htmlFor="positiveThreshold" className={LABEL}>
+              Treat it as a good experience from
             </label>
             <input
-              id="reviewThreshold"
-              name="reviewThreshold"
+              id="positiveThreshold"
+              name="positiveThreshold"
               type="number"
               min={1}
               max={10}
-              defaultValue={props.reviewThreshold}
+              defaultValue={props.positiveThreshold}
               className={`${FIELD} max-w-28`}
             />
             <p className={HINT}>
-              A diner who rates this or higher is invited to review you on Google.
-              Below it, their feedback stays private — it only comes to you.
+              At this score or above we ask the guest <i>&ldquo;what did you
+              love?&rdquo;</i>; below it, <i>&ldquo;what could be better?&rdquo;</i>.
+              It only changes the question we ask — it does <b>not</b> change who is
+              invited to leave a Google review.
             </p>
-            <FieldError message={errors.reviewThreshold} />
+            <FieldError message={errors.positiveThreshold} />
           </div>
 
           <div className="flex flex-col gap-1.5">

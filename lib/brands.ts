@@ -88,7 +88,7 @@ export async function getBranchesForBrand(brandId: number) {
     name: b.name,
     slug: b.slug,
     googleReviewUrl: b.googleReviewUrl ?? "",
-    reviewThreshold: b.reviewThreshold,
+    positiveThreshold: b.positiveThreshold,
     responses: b._count.feedback,
     tables: b._count.tables,
     managerEmails: b.owners.map((o) => o.email),

@@ -27,6 +27,7 @@ import {
   getSignupTrend,
 } from "@/lib/operator-stats";
 import { logout } from "@/app/login/actions";
+import { formatGbp } from "@/lib/money";
 import OperatorAccounts from "./OperatorAccounts";
 
 export const dynamic = "force-dynamic";
@@ -35,7 +36,6 @@ const CARD = "rounded-2xl border border-[#E5E7EB] bg-white p-5";
 const PILL =
   "rounded-full border border-[#E5E7EB] px-3 py-1.5 text-sm font-medium text-[#111827] transition-colors hover:bg-[#F9FAFB]";
 
-const taka = (n: number) => `৳${n.toLocaleString()}`;
 
 /** Shown if a signed-in NON-operator (an owner) somehow lands here. */
 function NotAuthorized({ homeHref }: { homeHref: string }) {
@@ -135,13 +135,13 @@ export default async function OperatorPage() {
           />
           <Stat
             label="Monthly revenue"
-            value={taka(overview.mrrBdt)}
+            value={formatGbp(overview.mrrPence)}
             hint="from active subscriptions"
           />
           <Stat
             label="Collected (30d)"
-            value={taka(overview.revenue30d)}
-            hint={`${taka(overview.revenueTotal)} all time`}
+            value={formatGbp(overview.revenue30d)}
+            hint={`${formatGbp(overview.revenueTotal)} all time`}
           />
           <Stat
             label="On trial"
@@ -199,7 +199,7 @@ export default async function OperatorPage() {
             Customers ({accounts.length})
           </h2>
           <p className="mb-4 text-sm text-[#6B7280]">
-            They pay you by bKash; record it here and their account switches on.
+            Record a payment here and their account switches on.
             &ldquo;Last used&rdquo; turns red when an account has gone quiet — that&apos;s
             your churn warning.
           </p>

@@ -13,6 +13,7 @@ import { revalidatePath } from "next/cache";
 import { requireOperator } from "@/lib/auth-guard";
 import { prisma } from "@/lib/prisma";
 import { recordPayment } from "@/lib/payments";
+import { poundsToPence } from "@/lib/money";
 import { suspendBrand } from "@/lib/subscriptions";
 import { deleteBrandCascade } from "@/lib/brands";
 import { getOwnerByEmail } from "@/lib/owners";
@@ -22,8 +23,11 @@ import { sendEmail } from "@/lib/email";
 export type PaymentState = { error: string } | { ok: true } | undefined;
 
 /**
- * Log money received (bKash) and switch the account on. Bound in the client as
+ * Log money received and switch the account on. Bound in the client as
  * `recordPaymentAction.bind(null, brandId)`.
+ *
+ * The operator types POUNDS ("19.99"); we convert once, here, and everything from
+ * this point inward is integer PENCE — see lib/money.ts for why.
  */
 export async function recordPaymentAction(
   brandId: number,
@@ -35,11 +39,11 @@ export async function recordPaymentAction(
     return { error: "You are not authorized to do this." };
   }
 
-  const amountBdt = Number(String(formData.get("amountBdt") ?? "").trim());
+  const amountPence = poundsToPence(String(formData.get("amountPounds") ?? ""));
   const periodDays = Number(String(formData.get("periodDays") ?? "").trim());
 
-  if (!Number.isInteger(amountBdt) || amountBdt <= 0) {
-    return { error: "Enter the amount received, in taka." };
+  if (amountPence === null) {
+    return { error: "Enter the amount received, in pounds (e.g. 29.99)." };
   }
   if (!Number.isInteger(periodDays) || periodDays <= 0) {
     return { error: "Pick what the payment covers." };
@@ -48,7 +52,7 @@ export async function recordPaymentAction(
   try {
     await recordPayment({
       brandId,
-      amountBdt,
+      amountPence,
       periodDays,
       recordedBy: access.operatorEmail,
     });

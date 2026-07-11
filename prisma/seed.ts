@@ -112,7 +112,7 @@ async function main() {
       googleReviewUrl:
         "https://search.google.com/local/writereview?placeid=PLACEHOLDER_FUCCO",
       // Ratings >= 8 get the Google review nudge; below 8 → private screen (M7).
-      reviewThreshold: 8,
+      positiveThreshold: 8,
       owner: { email: "owner@fucco.test", password: "fucco-dev-2026" },
       // Sample tables + their NFC links (Milestone 8).
       tables: ["1", "2", "3"],
@@ -122,7 +122,7 @@ async function main() {
       name: "Bella Pizza",
       googleReviewUrl:
         "https://search.google.com/local/writereview?placeid=PLACEHOLDER_BELLA_PIZZA",
-      reviewThreshold: 8,
+      positiveThreshold: 8,
       owner: { email: "owner@bella-pizza.test", password: "bella-dev-2026" },
       tables: ["1", "2"],
     },
@@ -143,13 +143,13 @@ async function main() {
       update: {
         name: r.name,
         googleReviewUrl: r.googleReviewUrl,
-        reviewThreshold: r.reviewThreshold,
+        positiveThreshold: r.positiveThreshold,
       },
       create: {
         slug: r.slug,
         name: r.name,
         googleReviewUrl: r.googleReviewUrl,
-        reviewThreshold: r.reviewThreshold,
+        positiveThreshold: r.positiveThreshold,
       },
     });
     console.log(

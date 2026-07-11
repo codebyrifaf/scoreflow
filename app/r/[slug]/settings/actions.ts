@@ -59,7 +59,7 @@ export async function saveSettings(
 
   const name = String(formData.get("name") ?? "").trim();
   const googleReviewUrl = String(formData.get("googleReviewUrl") ?? "").trim();
-  const reviewThresholdRaw = String(formData.get("reviewThreshold") ?? "").trim();
+  const positiveThresholdRaw = String(formData.get("positiveThreshold") ?? "").trim();
   const alertThresholdRaw = String(formData.get("alertThreshold") ?? "").trim();
 
   const errors: Record<string, string> = {};
@@ -71,13 +71,13 @@ export async function saveSettings(
       "Enter a valid link starting with http:// or https:// (or leave it blank).";
   }
 
-  const reviewThreshold = Number(reviewThresholdRaw);
+  const positiveThreshold = Number(positiveThresholdRaw);
   if (
-    !Number.isInteger(reviewThreshold) ||
-    reviewThreshold < 1 ||
-    reviewThreshold > 10
+    !Number.isInteger(positiveThreshold) ||
+    positiveThreshold < 1 ||
+    positiveThreshold > 10
   ) {
-    errors.reviewThreshold = "Pick a whole number from 1 to 10.";
+    errors.positiveThreshold = "Pick a whole number from 1 to 10.";
   }
 
   const alertThreshold = Number(alertThresholdRaw);
@@ -93,9 +93,9 @@ export async function saveSettings(
   // diner would be told "thanks, please review us on Google" AND be logged as a
   // complaint that wakes the manager up. The alert level must sit strictly below
   // the Google level.
-  if (!errors.reviewThreshold && !errors.alertThreshold) {
-    if (alertThreshold >= reviewThreshold) {
-      errors.alertThreshold = `Must be lower than the Google review score (${reviewThreshold}) — otherwise a diner could be asked for a public review and be logged as a complaint at the same time.`;
+  if (!errors.positiveThreshold && !errors.alertThreshold) {
+    if (alertThreshold >= positiveThreshold) {
+      errors.alertThreshold = `Must be lower than the Google review score (${positiveThreshold}) — otherwise a diner could be asked for a public review and be logged as a complaint at the same time.`;
     }
   }
 
@@ -116,7 +116,7 @@ export async function saveSettings(
     await updateRestaurantSettings(restaurant.id, {
       name,
       googleReviewUrl: googleReviewUrl || null,
-      reviewThreshold,
+      positiveThreshold,
       alertThreshold,
     });
 

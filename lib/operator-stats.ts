@@ -34,7 +34,7 @@ export interface SalesOverview {
   lapsed: number;
   comped: number;
   /** Monthly recurring revenue: the sum of what ACTIVE accounts pay per month. */
-  mrrBdt: number;
+  mrrPence: number;
   /** Actually collected in the last 30 days. */
   revenue30d: number;
   /** Actually collected, ever. */
@@ -54,22 +54,22 @@ export async function getSalesOverview(): Promise<SalesOverview> {
         subStatus: true,
         trialEndsAt: true,
         currentPeriodEnd: true,
-        monthlyPrice: true,
+        monthlyPricePence: true,
         createdAt: true,
       },
     }),
     prisma.payment.aggregate({
       where: { createdAt: { gte: since30 } },
-      _sum: { amountBdt: true },
+      _sum: { amountPence: true },
     }),
-    prisma.payment.aggregate({ _sum: { amountBdt: true } }),
+    prisma.payment.aggregate({ _sum: { amountPence: true } }),
   ]);
 
   let trialing = 0;
   let active = 0;
   let lapsed = 0;
   let comped = 0;
-  let mrrBdt = 0;
+  let mrrPence = 0;
   let signups30d = 0;
 
   for (const b of brands) {
@@ -84,7 +84,7 @@ export async function getSalesOverview(): Promise<SalesOverview> {
       lapsed++;
     } else if (state.kind === "active") {
       active++;
-      mrrBdt += b.monthlyPrice;
+      mrrPence += b.monthlyPricePence;
     } else {
       trialing++;
     }
@@ -100,9 +100,9 @@ export async function getSalesOverview(): Promise<SalesOverview> {
     active,
     lapsed,
     comped,
-    mrrBdt,
-    revenue30d: revenue30._sum.amountBdt ?? 0,
-    revenueTotal: revenueAll._sum.amountBdt ?? 0,
+    mrrPence,
+    revenue30d: revenue30._sum.amountPence ?? 0,
+    revenueTotal: revenueAll._sum.amountPence ?? 0,
     signups30d,
     conversionPct,
   };
@@ -123,7 +123,7 @@ export interface OperatorAccountRow {
   subStatus: string;
   live: boolean;
   trialDaysLeft: number | null;
-  monthlyPrice: number;
+  monthlyPricePence: number;
   totalPaid: number;
   currentPeriodEnd: string | null;
 }
@@ -156,14 +156,14 @@ export async function getAccountsForOperator(): Promise<OperatorAccountRow[]> {
       : Promise.resolve([]),
     prisma.payment.groupBy({
       by: ["brandId"],
-      _sum: { amountBdt: true },
+      _sum: { amountPence: true },
     }),
   ]);
 
   const usageByRestaurant = new Map(
     usage.map((u) => [u.restaurantId, { count: u._count._all, last: u._max.createdAt }])
   );
-  const paidByBrand = new Map(paid.map((p) => [p.brandId, p._sum.amountBdt ?? 0]));
+  const paidByBrand = new Map(paid.map((p) => [p.brandId, p._sum.amountPence ?? 0]));
 
   return brands.map((b) => {
     let responses = 0;
@@ -190,7 +190,7 @@ export async function getAccountsForOperator(): Promise<OperatorAccountRow[]> {
       live: state.live,
       trialDaysLeft:
         state.live && state.kind === "trial" ? (state.trialDaysLeft ?? null) : null,
-      monthlyPrice: b.monthlyPrice,
+      monthlyPricePence: b.monthlyPricePence,
       totalPaid: paidByBrand.get(b.id) ?? 0,
       currentPeriodEnd: b.currentPeriodEnd?.toISOString() ?? null,
     };

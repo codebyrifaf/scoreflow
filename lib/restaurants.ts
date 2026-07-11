@@ -43,7 +43,7 @@ export async function createRestaurantWithOwner(input: {
   name: string;
   slug: string;
   googleReviewUrl: string | null;
-  reviewThreshold: number;
+  positiveThreshold: number;
   ownerEmail: string;
   ownerPasswordHash: string;
   /** When set, this restaurant is a BRANCH of that brand (Milestone 16). */
@@ -55,7 +55,7 @@ export async function createRestaurantWithOwner(input: {
         name: input.name,
         slug: input.slug,
         googleReviewUrl: input.googleReviewUrl,
-        reviewThreshold: input.reviewThreshold,
+        positiveThreshold: input.positiveThreshold,
         brandId: input.brandId ?? null,
       },
     });
@@ -96,7 +96,7 @@ export async function updateRestaurant(
     name: string;
     slug: string;
     googleReviewUrl: string | null;
-    reviewThreshold: number;
+    positiveThreshold: number;
     alertThreshold?: number;
   }
 ) {
@@ -122,7 +122,7 @@ export async function updateRestaurantSettings(
   data: {
     name: string;
     googleReviewUrl: string | null;
-    reviewThreshold: number;
+    positiveThreshold: number;
     alertThreshold: number;
   }
 ) {
@@ -131,7 +131,7 @@ export async function updateRestaurantSettings(
     data: {
       name: data.name,
       googleReviewUrl: data.googleReviewUrl,
-      reviewThreshold: data.reviewThreshold,
+      positiveThreshold: data.positiveThreshold,
       alertThreshold: data.alertThreshold,
     },
   });

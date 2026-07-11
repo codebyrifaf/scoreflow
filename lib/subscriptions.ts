@@ -2,11 +2,11 @@
  * Subscription lifecycle (Milestone 20) — the one place that decides whether an
  * account may still use the product.
  *
- * A subscription belongs to a `Brand` (the paying account). Because online
- * recurring billing isn't available to a Bangladeshi business yet, the money moves
- * OUT of band (the customer pays via bKash) and the operator flips the account to
- * "active" by hand. This module models only the LIFECYCLE; a real gateway will
- * later call `activate()` from a webhook instead of the operator clicking a button.
+ * A subscription belongs to a `Brand` (the paying account). Money currently moves
+ * OUT of band — the customer pays us directly and the operator records it — so this
+ * module models only the LIFECYCLE. A real gateway (Stripe, now that the product is
+ * sold in the UK) will later call `activate()` from a webhook instead of the
+ * operator clicking a button; nothing else here has to change.
  *
  *   trialing → active → expired / canceled
  *

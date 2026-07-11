@@ -9,10 +9,13 @@
  * (`app/r/[slug]/feedback/page.tsx`) stays a SERVER component: it looks up the
  * restaurant by slug and passes the details down as props.
  *
- * The design is intentionally light-only (clean white card on a soft off-white
- * background), Apple-minimal, and tuned for phones (360–430px). All of the
- * behaviour (rating state, submit, validation, and the smart happy/private
- * routing from Milestone 7) is unchanged from before — only the styling changed.
+ * The design is intentionally light-only, Apple-minimal, and tuned for phones
+ * (360–430px).
+ *
+ * ⚠️ MILESTONE 23 removed the "review routing" this form used to do. Every diner
+ * now sees the SAME Google review invite, whatever they scored. See the thank-you
+ * screen below for why (short version: selectively inviting only happy customers is
+ * review gating — against Google's policy, and a regulatory risk in the UK).
  */
 
 import { useState } from "react";
@@ -39,11 +42,13 @@ interface FeedbackFormProps {
    */
   googleReviewUrl: string | null;
   /**
-   * Smart review routing (Milestone 7): the minimum rating (1–10) that gets the
-   * Google review nudge. Ratings at/above it → public-review screen; below it →
-   * a private "sorry" screen with no review link.
+   * The "positive experience" line (1–10). It sets the TONE only — which chips we
+   * offer and how the thank-you is worded.
+   *
+   * ⚠️ It does NOT decide who is invited to leave a Google review. Every diner gets
+   * the same invite (M23 — see the thank-you screen below for why).
    */
-  reviewThreshold: number;
+  positiveThreshold: number;
   /** Table number from the URL (`?table=`), or null if not provided. */
   table: string | null;
 }
@@ -77,7 +82,7 @@ export default function FeedbackForm({
   slug,
   restaurantName,
   googleReviewUrl,
-  reviewThreshold,
+  positiveThreshold,
   table,
 }: FeedbackFormProps) {
   // ── Form state ────────────────────────────────────────────────────────────
@@ -91,20 +96,18 @@ export default function FeedbackForm({
   // auto-fill every input trip it, and the server rejects the submission.
   const [website, setWebsite] = useState("");
 
-  // The quick-tap chips to show for the currently selected rating (positive set
-  // for high ratings, "what went wrong" set for low; empty until a rating exists).
-  // We pass THIS restaurant's reviewThreshold — the same number that decides which
-  // thank-you screen they'll land on — so the question we ask always matches the
-  // outcome. (Before M18 this was hardcoded to 7 while routing used 8, so a 7/10
-  // was asked "what did you love?" and then told "sorry your experience fell short".)
-  const chips = chipsForRating(rating, reviewThreshold);
+  // The quick-tap chips for the currently selected rating: "what did you love?" for
+  // a good score, "what could be better?" for a poor one; empty until a rating is
+  // picked. Uses THIS restaurant's positiveThreshold, so the question we ask always
+  // matches the tone of the thank-you they'll land on.
+  const chips = chipsForRating(rating, positiveThreshold);
 
   /** Pick a rating, and drop any selected chips that don't belong to the new
    *  rating's set (e.g. switching from a low to a high score clears "Slow service"). */
   function selectRating(value: number) {
     setRating(value);
     setSelectedTags((prev) =>
-      prev.filter((t) => chipsForRating(value, reviewThreshold).includes(t))
+      prev.filter((t) => chipsForRating(value, positiveThreshold).includes(t))
     );
   }
 
@@ -167,59 +170,79 @@ export default function FeedbackForm({
   }
 
   // ── Thank-you screen (shown after a successful submit) ─────────────────────
-  // Smart review routing (Milestone 7): the feedback is already saved either way.
-  // We only choose WHICH thank-you screen to show based on the rating:
-  //   • rating >= reviewThreshold → happy path: nudge toward a Google review.
-  //   • rating <  reviewThreshold → private path: a "sorry, we hear you" screen
-  //     with NO public-review link, so unhappy experiences stay private.
+  //
+  // ╔═══════════════════════════════════════════════════════════════════════════╗
+  // ║  MILESTONE 23: NO MORE REVIEW GATING. EVERY DINER GETS THE SAME INVITE.   ║
+  // ╚═══════════════════════════════════════════════════════════════════════════╝
+  //
+  // This screen used to fork on the rating: happy diners were shown the Google
+  // review button, and unhappy ones were shown a private "sorry" screen with NO
+  // review link at all. That is **review gating** — selectively soliciting positive
+  // reviews — and it is:
+  //   • against Google's review policy (they forbid selectively soliciting positive
+  //     reviews or discouraging negative ones), and
+  //   • a real regulatory risk now the product is sold in the UK, where consumer
+  //     law treats misleading review practices seriously. We'd have been selling a
+  //     tool that put OUR CUSTOMER in front of a regulator.
+  //
+  // So the fork is gone. There is now ONE screen. The Google button is identical —
+  // same wording, same prominence, same position — no matter what someone scored.
+  //
+  // We keep the genuinely valuable half: an unhappy diner ALSO gets a sincere
+  // acknowledgement that their feedback went straight to the team. That's service
+  // recovery, not suppression — it adds a message, it doesn't take the invite away.
+  // (The owner still gets alerted; see lib/notifications.ts.)
   if (status === "success") {
-    const isHappy = rating >= reviewThreshold;
+    // Only affects the WORDING of the thank-you, never who is invited to review.
+    const wasDisappointing = rating < positiveThreshold;
 
-    // Happy path — encourage a public Google review.
-    if (isHappy) {
-      return (
-        <main className={`${PAGE_CLASS} justify-center`}>
-          <div className={`${CARD_CLASS} text-center`}>
-            {/* Green success circle */}
-            <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-green-50 text-4xl text-green-600">
-              ✓
-            </div>
-            <h1 className="text-2xl font-bold tracking-tight text-[#111827]">
-              Thanks for your feedback!
-            </h1>
-            <p className="mt-2 text-[15px] leading-relaxed text-[#6B7280]">
-              We really appreciate you taking the time to help {restaurantName}{" "}
-              improve.
-            </p>
-            {/* Uses THIS restaurant's Google review link (from the database). If the
-                owner hasn't set one, we show NOTHING here rather than a button that
-                silently goes nowhere. */}
-            {googleReviewUrl && (
-              <a href={googleReviewUrl} className={`mt-8 block ${PRIMARY_BTN_CLASS}`}>
-                Leave us a Google review
-              </a>
-            )}
-          </div>
-        </main>
-      );
-    }
-
-    // Private path — the experience fell short. Acknowledge sincerely and do NOT
-    // show any public-review link.
     return (
       <main className={`${PAGE_CLASS} justify-center`}>
         <div className={`${CARD_CLASS} text-center`}>
-          <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-[#F3F4F6] text-4xl text-[#6B7280]">
+          <div
+            className={`mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full text-4xl ${
+              wasDisappointing
+                ? "bg-[#F3F4F6] text-[#6B7280]"
+                : "bg-green-50 text-green-600"
+            }`}
+          >
             ✓
           </div>
+
           <h1 className="text-2xl font-bold tracking-tight text-[#111827]">
-            Thank you — we hear you
+            {wasDisappointing ? "Thank you — we hear you" : "Thanks for your feedback!"}
           </h1>
+
           <p className="mt-2 text-[15px] leading-relaxed text-[#6B7280]">
-            We&apos;re sorry your experience at {restaurantName} fell short. Your
-            feedback has been sent privately to the {restaurantName} team so they
-            can make it right. Thank you for taking the time to tell us.
+            {wasDisappointing
+              ? `We're sorry your experience at ${restaurantName} fell short.`
+              : `We really appreciate you taking the time to help ${restaurantName} improve.`}
           </p>
+
+          {/* Service recovery for an unhappy diner — an ADDITIONAL reassurance, not a
+              replacement for the review invite below. */}
+          {wasDisappointing && (
+            <p className="mt-4 rounded-2xl bg-[#F9FAFB] px-4 py-3 text-[14px] leading-relaxed text-[#374151]">
+              What you told us has gone straight to the {restaurantName} team so they
+              can put it right.
+            </p>
+          )}
+
+          {/* THE REVIEW INVITE — offered to everyone, identically. If the owner
+              hasn't set a link we show nothing at all, rather than a dead button. */}
+          {googleReviewUrl && (
+            <>
+              <a
+                href={googleReviewUrl}
+                className={`mt-8 block ${PRIMARY_BTN_CLASS}`}
+              >
+                Leave a review on Google
+              </a>
+              <p className="mt-3 text-[13px] text-[#9CA3AF]">
+                Sharing your honest experience publicly is entirely up to you.
+              </p>
+            </>
+          )}
         </div>
       </main>
     );
@@ -322,7 +345,7 @@ export default function FeedbackForm({
           {chips.length > 0 && (
             <div className="flex flex-col gap-3">
               <span className="text-base font-semibold text-[#111827]">
-                {rating >= reviewThreshold
+                {rating >= positiveThreshold
                   ? "What did you love?"
                   : "What could be better?"}{" "}
                 <span className="font-normal text-[#9CA3AF]">(optional)</span>

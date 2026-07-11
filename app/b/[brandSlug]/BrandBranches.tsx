@@ -24,7 +24,7 @@ interface BranchData {
   name: string;
   slug: string;
   googleReviewUrl: string;
-  reviewThreshold: number;
+  positiveThreshold: number;
   responses: number;
   tables: number;
   managerEmails: string[];
@@ -120,14 +120,14 @@ function BranchForm({
           <span className="font-normal text-[#9CA3AF]">(1–10)</span>
         </label>
         <input
-          name="reviewThreshold"
+          name="positiveThreshold"
           type="number"
           min={1}
           max={10}
-          defaultValue={branch?.reviewThreshold ?? 8}
+          defaultValue={branch?.positiveThreshold ?? 8}
           className={FIELD}
         />
-        <FieldError message={errors.reviewThreshold} />
+        <FieldError message={errors.positiveThreshold} />
       </div>
 
       {!branch && (

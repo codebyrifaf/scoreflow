@@ -40,8 +40,8 @@ function readBranchFields(formData: FormData) {
     .trim()
     .toLowerCase();
   const googleReviewUrl = String(formData.get("googleReviewUrl") ?? "").trim();
-  const reviewThresholdRaw = String(formData.get("reviewThreshold") ?? "").trim();
-  const reviewThreshold = Number(reviewThresholdRaw);
+  const positiveThresholdRaw = String(formData.get("positiveThreshold") ?? "").trim();
+  const positiveThreshold = Number(positiveThresholdRaw);
 
   const errors: Record<string, string> = {};
   if (!name) errors.name = "Branch name is required.";
@@ -51,14 +51,14 @@ function readBranchFields(formData: FormData) {
   if (googleReviewUrl && !/^https?:\/\/.+/.test(googleReviewUrl))
     errors.googleReviewUrl = "Enter a valid URL starting with http:// or https://.";
   if (
-    !reviewThresholdRaw ||
-    !Number.isInteger(reviewThreshold) ||
-    reviewThreshold < 1 ||
-    reviewThreshold > 10
+    !positiveThresholdRaw ||
+    !Number.isInteger(positiveThreshold) ||
+    positiveThreshold < 1 ||
+    positiveThreshold > 10
   )
-    errors.reviewThreshold = "Review threshold must be a whole number from 1 to 10.";
+    errors.positiveThreshold = "Review threshold must be a whole number from 1 to 10.";
 
-  return { name, slug, googleReviewUrl, reviewThreshold, errors };
+  return { name, slug, googleReviewUrl, positiveThreshold, errors };
 }
 
 /** Add a branch to this brand (+ its branch-manager login). */
@@ -72,7 +72,7 @@ export async function addBranch(
   const brand = await getBrandBySlug(brandSlug);
   if (!brand) return { errors: { form: "Brand not found." } };
 
-  const { name, slug, googleReviewUrl, reviewThreshold, errors } =
+  const { name, slug, googleReviewUrl, positiveThreshold, errors } =
     readBranchFields(formData);
   const managerEmail = String(formData.get("managerEmail") ?? "")
     .trim()
@@ -102,7 +102,7 @@ export async function addBranch(
       name,
       slug,
       googleReviewUrl: googleReviewUrl || null,
-      reviewThreshold,
+      positiveThreshold,
       ownerEmail: managerEmail,
       ownerPasswordHash,
       brandId: brand.id, // ← this makes it a branch of THIS brand
@@ -132,7 +132,7 @@ export async function editBranch(
   if (!branch || branch.brandId !== brand.id)
     return { errors: { form: "That branch isn't part of your brand." } };
 
-  const { name, slug, googleReviewUrl, reviewThreshold, errors } =
+  const { name, slug, googleReviewUrl, positiveThreshold, errors } =
     readBranchFields(formData);
   // Slug uniqueness, excluding this branch itself.
   if (!errors.slug) {
@@ -147,7 +147,7 @@ export async function editBranch(
       name,
       slug,
       googleReviewUrl: googleReviewUrl || null,
-      reviewThreshold,
+      positiveThreshold,
     });
   } catch {
     return { errors: { form: "Could not save changes." } };

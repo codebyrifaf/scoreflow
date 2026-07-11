@@ -30,11 +30,20 @@ model Restaurant {
   brandId         Int?
   brand           Brand?     @relation(fields: [brandId], references: [id])
   googleReviewUrl String? // optional; the thank-you screen's review link
-  // Smart review routing (Milestone 7): the MINIMUM rating (1–10) that gets sent
-  // to the Google review page after submitting. Ratings at or above this go to
-  // the public-review nudge; ratings below it get a private "sorry" screen and
-  // are NEVER nudged toward a public review. Default 8 → 8/9/10 go to Google.
-  reviewThreshold Int        @default(8)
+  // POSITIVE-EXPERIENCE line (1–10). Milestone 23 renamed this from
+  // `reviewThreshold` and stripped its old job.
+  //
+  // ⚠️ It NO LONGER decides who is invited to leave a Google review. It used to:
+  // only diners scoring at or above it saw the review link, and everyone below got
+  // a private screen with no link. That's **review gating** — selectively soliciting
+  // positive reviews — which breaches Google's review policy and, now that the
+  // product is being sold in the UK, runs into UK consumer-protection rules on
+  // misleading review practices. So: EVERY diner now gets the same review invite.
+  //
+  // All this field does now is set the tone of the questions — at or above it we
+  // ask "what did you love?"; below it, "what could be better?". It never gates
+  // anything. (Complaints are `alertThreshold`, below.)
+  positiveThreshold Int      @default(8)
   // COMPLAINT level (Milestone 18): a rating AT OR BELOW this means the diner is
   // genuinely unhappy — it lands in the owner's "Needs attention" list and fires an
   // alert. Deliberately SEPARATE from `reviewThreshold` (8), which only decides who
@@ -162,10 +171,11 @@ model Brand {
   currentPeriodEnd DateTime? // end of the current paid period (manual for now)
   activatedBy      String? // operator email who manually marked this account paid
   activatedAt      DateTime?
-  // What this account pays per month, in BDT (Milestone 21). 0 = not priced yet.
-  // Set when the operator records a payment; drives the MRR figure on the sales
-  // dashboard.
-  monthlyPrice     Int       @default(0)
+  // What this account pays per month, in PENCE (Milestone 23 — the product is now
+  // sold in the UK, so money is GBP). Money is ALWAYS stored in minor units as an
+  // integer: £19.99 is 1999, never 19.99. Floating-point pounds silently lose
+  // fractions of a penny, and a billing ledger must never do that. 0 = unpriced.
+  monthlyPricePence Int      @default(0)
   payments         Payment[] // back-relation: the money actually collected
 }
 
@@ -211,7 +221,7 @@ model Payment {
   id         Int      @id @default(autoincrement())
   brandId    Int
   brand      Brand    @relation(fields: [brandId], references: [id])
-  amountBdt  Int // what they actually paid, in taka
+  amountPence Int // what they actually paid, in PENCE (£19.99 → 1999). Never a float.
   periodDays Int // what it bought them (30 / 90 / 365)
   recordedBy String // operator email who logged it
   createdAt  DateTime @default(now())

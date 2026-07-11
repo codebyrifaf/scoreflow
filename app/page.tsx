@@ -130,12 +130,18 @@ export default function Home() {
           <div className="mt-14 grid gap-x-10 gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
             {[
               [
-                "NFC and QR table links",
+                // Was "NFC and QR table links" — we don't generate QR codes, so
+                // saying we do was simply untrue (M23).
+                "NFC table links",
                 "A unique link for every table, ready to write onto a chip.",
               ],
               [
-                "Smart review routing",
-                "Set the score that earns a Google invite. Below it stays private.",
+                // Was "Smart review routing — set the score that earns a Google
+                // invite. Below it stays private." That advertised REVIEW GATING,
+                // which breaches Google's policy and UK review rules. We now invite
+                // everyone, and say so — it's a stronger pitch anyway (M23).
+                "Complaints reach you first",
+                "Every guest is invited to review you. Unhappy ones reach you privately, straight away.",
               ],
               [
                 "One-tap reasons",
