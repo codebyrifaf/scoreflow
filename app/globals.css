@@ -12,15 +12,57 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+/* ScoreFlow is intentionally a clean, always-light "white theme" — we do NOT
+   invert to dark when the device is in dark mode. (Removing this keeps the
+   owner/admin pages readable on dark-mode phones/laptops. Add a real dark theme
+   later as a deliberate feature if wanted.) */
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* ── Customer feedback page (Milestone 9 — premium redesign) ──────────────────
+   A native-feeling system font stack (SF Pro on iOS/Mac, Segoe on Windows,
+   Roboto on Android) for the Apple-style premium look. */
+.font-system {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro",
+    "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* Card entrance: fade in and gently rise on load. */
+@keyframes sf-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-card-in {
+  animation: sf-card-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Respect users who prefer less motion. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-card-in {
+    animation: none;
+  }
+}
+
+/* Hide scrollbars app-wide (content still scrolls via wheel / touch / keyboard).
+   Firefox uses scrollbar-width; WebKit/Chromium uses ::-webkit-scrollbar;
+   -ms-overflow-style covers old Edge/IE. */
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+*::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }

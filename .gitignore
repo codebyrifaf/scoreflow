@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# ScoreFlow: temporary local feedback storage (stand-in for a real database)
+/data/
+
+# Prisma: the generated client is rebuilt by `prisma generate` (postinstall)
+/generated/prisma

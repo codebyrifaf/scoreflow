@@ -1,0 +1,140 @@
+// Prisma schema for ScoreFlow.
+//
+// This describes our database tables and generates a fully type-safe client.
+// The connection string (DATABASE_URL) is NOT written here — it's supplied by
+// `prisma.config.ts` for CLI commands (migrate/generate/studio) and by the
+// runtime adapter in `lib/prisma.ts` for the app. See those files.
+
+// Prisma 7 generates the client as TypeScript into our project (this folder is
+// git-ignored and rebuilt by `prisma generate`). We import it from
+// `generated/prisma/client` (see lib/prisma.ts).
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// A restaurant using ScoreFlow. Milestone 4 introduced this table so the app
+/// can serve MANY restaurants, each identified in the URL by its `slug`
+/// (e.g. /r/fucco/dashboard). One restaurant has many feedback submissions.
+model Restaurant {
+  id              Int        @id @default(autoincrement())
+  slug            String     @unique // URL-safe id, e.g. "fucco"
+  name            String // display name, e.g. "Fucco"
+  googleReviewUrl String? // optional; the thank-you screen's review link
+  // Smart review routing (Milestone 7): the MINIMUM rating (1–10) that gets sent
+  // to the Google review page after submitting. Ratings at or above this go to
+  // the public-review nudge; ratings below it get a private "sorry" screen and
+  // are NEVER nudged toward a public review. Default 8 → 8/9/10 go to Google.
+  reviewThreshold Int        @default(8)
+  createdAt       DateTime   @default(now())
+  feedback        Feedback[] // back-relation: all feedback for this restaurant
+  owners          Owner[] // back-relation: the login accounts that own this restaurant (Milestone 5)
+  tables          Table[] // back-relation: the restaurant's tables + their NFC links (Milestone 8)
+}
+
+/// A physical TABLE in a restaurant (Milestone 8 — NFC links).
+///
+/// Each table gets an NFC chip programmed with a link to the feedback form,
+/// pre-filled with this table (e.g. /r/fucco/feedback?table=Patio%202). The
+/// owner manages this list at /r/[slug]/tables and copies each link onto a chip.
+///
+/// `label` is whatever the owner calls the table ("1", "Patio 2"). It's what goes
+/// in the link's `?table=` value, and what shows up on each feedback submission.
+/// `@@unique([restaurantId, label])` stops one restaurant having two tables with
+/// the same name (two restaurants CAN both have a "Table 1" — that's fine).
+model Table {
+  id           Int        @id @default(autoincrement())
+  restaurantId Int
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id])
+  label        String // e.g. "1" or "Patio 2"
+  createdAt    DateTime   @default(now())
+
+  @@unique([restaurantId, label])
+}
+
+/// A restaurant OWNER's login account (Milestone 5 — authentication).
+///
+/// This is the table that makes the owner dashboard private. An owner signs in
+/// with `email` + password; we store only a bcrypt HASH of the password
+/// (`passwordHash`), never the password itself, so even someone who reads the
+/// database can't recover it.
+///
+/// The relation:
+///   `restaurantId` is a foreign key pointing at `Restaurant.id`. It's what ties
+///   an owner to the ONE restaurant they're allowed to see. This is a
+///   many-to-one relation (an Owner belongs to exactly one Restaurant; a
+///   Restaurant has a list of `owners`), exactly like `Feedback → Restaurant`.
+///   For now we seed one owner per restaurant. If you ever want to *guarantee*
+///   at most one owner per restaurant at the database level, add `@unique` to
+///   `restaurantId` below (that turns it into a strict one-to-one relation).
+///
+/// Security note: the dashboard trusts this `restaurantId` (read from the signed
+/// session on the server), NOT anything the browser sends. That's what stops one
+/// owner from viewing another restaurant's dashboard.
+model Owner {
+  id           Int        @id @default(autoincrement())
+  email        String     @unique // login identifier, e.g. "owner@fucco.test"
+  passwordHash String // bcrypt hash of the password — never the raw password
+  restaurantId Int // FK: the single restaurant this owner is allowed to manage
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id])
+  createdAt    DateTime   @default(now())
+}
+
+/// A platform OPERATOR's login account (Milestone 6 — admin dashboard).
+///
+/// The operator is YOU (whoever runs ScoreFlow), not a restaurant. Operators log
+/// in at the same /login page as owners, but they're a DIFFERENT kind of account:
+/// they don't belong to any restaurant — instead they manage the whole list of
+/// restaurants at /admin (view all, add new ones + create each one's owner login).
+///
+/// Why a separate table (instead of a flag on Owner)? It keeps the meaning of
+/// each model crisp: `Owner` = "runs one restaurant", `Operator` = "runs the
+/// platform". The login code (auth.ts) checks operators first, then owners, and
+/// tags the session with a `role` so pages know which kind of user is signed in.
+///
+/// Like Owner, we store only a bcrypt HASH of the password, never the password.
+model Operator {
+  id           Int      @id @default(autoincrement())
+  email        String   @unique // login identifier, e.g. "operator@scoreflow.test"
+  passwordHash String // bcrypt hash of the password — never the raw password
+  createdAt    DateTime @default(now())
+}
+
+/// One customer feedback submission, belonging to exactly one Restaurant.
+///
+/// Milestone 4: the old free-text `restaurant` string was replaced by a real
+/// `restaurantId` foreign key + relation to `Restaurant`. That's what keeps each
+/// restaurant's data isolated — reads/writes filter on `restaurantId`.
+///
+/// How the columns map to the `FeedbackRecord` TypeScript type (lib/types.ts):
+///   id          -> (database primary key; not in FeedbackRecord)
+///   restaurantId-> (the owning restaurant; not shown per-row in the dashboard)
+///   table       -> table        (string | null — the URL's ?table= value)
+///   orderNumber -> orderNumber  (string)
+///   rating      -> rating       (number, 1–10)
+///   comment     -> comment      (string, may be empty "")
+///   createdAt   -> timestamp    (Date in the DB; converted to an ISO string)
+model Feedback {
+  id           Int        @id @default(autoincrement())
+  restaurantId Int
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id])
+  table        String?
+  orderNumber  String
+  rating       Int
+  comment      String     @default("")
+  // Quick-tap suggestion chips the customer selected (Milestone 9), e.g.
+  // ["Slow service", "Food was cold"]. Empty when they picked none.
+  tags         String[]   @default([])
+  // Hashed caller IP (Milestone 13 — spam guard). We store only a salted SHA-256
+  // hash, never the raw IP, and use it to rate-limit submissions. Null for older
+  // rows / when no IP is available.
+  ipHash       String?
+  createdAt    DateTime   @default(now())
+
+  // Speeds up the "how many recent submissions from this IP?" rate-limit query.
+  @@index([ipHash, createdAt])
+}
