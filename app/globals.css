@@ -54,6 +54,204 @@ body {
   }
 }
 
+/* ── Landing-page motion (Milestone 15) ──────────────────────────────────────
+   House style: slow, eased, purposeful. Only `transform` and `opacity` animate
+   (GPU-composited — no layout thrash, no CLS). Everything here is disabled by the
+   `prefers-reduced-motion` block at the bottom, WITH the content left visible. */
+
+:root {
+  /* expo-out: fast start, long soft landing. The "expensive" easing. */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Smooth in-page anchor scrolling (e.g. "See how it works"). */
+html {
+  scroll-behavior: smooth;
+}
+
+/* ── Scroll reveal ─────────────────────────────────────────────────────────
+   The hidden state is applied ONLY when scripting is available, so if JS never
+   runs the content is still visible (the classic scroll-reveal failure). */
+@media (scripting: enabled) {
+  .reveal {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+}
+.reveal {
+  transition:
+    opacity 700ms var(--ease-out-expo),
+    transform 700ms var(--ease-out-expo);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+.reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+/* ── Hero entrance (on load, staggered via --rise-delay) ───────────────────── */
+@keyframes sf-rise {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-rise {
+  animation: sf-rise 800ms var(--ease-out-expo) both;
+  animation-delay: var(--rise-delay, 0ms);
+}
+
+/* ── The product demos itself (hero phone) ─────────────────────────────────
+   Rating chips stagger in → the 9 fills amber → the screen crossfades to the
+   real "Leave us a Google review" thank-you. Plays once. */
+@keyframes sf-chip-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.demo-chip {
+  animation: sf-chip-in 420ms var(--ease-out-expo) both;
+  animation-delay: var(--chip-delay, 0ms);
+}
+
+@keyframes sf-pick {
+  from {
+    opacity: 0;
+    transform: scale(0.88);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.demo-pick {
+  animation: sf-pick 520ms var(--ease-out-expo) both;
+  animation-delay: 1450ms;
+}
+
+/* The Submit button lights up once a score is picked — exactly like the product. */
+.demo-submit {
+  animation: sf-pick 600ms var(--ease-out-expo) both;
+  animation-delay: 1780ms;
+}
+
+/* ── Pinned scroll story: screens + copy cross-dissolve as you scroll ───────
+   Driven by JS (ScrollStory sets `data-active`), animated by CSS. */
+.story-layer {
+  opacity: 0;
+  transform: translateY(10px);
+  transition:
+    opacity 600ms var(--ease-out-expo),
+    transform 600ms var(--ease-out-expo);
+  pointer-events: none;
+}
+.story-layer[data-active="true"] {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+
+/* The step indicator: the active rule grows and darkens. */
+.story-tick {
+  transition:
+    background-color 400ms var(--ease-out-expo),
+    transform 400ms var(--ease-out-expo);
+  transform-origin: left;
+}
+
+/* ── The split: two outcome screens glide apart as they enter view ─────────── */
+.split-left,
+.split-right {
+  transition: transform 900ms var(--ease-out-expo);
+  transition-delay: 120ms;
+}
+@media (scripting: enabled) {
+  .split-left {
+    transform: translateX(26px) scale(0.97);
+  }
+  .split-right {
+    transform: translateX(-26px) scale(0.97);
+  }
+}
+.is-visible .split-left,
+.is-visible .split-right {
+  transform: none;
+}
+
+/* ── Hairlines draw in from the left ───────────────────────────────────────── */
+.hairline-draw {
+  transform-origin: left;
+  transition: transform 800ms var(--ease-out-expo);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+@media (scripting: enabled) {
+  .hairline-draw {
+    transform: scaleX(0);
+  }
+}
+.is-visible .hairline-draw {
+  transform: scaleX(1);
+}
+
+/* ── Text links: underline wipes in from the left ──────────────────────────── */
+.link-underline {
+  background-image: linear-gradient(currentColor, currentColor);
+  background-size: 0% 1px;
+  background-position: 0 100%;
+  background-repeat: no-repeat;
+  transition: background-size 320ms var(--ease-out-expo);
+}
+.link-underline:hover {
+  background-size: 100% 1px;
+}
+
+/* ── Reduced motion: kill ALL of the above, keep content visible ───────────── */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .reveal,
+  .reveal.is-visible,
+  .split-left,
+  .split-right,
+  .is-visible .split-left,
+  .is-visible .split-right {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+  .hairline-draw,
+  .is-visible .hairline-draw {
+    transform: scaleX(1) !important;
+    transition: none !important;
+  }
+  .animate-rise,
+  .demo-chip,
+  .demo-pick,
+  .demo-submit {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  /* Scroll story: no cross-dissolve, just show the active screen instantly. */
+  .story-layer,
+  .story-tick {
+    transition: none !important;
+  }
+  .story-layer {
+    transform: none !important;
+  }
+}
+
 /* Hide scrollbars app-wide (content still scrolls via wheel / touch / keyboard).
    Firefox uses scrollbar-width; WebKit/Chromium uses ::-webkit-scrollbar;
    -ms-overflow-style covers old Edge/IE. */

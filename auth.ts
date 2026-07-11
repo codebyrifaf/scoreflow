@@ -93,12 +93,23 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             role: "operator" as const,
           };
         }
+        // A brand-scoped owner (Milestone 16) → the brand console; a branch-scoped
+        // owner (the original case) → their single branch. Exactly one is set.
+        if (owner!.brandId && owner!.brand) {
+          return {
+            id: `owner-${owner!.id}`,
+            email: owner!.email,
+            role: "brand" as const,
+            brandId: owner!.brandId,
+            brandSlug: owner!.brand.slug,
+          };
+        }
         return {
           id: `owner-${owner!.id}`,
           email: owner!.email,
           role: "owner" as const,
-          restaurantId: owner!.restaurantId,
-          restaurantSlug: owner!.restaurant.slug,
+          restaurantId: owner!.restaurantId ?? undefined,
+          restaurantSlug: owner!.restaurant?.slug,
         };
       },
     }),
@@ -115,6 +126,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.role = user.role;
         token.restaurantId = user.restaurantId;
         token.restaurantSlug = user.restaurantSlug;
+        token.brandId = user.brandId;
+        token.brandSlug = user.brandSlug;
       }
       return token;
     },
@@ -129,6 +142,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.role = token.role;
         session.user.restaurantId = token.restaurantId;
         session.user.restaurantSlug = token.restaurantSlug;
+        session.user.brandId = token.brandId;
+        session.user.brandSlug = token.brandSlug;
       }
       return session;
     },

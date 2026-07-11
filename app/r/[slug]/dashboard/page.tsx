@@ -113,8 +113,8 @@ function FeedbackItem({ record }: { record: FeedbackRecord }) {
   );
 }
 
-/** Shown when a logged-in owner opens a DIFFERENT restaurant's dashboard. */
-function NotAuthorized({ ownSlug }: { ownSlug: string }) {
+/** Shown when a signed-in user opens a branch dashboard they can't access. */
+function NotAuthorized({ homeHref }: { homeHref: string }) {
   return (
     <main className="font-system flex min-h-dvh w-full flex-col items-center justify-center gap-4 bg-white px-5 py-12 text-center text-[#111827]">
       <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-100 text-3xl text-red-600">
@@ -122,14 +122,13 @@ function NotAuthorized({ ownSlug }: { ownSlug: string }) {
       </div>
       <h1 className="text-2xl font-bold">Not authorized</h1>
       <p className="text-[#6B7280]">
-        You&apos;re signed in, but this dashboard belongs to a different
-        restaurant. You can only view your own.
+        You&apos;re signed in, but this dashboard isn&apos;t one you can view.
       </p>
       <Link
-        href={`/r/${ownSlug}/dashboard`}
+        href={homeHref}
         className="mt-2 rounded-2xl bg-amber-500 px-6 py-3 font-semibold text-white transition-colors hover:bg-amber-600"
       >
-        Go to my dashboard
+        Go back
       </Link>
     </main>
   );
@@ -154,7 +153,7 @@ export default async function DashboardPage({
   // ── SECURITY GATE ───────────────────────────────────────────────────────────
   const access = await requireDashboardAccess(slug);
   if (!access.authorized) {
-    return <NotAuthorized ownSlug={access.ownerRestaurantSlug} />;
+    return <NotAuthorized homeHref={access.homeHref} />;
   }
 
   const restaurant = await getRestaurantBySlug(slug);

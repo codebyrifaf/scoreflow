@@ -24,6 +24,11 @@ model Restaurant {
   id              Int        @id @default(autoincrement())
   slug            String     @unique // URL-safe id, e.g. "fucco"
   name            String // display name, e.g. "Fucco"
+  // A restaurant is a BRANCH of a Brand (Milestone 16 — multi-location chains).
+  // NULLABLE: standalone venues (e.g. Fucco) have no brand and work exactly as
+  // before. The customer URL stays flat (/r/<slug>/…) so existing NFC chips work.
+  brandId         Int?
+  brand           Brand?     @relation(fields: [brandId], references: [id])
   googleReviewUrl String? // optional; the thank-you screen's review link
   // Smart review routing (Milestone 7): the MINIMUM rating (1–10) that gets sent
   // to the Google review page after submitting. Ratings at or above this go to
@@ -75,13 +80,38 @@ model Table {
 /// Security note: the dashboard trusts this `restaurantId` (read from the signed
 /// session on the server), NOT anything the browser sends. That's what stops one
 /// owner from viewing another restaurant's dashboard.
+/// An OWNER/MANAGER login account (Milestone 5; extended for chains in M16).
+///
+/// An owner is scoped to EITHER a single branch OR a whole brand — exactly one of
+/// `restaurantId` / `brandId` is set (enforced in application code, see auth.ts):
+///   • `restaurantId` set → a BRANCH MANAGER: sees that one branch's dashboard + tables.
+///   • `brandId` set       → a BRAND OWNER: sees every branch of that brand at /b/<slug>.
+/// Both are NULLABLE now so a brand owner isn't tied to one restaurant; existing
+/// single-venue owners keep `restaurantId` and behave exactly as before.
 model Owner {
-  id           Int        @id @default(autoincrement())
-  email        String     @unique // login identifier, e.g. "owner@fucco.test"
+  id           Int         @id @default(autoincrement())
+  email        String      @unique // login identifier, e.g. "owner@fucco.test"
   passwordHash String // bcrypt hash of the password — never the raw password
-  restaurantId Int // FK: the single restaurant this owner is allowed to manage
-  restaurant   Restaurant @relation(fields: [restaurantId], references: [id])
-  createdAt    DateTime   @default(now())
+  restaurantId Int? // FK: the single branch this manager runs (branch-scoped)
+  restaurant   Restaurant? @relation(fields: [restaurantId], references: [id])
+  brandId      Int? // FK: the brand this owner runs (brand-scoped)
+  brand        Brand?      @relation(fields: [brandId], references: [id])
+  createdAt    DateTime    @default(now())
+}
+
+/// A BRAND — a chain that groups several branches (Milestone 16).
+///
+/// "KFC" is a Brand; each location ("KFC Gulshan", "KFC Uttara") is a `Restaurant`
+/// (a branch) with `brandId` pointing here. A brand has one brand-owner `Owner`
+/// (brand-scoped) who sees all branches at /b/<slug>; each branch has its own
+/// branch-manager `Owner` (branch-scoped). The operator creates brands at /admin.
+model Brand {
+  id          Int          @id @default(autoincrement())
+  slug        String       @unique // URL-safe id, e.g. "kfc"
+  name        String // display name, e.g. "KFC"
+  createdAt   DateTime     @default(now())
+  restaurants Restaurant[] // back-relation: the brand's branches
+  owners      Owner[] // back-relation: brand-scoped login(s)
 }
 
 /// A platform OPERATOR's login account (Milestone 6 — admin dashboard).

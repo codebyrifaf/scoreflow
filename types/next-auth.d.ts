@@ -12,8 +12,10 @@
 
 import type { DefaultSession } from "next-auth";
 
-/** Which kind of account is signed in (Milestone 6 added "operator"). */
-type Role = "operator" | "owner";
+/** Which kind of account is signed in.
+ *  M6 added "operator"; M16 added "brand" (a brand owner across many branches).
+ *  "owner" = a branch manager (single branch). */
+type Role = "operator" | "brand" | "owner";
 
 declare module "next-auth" {
   /** The object returned from `authorize()` and passed into the `jwt` callback. */
@@ -21,6 +23,8 @@ declare module "next-auth" {
     role?: Role;
     restaurantId?: number;
     restaurantSlug?: string;
+    brandId?: number;
+    brandSlug?: string;
   }
 
   /** What `auth()` returns to server code. */
@@ -29,6 +33,8 @@ declare module "next-auth" {
       role?: Role;
       restaurantId?: number;
       restaurantSlug?: string;
+      brandId?: number;
+      brandSlug?: string;
     } & DefaultSession["user"];
   }
 }
@@ -38,10 +44,12 @@ declare module "next-auth" {
 // target the module that DECLARES the interface, so we augment `@auth/core/jwt`
 // here — otherwise the extra fields wouldn't show up on the `token` in auth.ts.
 declare module "@auth/core/jwt" {
-  /** The decoded session token. We stash the role + restaurant info here. */
+  /** The decoded session token. We stash the role + restaurant/brand info here. */
   interface JWT {
     role?: Role;
     restaurantId?: number;
     restaurantSlug?: string;
+    brandId?: number;
+    brandSlug?: string;
   }
 }

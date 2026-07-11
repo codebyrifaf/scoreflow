@@ -23,7 +23,9 @@ import { prisma } from "./prisma";
 export async function getOwnerByEmail(email: string) {
   return prisma.owner.findUnique({
     where: { email },
-    include: { restaurant: true },
+    // Include BOTH scopes: `restaurant` (branch managers) and `brand` (brand
+    // owners). Exactly one is set — auth.ts derives the role from which it is.
+    include: { restaurant: true, brand: true },
   });
 }
 

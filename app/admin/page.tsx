@@ -15,8 +15,10 @@
 import Link from "next/link";
 import { requireOperator } from "@/lib/auth-guard";
 import { getAllRestaurantsForAdmin, getPlatformStats } from "@/lib/restaurants";
+import { getAllBrandsForAdmin } from "@/lib/brands";
 import { logout } from "@/app/login/actions";
 import AdminRestaurants from "./AdminRestaurants";
+import AdminBrands from "./AdminBrands";
 
 // Always render fresh so a newly added restaurant shows up right away.
 export const dynamic = "force-dynamic";
@@ -26,7 +28,7 @@ const PILL_BTN_CLASS =
   "rounded-full border border-[#E5E7EB] px-3 py-1.5 text-sm font-medium text-[#111827] transition-colors hover:bg-[#F9FAFB]";
 
 /** Shown when a signed-in NON-operator (e.g. an owner) opens /admin. */
-function NotAuthorized({ ownerSlug }: { ownerSlug: string | null }) {
+function NotAuthorized({ homeHref }: { homeHref: string }) {
   return (
     <main className="font-system flex min-h-dvh w-full flex-col items-center justify-center gap-4 bg-white px-5 py-12 text-center text-[#111827]">
       <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-100 text-3xl text-red-600">
@@ -35,10 +37,10 @@ function NotAuthorized({ ownerSlug }: { ownerSlug: string | null }) {
       <h1 className="text-2xl font-bold">Not authorized</h1>
       <p className="text-[#6B7280]">The admin area is for ScoreFlow operators only.</p>
       <Link
-        href={ownerSlug ? `/r/${ownerSlug}/dashboard` : "/login"}
+        href={homeHref}
         className="mt-2 rounded-2xl bg-amber-500 px-6 py-3 font-semibold text-white transition-colors hover:bg-amber-600"
       >
-        {ownerSlug ? "Go to my dashboard" : "Go to login"}
+        Go back
       </Link>
     </main>
   );
@@ -58,13 +60,25 @@ export default async function AdminPage() {
   // ── SECURITY GATE ───────────────────────────────────────────────────────────
   const access = await requireOperator();
   if (!access.authorized) {
-    return <NotAuthorized ownerSlug={access.ownerRestaurantSlug} />;
+    return <NotAuthorized homeHref={access.homeHref} />;
   }
 
-  const [restaurants, stats] = await Promise.all([
+  const [restaurants, brands, stats] = await Promise.all([
     getAllRestaurantsForAdmin(),
+    getAllBrandsForAdmin(),
     getPlatformStats(),
   ]);
+
+  const brandCards = brands.map((b) => ({
+    id: b.id,
+    name: b.name,
+    slug: b.slug,
+    branchCount: b.restaurants.length,
+    branchNames: b.restaurants.map((r) => r.name),
+    responses: b.restaurants.reduce((sum, r) => sum + r._count.feedback, 0),
+    tables: b.restaurants.reduce((sum, r) => sum + r._count.tables, 0),
+    ownerEmails: b.owners.map((o) => o.email),
+  }));
 
   const cards = restaurants.map((r) => ({
     id: r.id,
@@ -109,6 +123,9 @@ export default async function AdminPage() {
             value={stats.avgRating === null ? "—" : stats.avgRating.toFixed(1)}
           />
         </section>
+
+        {/* Brands (chains) — each groups several branch restaurants */}
+        <AdminBrands brands={brandCards} />
 
         {/* Restaurant cards + add-restaurant modal */}
         <AdminRestaurants restaurants={cards} />

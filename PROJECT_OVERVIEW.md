@@ -2,7 +2,9 @@
 
 > A handoff document describing the whole project: what it is, what's been built,
 > how it's architected, and the conventions/gotchas an agent or developer needs
-> before making changes. Last updated: **2026-07-11**, **Milestone 14 (deploy prep)**.
+> before making changes. Last updated: **2026-07-11**, **Milestone 16 (Brands & Branches)**.
+> LIVE at **https://scoreflow-six.vercel.app** (M14). NOTE: M15 landing redesign + M16 chains are
+> built + verified locally but must be **git-pushed** to reach the live Vercel deploy.
 
 ---
 
@@ -69,14 +71,22 @@ asks not to build ahead of the current milestone).
 | 11 | **Operator delete restaurant** | ✅ | Each admin card has a **Delete** that opens a confirmation modal showing the blast radius; the operator must **type the slug** to confirm (server re-checks it, operator-only). `deleteRestaurantCascade(id)` removes feedback → tables → owners → restaurant in one `$transaction` (FKs are `RESTRICT`, so children go first). |
 | 12 | **Edit, password, landing page, 404** | ✅ | Operator **edit** restaurant (name/slug/Google URL/threshold; slug-change warns about NFC chips; slug uniqueness excludes self) — `updateRestaurant` + `EditRestaurantForm` + edit modal. Owner **change own password** (verify current → update; session-scoped) — `changePassword` action + `ChangePassword` modal + `updateOwnerPassword`. Real **marketing landing page** at `/`. **404** page redesigned to the premium theme. |
 | 13 | **Password reset + feedback spam guard** | ✅ | Operator **resets an owner's password** from `/admin` (no email; operator sets it, owner changes it after) — `resetOwnerPassword` + `ResetPasswordButton`. Public **feedback API spam guard**: a **honeypot** field, **dedupe** (same order # within 10 min), and **per-IP rate-limit** (15/min, 120/hr; hashed IP via new `Feedback.ipHash`; lenient so shared restaurant Wi-Fi isn't blocked). Helpers `countRecentByIpHash` / `hasRecentDuplicate`. |
-| 14 | **Deploy prep** | 🚧 code ready | Target: **free** Vercel (Hobby) + reuse current Neon DB + `*.vercel.app` domain. `prisma/seed.ts` is now **prod-safe**: operator from `OPERATOR_EMAIL`/`OPERATOR_PASSWORD` env, demo restaurants only when `SEED_DEMO=true`. `package.json` pins Node ≥20. The **live deploy itself** (GitHub push, Vercel import + env vars, secure operator password) is the user's click-through — see the plan file. |
+| 14 | **🚀 DEPLOYED LIVE** | ✅ | **Live at `https://scoreflow-six.vercel.app`** — free Vercel (Hobby) + the existing Neon DB, deployed from `github.com/codebyrifaf/scoreflow` (`master`). Vercel env vars: `DATABASE_URL` (Neon pooled, `sslmode=verify-full`) + a fresh prod `AUTH_SECRET`. `prisma/seed.ts` is **prod-safe**: operator from `OPERATOR_EMAIL`/`OPERATOR_PASSWORD` env, demo restaurants only when `SEED_DEMO=true`. Node pinned ≥20. Operator password **changed off the public dev default**. Verified live 10/10. |
+| 15 | **Landing page redesign** | ✅ (local) | Apple-grade, no AI tells: `ScoreFlow` typographic wordmark (no disc), zero icons/emoji, amber only inside product screens. Hero rests on the real feedback form (self-demo). **Pinned scroll story** (`app/ScrollStory.tsx`) — one phone whose screen cross-dissolves through form→rated→Google→private→dashboard. Motion layer in `globals.css` (respects reduced-motion). New: `SiteNav.tsx`, `Reveal.tsx`, `HeroPhone.tsx`, `PhoneFrame.tsx`. |
+| 16 | **Brands & Branches (chains)** | ✅ (local, this milestone) | A `Brand` groups branches (each branch = a `Restaurant`). New role **`"brand"`** (a brand owner) alongside `owner` (branch manager) + operator. `Owner.restaurantId` relaxed to nullable; `Owner.brandId`/`Restaurant.brandId` added (all backward-compatible — standalone venues unaffected). New `/b/[brandSlug]` console (overview + branch comparison cards + add/edit/delete branch + reset manager pw). Operator `/admin` gained a **Brands** section. Guard (`lib/auth-guard.ts`): brand owner may cross **their own** branches only; branch manager can't see siblings — **isolation matrix verified 15/15**. Customer URLs unchanged (NFC safe).<br>**Operator brand management (follow-up):** the operator manages a brand's *lifecycle* from `/admin` and **never enters** the private `/b/<slug>` console (same principle as never seeing a restaurant's dashboard) — so the old "Open brand console ›" link (which always hit *Not authorized*) was **removed**. Brand cards now show the branch names + rolled-up responses/tables, and gained **Reset password** (reuses `ResetPasswordButton` — a brand owner is just an `Owner` row) and **Delete brand** → `deleteBrandCascade(brandId)`: one interactive `$transaction` deleting feedback → tables → branch managers → branches → brand-owner → brand (FKs are `RESTRICT`, so children first). Typed-slug confirm + operator re-check, exactly like deleting a restaurant. Verified against the live DB: the cascade removed only the test chain (brand + 2 branches + 4 feedback + 2 tables + 3 logins) and left every other row untouched. |
 
-**Not yet done / deferred:** AI-generated chips + AI insight summaries (Claude, needs API key + deploy);
-**deploying to a live domain** (NFC/QR links + real Google links only work once deployed); per-table
-ratings; owner sign-up/self-registration; email verification; **login** brute-force rate-limiting (note
-the *feedback API* now has spam/rate-limit protection — M13); "remember me"; real Google review URLs
-for the seeded restaurants (still placeholders); automated tests. (Done: operator edit/delete, owner
-password change + operator-driven **password reset**, landing page, feedback spam guard.)
+**Not yet done / deferred:** AI-generated chips + AI insight summaries (Claude, needs an API key);
+per-table ratings; owner sign-up/self-registration; email verification; **login** brute-force
+rate-limiting (note the *feedback API* has spam/rate-limit protection — M13); "remember me"; automated
+tests; a custom domain (~$10/yr; currently on the free `*.vercel.app`).
+
+**Post-launch to-dos for the operator (not code):** add real restaurants with their **real Google review
+URLs**, and program the NFC chips from each restaurant's Tables page. (The demo Fucco/Bella restaurants
+have already been **deleted** — as of 2026-07-11 the DB holds **no restaurants**, just the operator login
+and one test brand.)
+
+⚠️ **Live/dev share ONE Neon DB** (by choice). Running the app locally now reads/writes **production**
+data. To de-risk later: point local dev at a separate Neon branch and leave Vercel on the main DB.
 
 ---
 

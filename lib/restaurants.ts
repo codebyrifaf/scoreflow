@@ -76,6 +76,8 @@ export async function createRestaurantWithOwner(input: {
   reviewThreshold: number;
   ownerEmail: string;
   ownerPasswordHash: string;
+  /** When set, this restaurant is a BRANCH of that brand (Milestone 16). */
+  brandId?: number | null;
 }) {
   return prisma.$transaction(async (tx) => {
     const restaurant = await tx.restaurant.create({
@@ -84,6 +86,7 @@ export async function createRestaurantWithOwner(input: {
         slug: input.slug,
         googleReviewUrl: input.googleReviewUrl,
         reviewThreshold: input.reviewThreshold,
+        brandId: input.brandId ?? null,
       },
     });
 

@@ -17,8 +17,8 @@ import TablesManager from "./TablesManager";
 
 export const dynamic = "force-dynamic";
 
-/** Same clean 403 screen the dashboard uses when the wrong owner visits. */
-function NotAuthorized({ ownSlug }: { ownSlug: string }) {
+/** Same clean 403 screen the dashboard uses when access is denied. */
+function NotAuthorized({ homeHref }: { homeHref: string }) {
   return (
     <main className="font-system flex min-h-dvh w-full flex-col items-center justify-center gap-4 bg-white px-5 py-12 text-center text-[#111827]">
       <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-100 text-3xl text-red-600">
@@ -26,13 +26,13 @@ function NotAuthorized({ ownSlug }: { ownSlug: string }) {
       </div>
       <h1 className="text-2xl font-bold text-[#111827]">Not authorized</h1>
       <p className="text-[#6B7280]">
-        You&apos;re signed in, but these tables belong to a different restaurant.
+        You&apos;re signed in, but these tables aren&apos;t ones you can manage.
       </p>
       <Link
-        href={`/r/${ownSlug}/dashboard`}
+        href={homeHref}
         className="mt-2 rounded-2xl bg-amber-500 px-6 py-3 font-semibold text-white transition-colors hover:bg-amber-600"
       >
-        Go to my dashboard
+        Go back
       </Link>
     </main>
   );
@@ -48,7 +48,7 @@ export default async function TablesPage({
   // Same security gate as the dashboard — runs before any data loads.
   const access = await requireDashboardAccess(slug);
   if (!access.authorized) {
-    return <NotAuthorized ownSlug={access.ownerRestaurantSlug} />;
+    return <NotAuthorized homeHref={access.homeHref} />;
   }
 
   const restaurant = await getRestaurantBySlug(slug);

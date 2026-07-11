@@ -65,7 +65,11 @@ export async function login(
     redirect("/admin");
   }
   const owner = await getOwnerByEmail(email);
-  const slug = owner?.restaurant.slug;
+  // Brand owner → the brand console; branch manager → their branch dashboard.
+  if (owner?.brand) {
+    redirect(`/b/${owner.brand.slug}`);
+  }
+  const slug = owner?.restaurant?.slug;
   redirect(slug ? `/r/${slug}/dashboard` : "/");
 }
 

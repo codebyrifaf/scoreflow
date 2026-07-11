@@ -20,6 +20,11 @@ import {
 } from "@/lib/restaurants";
 import { getOwnerByEmail, updateOwnerPassword } from "@/lib/owners";
 import { getOperatorByEmail } from "@/lib/operators";
+import {
+  getBrandBySlug,
+  createBrandWithOwner,
+  deleteBrandCascade,
+} from "@/lib/brands";
 
 /**
  * What the form reads back:
@@ -305,5 +310,106 @@ export async function resetOwnerPassword(
   const hash = await bcrypt.hash(newPassword, 10);
   await updateOwnerPassword(owner.id, hash);
 
+  return { ok: true };
+}
+
+/** What the add-brand form reads back. */
+export type BrandState =
+  | { ok: true }
+  | { errors: Record<string, string> }
+  | undefined;
+
+/**
+ * Operator creates a BRAND + its brand-owner login (Milestone 16). The brand
+ * owner then adds branches themselves at /b/<slug>.
+ */
+export async function createBrand(
+  _prevState: BrandState,
+  formData: FormData
+): Promise<BrandState> {
+  const access = await requireOperator();
+  if (!access.authorized) {
+    return { errors: { form: "You are not authorized to do this." } };
+  }
+
+  const name = String(formData.get("name") ?? "").trim();
+  const slug = String(formData.get("slug") ?? "")
+    .trim()
+    .toLowerCase();
+  const ownerEmail = String(formData.get("ownerEmail") ?? "")
+    .trim()
+    .toLowerCase();
+  const ownerPassword = String(formData.get("ownerPassword") ?? "");
+
+  const errors: Record<string, string> = {};
+  if (!name) errors.name = "Brand name is required.";
+  if (!slug) errors.slug = "Slug is required.";
+  else if (!/^[a-z0-9-]+$/.test(slug))
+    errors.slug = "Slug can only contain lowercase letters, numbers, and hyphens.";
+  if (!ownerEmail) errors.ownerEmail = "Brand owner email is required.";
+  else if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(ownerEmail))
+    errors.ownerEmail = "Enter a valid email address.";
+  if (ownerPassword.length < 8)
+    errors.ownerPassword = "Password must be at least 8 characters.";
+
+  if (!errors.slug && (await getBrandBySlug(slug)))
+    errors.slug = "That brand slug is already taken.";
+  if (
+    !errors.ownerEmail &&
+    ((await getOwnerByEmail(ownerEmail)) ||
+      (await getOperatorByEmail(ownerEmail)))
+  )
+    errors.ownerEmail = "That email is already in use.";
+
+  if (Object.keys(errors).length > 0) return { errors };
+
+  const ownerPasswordHash = await bcrypt.hash(ownerPassword, SALT_ROUNDS);
+  try {
+    await createBrandWithOwner({ name, slug, ownerEmail, ownerPasswordHash });
+  } catch {
+    return { errors: { form: "Could not create the brand — slug or email may exist." } };
+  }
+
+  revalidatePath("/admin");
+  return { ok: true };
+}
+
+/**
+ * Permanently delete a BRAND and everything under it (Milestone 16). Bound in the
+ * client as `deleteBrand.bind(null, slug)`, so `useActionState` calls it with
+ * (prevState, formData). Reuses `DeleteState`.
+ *
+ * Same safeguards as deleting a restaurant (never trust the client): operator-only,
+ * and the operator must type the brand's EXACT slug. Only then do we run the
+ * transactional cascade, which also removes every branch + their feedback, tables,
+ * and logins (see `deleteBrandCascade`).
+ */
+export async function deleteBrand(
+  slug: string,
+  _prevState: DeleteState,
+  formData: FormData
+): Promise<DeleteState> {
+  const access = await requireOperator();
+  if (!access.authorized) {
+    return { error: "You are not authorized to do this." };
+  }
+
+  const typed = String(formData.get("confirm") ?? "").trim();
+  if (typed !== slug) {
+    return { error: `Type “${slug}” exactly to confirm deletion.` };
+  }
+
+  const brand = await getBrandBySlug(slug);
+  if (!brand) {
+    return { error: "Brand not found (it may already be deleted)." };
+  }
+
+  try {
+    await deleteBrandCascade(brand.id);
+  } catch {
+    return { error: "Could not delete the brand. Please try again." };
+  }
+
+  revalidatePath("/admin");
   return { ok: true };
 }

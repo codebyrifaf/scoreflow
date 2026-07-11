@@ -14,7 +14,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "ScoreFlow",
-  description: "Collect customer meal feedback and grow your Google reviews.",
+  description:
+    "ScoreFlow collects honest feedback at the table, then sends happy guests to Google and routes complaints quietly to you.",
 };
 
 export default function RootLayout({
