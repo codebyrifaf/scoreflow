@@ -22,6 +22,7 @@ import {
 } from "@/lib/restaurants";
 import { getOwnerByEmail, updateOwnerPassword } from "@/lib/owners";
 import { getOperatorByEmail } from "@/lib/operators";
+import { validateNewPassword } from "@/lib/passwords";
 
 const SALT_ROUNDS = 10;
 
@@ -81,8 +82,8 @@ export async function addBranch(
   if (!managerEmail) errors.managerEmail = "Manager email is required.";
   else if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(managerEmail))
     errors.managerEmail = "Enter a valid email address.";
-  if (managerPassword.length < 8)
-    errors.managerPassword = "Password must be at least 8 characters.";
+  const weakManagerPassword = validateNewPassword(managerPassword);
+  if (weakManagerPassword) errors.managerPassword = weakManagerPassword;
 
   if (!errors.slug && (await getRestaurantBySlug(slug)))
     errors.slug = "That slug is already taken.";
@@ -199,8 +200,8 @@ export async function resetManagerPassword(
   if (!brand) return { error: "Brand not found." };
 
   const newPassword = String(formData.get("newPassword") ?? "");
-  if (newPassword.length < 8)
-    return { error: "Password must be at least 8 characters." };
+  const weak = validateNewPassword(newPassword);
+  if (weak) return { error: weak };
 
   const manager = await getOwnerByEmail(managerEmail.trim().toLowerCase());
   // The manager must run a branch OF THIS BRAND.
@@ -208,6 +209,9 @@ export async function resetManagerPassword(
     return { error: "That manager isn't part of your brand." };
 
   const hash = await bcrypt.hash(newPassword, SALT_ROUNDS);
+  // Also bumps the manager's tokenVersion (M17) → this now genuinely LOCKS THEM
+  // OUT of every device immediately. Before, resetting a fired manager's password
+  // left their existing session working for up to 30 days.
   await updateOwnerPassword(manager.id, hash);
   return { ok: true };
 }

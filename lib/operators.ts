@@ -17,3 +17,14 @@ import { prisma } from "./prisma";
 export async function getOperatorByEmail(email: string) {
   return prisma.operator.findUnique({ where: { email } });
 }
+
+/**
+ * Look up an operator by numeric id (Milestone 17).
+ *
+ * `requireOperator()` calls this on every request to /admin, so that a deleted
+ * operator — or one whose password was rotated — loses access immediately instead
+ * of coasting on a still-valid JWT. See lib/auth-guard.ts.
+ */
+export async function getOperatorById(id: number) {
+  return prisma.operator.findUnique({ where: { id } });
+}

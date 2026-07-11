@@ -35,6 +35,25 @@ const POSITIVE_CHIPS = [
 export const POSITIVE_FROM = 7;
 
 /**
+ * Every chip we will ever accept — the WHITELIST for the public API (M17).
+ *
+ * `tags` arrive from the browser, and the API used to accept any string ≤ 40 chars.
+ * That let an attacker post arbitrary text and have it show up in the owner's
+ * "Top mentions" panel — not an XSS (React escapes it), but it defaces the widget
+ * the owner reads most. Tags are a CLOSED set chosen by tapping a chip, so the
+ * server should accept nothing else.
+ */
+export const ALL_CHIPS: readonly string[] = [
+  ...NEGATIVE_CHIPS,
+  ...POSITIVE_CHIPS,
+];
+
+/** Is this string one of our real chips? Used to filter incoming tags. */
+export function isKnownChip(tag: string): boolean {
+  return ALL_CHIPS.includes(tag);
+}
+
+/**
  * Which chips to show for a given rating. Returns an empty array when no rating
  * has been chosen yet (rating 0), so the chip section stays hidden until then.
  */

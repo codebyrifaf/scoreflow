@@ -87,6 +87,28 @@ export async function countRecentByIpHash(
 }
 
 /**
+ * Spam guard, layer 2 (Milestone 17): how many submissions THIS RESTAURANT has
+ * received since `since` — from anyone.
+ *
+ * Why this exists on top of the per-IP limit: the per-IP limit can be defeated by
+ * rotating IPs (a botnet, or open proxies). This one can't be, because it doesn't
+ * look at who's calling at all. It's a hard ceiling on how fast a single
+ * restaurant's dashboard can fill up, which is the thing we actually want to
+ * protect — nobody gets to bury a paying customer's feedback under a flood of
+ * fake 1-stars.
+ *
+ * Uses the new `[restaurantId, createdAt]` index (M17).
+ */
+export async function countRecentForRestaurant(
+  restaurantId: number,
+  since: Date
+): Promise<number> {
+  return prisma.feedback.count({
+    where: { restaurantId, createdAt: { gte: since } },
+  });
+}
+
+/**
  * Spam guard (Milestone 13): has this exact order number already been submitted
  * for this restaurant since `since`? Blocks accidental double-submits and trivial
  * repeat-spam of the same order.

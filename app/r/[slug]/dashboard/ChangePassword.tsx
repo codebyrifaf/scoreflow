@@ -9,6 +9,7 @@
  */
 
 import { useActionState, useEffect, useRef, useState } from "react";
+import { logout } from "@/app/login/actions";
 import { changePassword, type ChangePasswordState } from "./actions";
 
 const FIELD_CLASS =
@@ -71,20 +72,28 @@ export default function ChangePassword() {
           </div>
 
           {done ? (
+            /* Changing your password bumps `tokenVersion` (M17), which kills EVERY
+               session for this account — including this browser's. That's the
+               point: if someone had stolen your password, they're now out. So we
+               say so plainly and hand them a real sign-out (which clears the now-
+               dead cookie) rather than a "Done" that would just bounce them to
+               /login on their next click. */
             <div className="flex flex-col items-center gap-4 py-4 text-center">
               <div className="flex h-14 w-14 items-center justify-center rounded-full bg-green-50 text-2xl text-green-600">
                 ✓
               </div>
               <p className="text-[15px] text-[#374151]">
-                Your password has been updated.
+                Your password has been updated. For your security we signed you out
+                everywhere — please sign in again with your new password.
               </p>
-              <button
-                type="button"
-                onClick={closeModal}
-                className="w-full rounded-2xl bg-amber-500 px-6 py-3 text-base font-semibold text-white shadow-sm transition-all duration-150 hover:bg-amber-600 active:scale-[0.98]"
-              >
-                Done
-              </button>
+              <form action={logout} className="w-full">
+                <button
+                  type="submit"
+                  className="w-full rounded-2xl bg-amber-500 px-6 py-3 text-base font-semibold text-white shadow-sm transition-all duration-150 hover:bg-amber-600 active:scale-[0.98]"
+                >
+                  Sign in again
+                </button>
+              </form>
             </div>
           ) : (
             <form ref={formRef} action={action} className="flex flex-col gap-4">
@@ -110,7 +119,7 @@ export default function ChangePassword() {
                 >
                   New password{" "}
                   <span className="font-normal text-[#9CA3AF]">
-                    (at least 8 characters)
+                    (at least 12 characters)
                   </span>
                 </label>
                 <input

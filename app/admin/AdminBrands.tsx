@@ -86,7 +86,7 @@ function AddBrandForm({ onSuccess }: { onSuccess: () => void }) {
       <div className="flex flex-col gap-1.5">
         <label className="text-sm font-medium text-[#111827]">
           Owner initial password{" "}
-          <span className="font-normal text-[#9CA3AF]">(8+ chars)</span>
+          <span className="font-normal text-[#9CA3AF]">(12+ chars)</span>
         </label>
         <input name="ownerPassword" type="text" className={FIELD} />
         <FieldError message={errors.ownerPassword} />

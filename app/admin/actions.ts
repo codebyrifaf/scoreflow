@@ -20,6 +20,7 @@ import {
 } from "@/lib/restaurants";
 import { getOwnerByEmail, updateOwnerPassword } from "@/lib/owners";
 import { getOperatorByEmail } from "@/lib/operators";
+import { validateNewPassword } from "@/lib/passwords";
 import {
   getBrandBySlug,
   createBrandWithOwner,
@@ -98,8 +99,9 @@ export async function createRestaurant(
     errors.ownerEmail = "Enter a valid email address.";
   }
 
-  if (ownerPassword.length < 8) {
-    errors.ownerPassword = "Password must be at least 8 characters.";
+  const weakPassword = validateNewPassword(ownerPassword);
+  if (weakPassword) {
+    errors.ownerPassword = weakPassword;
   }
 
   // Uniqueness checks (friendly messages). The database's unique constraints are
@@ -298,8 +300,9 @@ export async function resetOwnerPassword(
   }
 
   const newPassword = String(formData.get("newPassword") ?? "");
-  if (newPassword.length < 8) {
-    return { error: "Password must be at least 8 characters." };
+  const weak = validateNewPassword(newPassword);
+  if (weak) {
+    return { error: weak };
   }
 
   const owner = await getOwnerByEmail(ownerEmail.trim().toLowerCase());
@@ -308,6 +311,9 @@ export async function resetOwnerPassword(
   }
 
   const hash = await bcrypt.hash(newPassword, 10);
+  // Also bumps the owner's tokenVersion (M17), so this genuinely LOCKS THEM OUT
+  // of every device at once — the whole point of a reset. Before, a reset changed
+  // the hash but left every existing session alive for up to 30 days.
   await updateOwnerPassword(owner.id, hash);
 
   return { ok: true };
@@ -349,8 +355,8 @@ export async function createBrand(
   if (!ownerEmail) errors.ownerEmail = "Brand owner email is required.";
   else if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(ownerEmail))
     errors.ownerEmail = "Enter a valid email address.";
-  if (ownerPassword.length < 8)
-    errors.ownerPassword = "Password must be at least 8 characters.";
+  const weakBrandPassword = validateNewPassword(ownerPassword);
+  if (weakBrandPassword) errors.ownerPassword = weakBrandPassword;
 
   if (!errors.slug && (await getBrandBySlug(slug)))
     errors.slug = "That brand slug is already taken.";

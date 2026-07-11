@@ -10,16 +10,32 @@
  * restaurant IN THE DATABASE and stores the feedback against that restaurant's
  * id. The client never sends a restaurant id or name directly — so it can't
  * attach feedback to a restaurant it shouldn't.
+ *
+ * ── This endpoint is PUBLIC and UNAUTHENTICATED ─────────────────────────────
+ * It has to be: a diner taps an NFC chip and submits without logging in. So it is
+ * the most exposed surface in the product, and the spam guard below is the only
+ * thing standing between a paying restaurant and a competitor burying their
+ * dashboard in fake 1-star reviews.
+ *
+ * MILESTONE 17 rebuilt that guard, because it did not actually work:
+ *   • It hashed the LEFTMOST `X-Forwarded-For` entry — a value the CALLER writes.
+ *     Sending a random one per request produced a fresh "IP" every time, so the
+ *     per-IP rate limit never once fired. See lib/request-ip.ts.
+ *   • `comment` had no length cap, so one request could store megabytes.
+ *   • `tags` accepted any string, so an attacker could write their own text into
+ *     the owner's "Top mentions" panel.
  */
 
-import { createHash } from "node:crypto";
-import { getRestaurantBySlug } from "../../../lib/restaurants";
+import { getRestaurantBySlug } from "@/lib/restaurants";
 import {
   createFeedback,
   countRecentByIpHash,
+  countRecentForRestaurant,
   hasRecentDuplicate,
-} from "../../../lib/feedback";
-import type { FeedbackPayload } from "../../../lib/types";
+} from "@/lib/feedback";
+import { clientIpHash } from "@/lib/request-ip";
+import { isKnownChip } from "@/lib/feedback-chips";
+import type { FeedbackPayload } from "@/lib/types";
 
 /** The JSON body we expect: the customer's input, the slug, and a honeypot. */
 type FeedbackRequestBody = Partial<FeedbackPayload> & {
@@ -28,24 +44,30 @@ type FeedbackRequestBody = Partial<FeedbackPayload> & {
   website?: unknown;
 };
 
-// ── Spam-guard limits (Milestone 13) ────────────────────────────────────────
-// Lenient on purpose: a busy restaurant has MANY diners on ONE shared Wi-Fi IP,
-// so tight per-IP limits would block real customers. These still stop a script
-// flood (which submits far faster) while leaving a dinner rush alone.
+// ── Spam-guard limits ───────────────────────────────────────────────────────
+// Layer 1, per CALLER. Lenient on purpose: a busy restaurant has MANY diners on
+// ONE shared Wi-Fi IP, so tight per-IP limits would block real customers. These
+// still stop a script flood (which submits far faster) while leaving a dinner
+// rush alone.
 const MAX_PER_MINUTE = 15;
 const MAX_PER_HOUR = 120;
+
+// Layer 2, per RESTAURANT (Milestone 17) — a ceiling that does NOT depend on who
+// is calling, so rotating IPs can't get around it. Set well above any real dinner
+// rush (a 100-table venue turning over every 45 min is nowhere near 30/min), but
+// low enough that a flood can't bury a dashboard.
+const MAX_PER_MINUTE_PER_RESTAURANT = 30;
+const MAX_PER_HOUR_PER_RESTAURANT = 300;
+
 /** Window in which the same order number counts as a duplicate. */
 const DEDUPE_WINDOW_MS = 10 * 60 * 1000;
 
-/** A salted SHA-256 hash of the caller's IP — we never store the raw IP. */
-function callerIpHash(request: Request): string {
-  const fwd = request.headers.get("x-forwarded-for") ?? "";
-  const ip =
-    fwd.split(",")[0]?.trim() || request.headers.get("x-real-ip") || "unknown";
-  return createHash("sha256")
-    .update(`${ip}:${process.env.AUTH_SECRET ?? ""}`)
-    .digest("hex");
-}
+// Input caps (Milestone 17). Without these a single request could store megabytes,
+// inflating the database and slowing the owner's dashboard to a crawl.
+const MAX_COMMENT_LENGTH = 1000;
+const MAX_ORDER_NUMBER_LENGTH = 32;
+const MAX_TABLE_LENGTH = 30;
+const MAX_TAGS = 10;
 
 /**
  * POST /api/feedback
@@ -73,20 +95,15 @@ export async function POST(request: Request) {
   // 2. Resolve which restaurant this is for, from the slug — server-side, against
   //    the database. We never trust a restaurant identity sent directly.
   if (typeof body.slug !== "string" || body.slug.trim() === "") {
-    return Response.json(
-      { error: "Missing restaurant." },
-      { status: 400 }
-    );
+    return Response.json({ error: "Missing restaurant." }, { status: 400 });
   }
   const restaurant = await getRestaurantBySlug(body.slug);
   if (!restaurant) {
-    return Response.json(
-      { error: "Unknown restaurant." },
-      { status: 404 }
-    );
+    return Response.json({ error: "Unknown restaurant." }, { status: 404 });
   }
 
-  // 3. Basic validation of the customer's input. We never trust the browser.
+  // 3. Validate the customer's input. We never trust the browser — not its
+  //    values, and not the SIZE of them.
   const rating = Number(body.rating);
   if (!Number.isInteger(rating) || rating < 1 || rating > 10) {
     return Response.json(
@@ -94,34 +111,54 @@ export async function POST(request: Request) {
       { status: 400 }
     );
   }
+
   if (typeof body.orderNumber !== "string" || body.orderNumber.trim() === "") {
+    return Response.json({ error: "Order number is required." }, { status: 400 });
+  }
+  const orderNumber = body.orderNumber.trim();
+  if (orderNumber.length > MAX_ORDER_NUMBER_LENGTH) {
+    return Response.json({ error: "That order number is too long." }, { status: 400 });
+  }
+
+  const comment = typeof body.comment === "string" ? body.comment.trim() : "";
+  if (comment.length > MAX_COMMENT_LENGTH) {
     return Response.json(
-      { error: "Order number is required." },
+      { error: `Please keep your comment under ${MAX_COMMENT_LENGTH} characters.` },
       { status: 400 }
     );
   }
 
+  const table = typeof body.table === "string" ? body.table.trim() : "";
+  if (table.length > MAX_TABLE_LENGTH) {
+    return Response.json({ error: "Invalid table." }, { status: 400 });
+  }
+
   // 4. Build a clean payload (the timestamp is added by the database default).
-  //    Tags come from the quick-tap chips (Milestone 9). We sanitise hard — only
-  //    non-empty strings, each ≤ 40 chars, at most 10 — so a hostile client can't
-  //    stuff the field with junk.
+  //    Tags come from the quick-tap chips (M9). They're a CLOSED set, so we accept
+  //    ONLY strings that match a real chip (M17) — anything else is silently
+  //    dropped, which stops a hostile client planting its own text in the owner's
+  //    "Top mentions" panel.
   const payload: FeedbackPayload = {
-    table: typeof body.table === "string" ? body.table : null,
-    orderNumber: body.orderNumber.trim(),
+    table: table || null,
+    orderNumber,
     rating,
-    comment: typeof body.comment === "string" ? body.comment.trim() : "",
+    comment,
     tags: Array.isArray(body.tags)
-      ? (body.tags as unknown[])
-          .filter((t): t is string => typeof t === "string")
-          .map((t) => t.trim())
-          .filter((t) => t.length > 0 && t.length <= 40)
-          .slice(0, 10)
+      ? Array.from(
+          new Set(
+            (body.tags as unknown[])
+              .filter((t): t is string => typeof t === "string")
+              .filter(isKnownChip)
+          )
+        ).slice(0, MAX_TAGS)
       : [],
   };
 
   // 5. Spam guard — runs before we save anything.
-  const ipHash = callerIpHash(request);
+  const ipHash = clientIpHash(request.headers);
   const now = Date.now();
+  const oneMinuteAgo = new Date(now - 60_000);
+  const oneHourAgo = new Date(now - 3_600_000);
 
   // 5a. Reject an exact duplicate order number within the dedupe window (stops
   //     accidental double-submits and trivial repeat-spam of one order).
@@ -138,12 +175,25 @@ export async function POST(request: Request) {
     );
   }
 
-  // 5b. Rate-limit by hashed IP (per minute and per hour).
-  const [lastMinute, lastHour] = await Promise.all([
-    countRecentByIpHash(ipHash, new Date(now - 60_000)),
-    countRecentByIpHash(ipHash, new Date(now - 3_600_000)),
-  ]);
-  if (lastMinute >= MAX_PER_MINUTE || lastHour >= MAX_PER_HOUR) {
+  // 5b. Layer 1 — rate-limit by hashed IP (now from a header the caller cannot
+  //     forge; see lib/request-ip.ts).
+  // 5c. Layer 2 — a per-restaurant ceiling. This one holds even if an attacker
+  //     rotates through real IPs, because it doesn't care who is calling.
+  const [lastMinute, lastHour, restaurantMinute, restaurantHour] =
+    await Promise.all([
+      countRecentByIpHash(ipHash, oneMinuteAgo),
+      countRecentByIpHash(ipHash, oneHourAgo),
+      countRecentForRestaurant(restaurant.id, oneMinuteAgo),
+      countRecentForRestaurant(restaurant.id, oneHourAgo),
+    ]);
+
+  const tooManyFromCaller =
+    lastMinute >= MAX_PER_MINUTE || lastHour >= MAX_PER_HOUR;
+  const tooManyForRestaurant =
+    restaurantMinute >= MAX_PER_MINUTE_PER_RESTAURANT ||
+    restaurantHour >= MAX_PER_HOUR_PER_RESTAURANT;
+
+  if (tooManyFromCaller || tooManyForRestaurant) {
     return Response.json(
       { error: "Too many submissions right now. Please try again shortly." },
       { status: 429 }
@@ -161,6 +211,6 @@ export async function POST(request: Request) {
     );
   }
 
-  // 6. Success. 201 Created is the conventional status for "we made a new record".
+  // 7. Success. 201 Created is the conventional status for "we made a new record".
   return Response.json({ ok: true }, { status: 201 });
 }

@@ -104,7 +104,7 @@ export default function ResetPasswordButton({
                 >
                   New password{" "}
                   <span className="font-normal text-[#9CA3AF]">
-                    (at least 8 characters)
+                    (at least 12 characters)
                   </span>
                 </label>
                 {/* type="text" so the operator can read it to pass it on. */}

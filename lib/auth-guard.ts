@@ -1,12 +1,52 @@
 /**
- * The access guards — the security core of ScoreFlow (Milestone 5; extended for
- * chains in Milestone 16).
+ * The access guards — the security core of ScoreFlow.
+ * (Milestone 5; extended for chains in M16; rebuilt on a safe foundation in M17.)
  *
  * These are the "Data Access Layer" checks the Next.js docs recommend: the
  * authorization decision lives right next to the data, on the server, so it runs
- * on every request and can't be skipped by the browser. Every scope comes from
- * the SIGNED session (set server-side at login) — never from anything the browser
- * sends — so nobody can widen their access by editing a URL.
+ * on every request and can't be skipped by the browser.
+ *
+ * ╔═══════════════════════════════════════════════════════════════════════════╗
+ * ║  THE RULE (Milestone 17):                                                 ║
+ * ║      The TOKEN says who you are. The DATABASE says what you may see.      ║
+ * ╚═══════════════════════════════════════════════════════════════════════════╝
+ *
+ * ── Why. Two real holes this closes ──────────────────────────────────────────
+ *
+ * Before M17 the guard authorized by comparing a SLUG STRING that had been baked
+ * into the session cookie at login:
+ *
+ *     if (user.restaurantSlug === slug) → allowed        // ← the bug
+ *
+ * Because sessions are stateless JWTs, that string was never re-checked against
+ * anything. Two consequences, both exploitable:
+ *
+ *   1. NOTHING COULD BE REVOKED. Fire a manager, reset their password — their
+ *      browser kept working for up to 30 days, because their cookie still said
+ *      "acme" and nobody ever asked the database whether that was still true.
+ *      Password reset was the only lockout lever the product had, and it revoked
+ *      precisely nothing.
+ *
+ *   2. A STALE COOKIE COULD REACH A DIFFERENT TENANT. Slugs are editable and
+ *      re-usable. Rename restaurant "acme" (or delete it when a customer churns),
+ *      then onboard a NEW customer who takes the slug "acme" — and the old owner's
+ *      month-old cookie now opens the new customer's dashboard. The check passes,
+ *      because the check was only ever `"acme" === "acme"`.
+ *
+ * Both vanish once the guard re-reads the account on every request and compares
+ * NUMERIC IDs against freshly-loaded rows. Slugs become cosmetic: renaming or
+ * re-using one grants nobody anything.
+ *
+ * ── What every guard now does ────────────────────────────────────────────────
+ *   1. Read the session → get `accountId` + `kind` + `tokenVersion` (identity).
+ *   2. Load that account from the DB.
+ *        • row gone?              → session dead (a deleted owner is locked out at once)
+ *        • tokenVersion moved?    → session dead (password change/reset kicks out
+ *                                   EVERY device, everywhere — that's the point)
+ *   3. Authorize by comparing numeric FKs on the rows we just loaded.
+ *
+ * Cost: one indexed primary-key lookup per protected request. The guards already
+ * hit the database to resolve the restaurant, so this is noise.
  *
  * Who may view a branch dashboard (`/r/[slug]/dashboard` and `/tables`):
  *   • a BRANCH MANAGER  → only their one branch;
@@ -18,9 +58,11 @@
 import "server-only";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
-import { getRestaurantBySlug } from "@/lib/restaurants";
+import { prisma } from "@/lib/prisma";
+import { getOwnerById } from "@/lib/owners";
+import { getOperatorById } from "@/lib/operators";
 
-type SessionUser = {
+export type SessionUser = {
   role?: "operator" | "brand" | "owner";
   restaurantSlug?: string;
   brandId?: number;
@@ -28,12 +70,82 @@ type SessionUser = {
   email?: string | null;
 };
 
-/** Where to send a signed-in visitor who lands somewhere they can't access. */
-function homeHrefFor(user: SessionUser): string {
+/**
+ * Where a signed-in visitor's "home" is, by role. Used both when someone lands
+ * somewhere they can't access (→ "Go back") and when an already-signed-in visitor
+ * opens /login (→ skip the form). Returns "/login" when we can't place them.
+ *
+ * This is a NAVIGATION helper, not a security one — it's fine for it to read the
+ * session's (possibly stale) slugs, because the worst case is an unhelpful link.
+ */
+export function homeHrefFor(user: SessionUser): string {
   if (user.role === "operator") return "/admin";
   if (user.role === "brand" && user.brandSlug) return `/b/${user.brandSlug}`;
   if (user.role === "owner" && user.restaurantSlug) {
     return `/r/${user.restaurantSlug}/dashboard`;
+  }
+  return "/login";
+}
+
+// ── Step 1+2: who is really signed in, according to the DATABASE ─────────────
+
+type LoadedOwner = NonNullable<Awaited<ReturnType<typeof getOwnerById>>>;
+type LoadedOperator = NonNullable<Awaited<ReturnType<typeof getOperatorById>>>;
+
+type Account =
+  | { kind: "operator"; operator: LoadedOperator }
+  | { kind: "owner"; owner: LoadedOwner };
+
+/**
+ * Resolve the CURRENT account from the database, or `null` if the session is
+ * absent, malformed, or revoked.
+ *
+ * This is the single choke point where a session is validated. Every guard below
+ * starts here, so there is exactly one place to get revocation right.
+ */
+async function currentAccount(): Promise<Account | null> {
+  const session = await auth();
+  const user = session?.user;
+
+  // Identity must be present. (Sessions minted before M17 have no `accountId`, so
+  // they fail here — that's why everyone is signed out once on release.)
+  if (!user?.accountId || !user.kind || typeof user.tokenVersion !== "number") {
+    return null;
+  }
+
+  if (user.kind === "operator") {
+    const operator = await getOperatorById(user.accountId);
+    // Deleted account, or password rotated since this token was minted → dead.
+    if (!operator || operator.tokenVersion !== user.tokenVersion) return null;
+    return { kind: "operator", operator };
+  }
+
+  const owner = await getOwnerById(user.accountId);
+  if (!owner || owner.tokenVersion !== user.tokenVersion) return null;
+  return { kind: "owner", owner };
+}
+
+/**
+ * The signed-in visitor's home, or `null` if they aren't validly signed in.
+ *
+ * `/login` uses this to skip the form for someone who's already in. It MUST be a
+ * database-backed check, not just "does the cookie decode?" — otherwise a revoked
+ * session (e.g. right after changing your own password, which bumps
+ * `tokenVersion`) would still look signed-in to /login, get bounced to the
+ * dashboard, get bounced back to /login by the guard, and loop forever.
+ */
+export async function signedInHomeHref(): Promise<string | null> {
+  const account = await currentAccount();
+  return account ? homeHrefForAccount(account) : null;
+}
+
+/** Home href derived from the FRESH database row (not the session's snapshot). */
+function homeHrefForAccount(account: Account): string {
+  if (account.kind === "operator") return "/admin";
+  const { owner } = account;
+  if (owner.brandId && owner.brand) return `/b/${owner.brand.slug}`;
+  if (owner.restaurantId && owner.restaurant) {
+    return `/r/${owner.restaurant.slug}/dashboard`;
   }
   return "/login";
 }
@@ -47,7 +159,7 @@ export type DashboardAccess =
 /**
  * May the current visitor view the branch at `slug`?
  *
- * - Not logged in → REDIRECTS to /login (never returns).
+ * - Not logged in, or session revoked → REDIRECTS to /login (never returns).
  * - Logged in but not allowed → `{ authorized: false, homeHref }`; the caller
  *   renders "Not authorized" — and returns BEFORE loading any of that branch's
  *   data, so nothing leaks.
@@ -56,41 +168,43 @@ export type DashboardAccess =
 export async function requireDashboardAccess(
   slug: string
 ): Promise<DashboardAccess> {
-  const session = await auth();
-  if (!session?.user?.role) {
+  const account = await currentAccount();
+  if (!account) {
     redirect("/login");
   }
-  const user = session.user;
-  const denied = { authorized: false as const, homeHref: homeHrefFor(user) };
 
-  // Branch manager: only their own branch.
-  if (user.role === "owner") {
-    if (user.restaurantSlug && user.restaurantSlug === slug) {
-      return {
-        authorized: true,
-        ownerEmail: user.email ?? "",
-        restaurantSlug: slug,
-      };
-    }
-    return denied;
-  }
+  const denied = {
+    authorized: false as const,
+    homeHref: homeHrefForAccount(account),
+  };
 
-  // Brand owner: any branch that belongs to THEIR brand. We look the restaurant
-  // up server-side and compare brandId — never trust the URL alone.
-  if (user.role === "brand" && user.brandId) {
-    const restaurant = await getRestaurantBySlug(slug);
-    if (restaurant && restaurant.brandId === user.brandId) {
-      return {
-        authorized: true,
-        ownerEmail: user.email ?? "",
-        restaurantSlug: slug,
-      };
-    }
-    return denied;
-  }
+  // The operator is not an owner of branch pages — they use /admin.
+  if (account.kind === "operator") return denied;
 
-  // Operator (or anything else) is not an owner of branch pages.
-  return denied;
+  const { owner } = account;
+
+  // Resolve the restaurant in the URL against the DB. We compare IDs, never the
+  // slug, so a renamed or re-used slug can't be used to walk into another tenant.
+  const restaurant = await prisma.restaurant.findUnique({ where: { slug } });
+  if (!restaurant) return denied; // unknown slug — say nothing about whether it exists
+
+  // Which kind of owner is this? Derived from the DATABASE row, not the session,
+  // so re-scoping an account takes effect on their very next request.
+  const isBrandOwner = owner.brandId !== null && owner.brand !== null;
+
+  const allowed = isBrandOwner
+    ? // Brand owner → any branch that belongs to THEIR brand.
+      restaurant.brandId !== null && restaurant.brandId === owner.brandId
+    : // Branch manager → only their own single branch.
+      owner.restaurantId !== null && restaurant.id === owner.restaurantId;
+
+  if (!allowed) return denied;
+
+  return {
+    authorized: true,
+    ownerEmail: owner.email,
+    restaurantSlug: restaurant.slug,
+  };
 }
 
 // ── Brand console ─────────────────────────────────────────────────────────────
@@ -106,16 +220,26 @@ export type BrandAccess =
 export async function requireBrandAccess(
   brandSlug: string
 ): Promise<BrandAccess> {
-  const session = await auth();
-  if (!session?.user?.role) {
+  const account = await currentAccount();
+  if (!account) {
     redirect("/login");
   }
-  const user = session.user;
 
-  if (user.role === "brand" && user.brandSlug === brandSlug) {
-    return { authorized: true, ownerEmail: user.email ?? "", brandSlug };
-  }
-  return { authorized: false, homeHref: homeHrefFor(user) };
+  const denied = {
+    authorized: false as const,
+    homeHref: homeHrefForAccount(account),
+  };
+
+  if (account.kind === "operator") return denied;
+
+  const { owner } = account;
+  if (!owner.brandId) return denied; // a branch manager has no brand console
+
+  // Same principle as above: resolve the brand and compare NUMERIC ids.
+  const brand = await prisma.brand.findUnique({ where: { slug: brandSlug } });
+  if (!brand || brand.id !== owner.brandId) return denied;
+
+  return { authorized: true, ownerEmail: owner.email, brandSlug: brand.slug };
 }
 
 // ── Operator admin ────────────────────────────────────────────────────────────
@@ -128,14 +252,14 @@ export type OperatorAccess =
  * May the current visitor use the operator admin area (`/admin`)? Operators only.
  */
 export async function requireOperator(): Promise<OperatorAccess> {
-  const session = await auth();
-  if (!session?.user?.role) {
+  const account = await currentAccount();
+  if (!account) {
     redirect("/login");
   }
-  const user = session.user;
 
-  if (user.role !== "operator") {
-    return { authorized: false, homeHref: homeHrefFor(user) };
+  if (account.kind !== "operator") {
+    return { authorized: false, homeHref: homeHrefForAccount(account) };
   }
-  return { authorized: true, operatorEmail: user.email ?? "" };
+
+  return { authorized: true, operatorEmail: account.operator.email };
 }

@@ -96,6 +96,12 @@ model Owner {
   restaurant   Restaurant? @relation(fields: [restaurantId], references: [id])
   brandId      Int? // FK: the brand this owner runs (brand-scoped)
   brand        Brand?      @relation(fields: [brandId], references: [id])
+  // SESSION REVOCATION (Milestone 17). Sessions are stateless JWTs, so there's no
+  // "sessions" table to delete a row from. Instead every token carries the
+  // tokenVersion it was minted with, and the guards compare it against this column
+  // on EVERY request. Bump this (password change / reset) and every existing
+  // session for this account dies instantly, on every device.
+  tokenVersion Int         @default(0)
   createdAt    DateTime    @default(now())
 }
 
@@ -131,7 +137,33 @@ model Operator {
   id           Int      @id @default(autoincrement())
   email        String   @unique // login identifier, e.g. "operator@scoreflow.test"
   passwordHash String // bcrypt hash of the password — never the raw password
+  // Session revocation — see the note on Owner.tokenVersion (Milestone 17).
+  tokenVersion Int      @default(0)
   createdAt    DateTime @default(now())
+}
+
+/// A FAILED login attempt — the brute-force guard (Milestone 17).
+///
+/// Before M17 there was NO rate limit on login at all: an attacker could POST
+/// /api/auth/callback/credentials forever, guessing the operator's password (and
+/// burning a bcrypt compare — i.e. our CPU — on every guess). Now `authorize()`
+/// counts recent failures here BEFORE doing any bcrypt work, and refuses when a
+/// threshold is crossed.
+///
+/// Only FAILURES are stored, and a successful login clears that email's rows.
+/// Lockouts are short and AUTO-EXPIRING (we only ever count rows newer than the
+/// window), so nobody needs an admin to unlock them. Old rows are pruned
+/// opportunistically. We store a salted hash of the IP, never the raw IP.
+model LoginAttempt {
+  id        Int      @id @default(autoincrement())
+  email     String // normalised: trimmed + lowercased
+  ipHash    String // salted SHA-256 of the caller's IP
+  createdAt DateTime @default(now())
+
+  // The two lookups the guard makes: "recent failures for this email?" and
+  // "recent failures from this IP?".
+  @@index([email, createdAt])
+  @@index([ipHash, createdAt])
 }
 
 /// One customer feedback submission, belonging to exactly one Restaurant.
@@ -167,4 +199,9 @@ model Feedback {
 
   // Speeds up the "how many recent submissions from this IP?" rate-limit query.
   @@index([ipHash, createdAt])
+  // THE app's hottest query: "all feedback for restaurant X" (every dashboard load)
+  // and "recent feedback for restaurant X" (the spam guard). Postgres does NOT
+  // auto-index a foreign key, so before M17 this was a sequential scan over EVERY
+  // tenant's rows — it got slower for each customer as OTHER customers grew.
+  @@index([restaurantId, createdAt])
 }

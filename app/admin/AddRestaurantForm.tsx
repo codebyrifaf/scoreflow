@@ -141,7 +141,7 @@ export default function AddRestaurantForm({
           className="text-sm font-medium text-[#111827]"
         >
           Owner initial password{" "}
-          <span className="font-normal text-[#9CA3AF]">(at least 8 characters)</span>
+          <span className="font-normal text-[#9CA3AF]">(at least 12 characters)</span>
         </label>
         {/* type="text" so you (the operator) can read it to pass it on. */}
         <input
