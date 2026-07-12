@@ -78,31 +78,52 @@ export async function requestSignup(
     return { errors: { form: "Too many attempts. Please try again in a few minutes." } };
   }
 
-  // Is this email already a real account? Show the same friendly nudge either way.
-  if ((await getOwnerByEmail(email)) || (await getOperatorByEmail(email))) {
-    return {
-      errors: {
-        email: "That email already has an account. Try signing in, or reset your password.",
-      },
-    };
-  }
+  // ── No user enumeration (M25) ──────────────────────────────────────────────
+  // If the email already has an account, we must NOT say so on the response —
+  // that would let an attacker probe which emails (including the operator's) are
+  // registered. Instead we behave EXACTLY as we do for a new email: we always
+  // redirect to the verify screen. The difference is invisible from outside:
+  //   • new email  → we create a pending signup + email a verification CODE;
+  //   • existing   → we create nothing, and email the real owner a heads-up that
+  //                  someone tried to sign up with their address (with a nudge to
+  //                  sign in / reset). No code exists, so the verify step just
+  //                  fails like a wrong code — revealing nothing.
+  const existing =
+    (await getOwnerByEmail(email)) || (await getOperatorByEmail(email));
 
+  // Always pay the bcrypt cost, even for an existing email — otherwise the
+  // existing path (no hashing) returns measurably faster and RESPONSE TIMING
+  // becomes an enumeration oracle. Hashing here keeps both paths ~constant-time.
   const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
 
   try {
-    // Upsert: re-submitting the same email just refreshes the pending row + code.
-    await prisma.pendingSignup.upsert({
-      where: { email },
-      update: { passwordHash, restaurantName },
-      create: { email, passwordHash, restaurantName },
-    });
-    await emailCode(email);
-    await recordFailure(email, ipHash); // counts toward the IP throttle
+    if (existing) {
+      await sendEmail({
+        to: email,
+        subject: "You already have a ScoreFlow account",
+        body:
+          `Someone tried to start a new ScoreFlow signup with this email, but you ` +
+          `already have an account.\n\n` +
+          `If that was you, just sign in — or use "Forgot password" if you can't ` +
+          `remember it. If it wasn't you, you can safely ignore this email; nothing ` +
+          `has changed.`,
+      });
+    } else {
+      // Upsert: re-submitting the same email just refreshes the pending row + code.
+      await prisma.pendingSignup.upsert({
+        where: { email },
+        update: { passwordHash, restaurantName },
+        create: { email, passwordHash, restaurantName },
+      });
+      await emailCode(email);
+    }
+    await recordFailure(email, ipHash); // counts toward the IP throttle either way
   } catch {
     return { errors: { form: "Could not start signup. Please try again." } };
   }
 
-  // Off to enter the code. (redirect throws — must be outside try/catch.)
+  // Same destination whether the email existed or not — no enumeration.
+  // (redirect throws — must be outside try/catch.)
   redirect(`/signup/verify?email=${encodeURIComponent(email)}`);
 }
 

@@ -24,6 +24,7 @@
  */
 
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import bcrypt from "bcryptjs";
 import { auth } from "@/auth";
 import { requireDashboardAccess } from "@/lib/auth-guard";
@@ -31,6 +32,8 @@ import { getOwnerById, updateOwnerPassword } from "@/lib/owners";
 import { getRestaurantBySlug } from "@/lib/restaurants";
 import { resolveFeedback as resolveFeedbackRow } from "@/lib/feedback";
 import { validateNewPassword } from "@/lib/passwords";
+import { clientIpHash } from "@/lib/request-ip";
+import { isThrottled, recordFailure, clearFailures } from "@/lib/login-attempts";
 
 export type ChangePasswordState = { error: string } | { ok: true } | undefined;
 
@@ -67,11 +70,23 @@ export async function changePassword(
     return { error: "Account not found." };
   }
 
+  // Rate-limit the current-password check (M25). Without this, an attacker sitting
+  // on an unlocked/lingering session could brute-force the account password to
+  // "confirm" it (e.g. before reusing it elsewhere). Reuses the same hardened
+  // guard as login, keyed on this owner's email + caller IP, and checked BEFORE
+  // the bcrypt compare so it can't be used as a CPU-burner either.
+  const ipHash = clientIpHash(await headers());
+  if (await isThrottled(owner.email, ipHash)) {
+    return { error: "Too many attempts. Please try again in a few minutes." };
+  }
+
   // Verify the CURRENT password before allowing a change.
   const ok = await bcrypt.compare(currentPassword, owner.passwordHash);
   if (!ok) {
+    await recordFailure(owner.email, ipHash);
     return { error: "Your current password is incorrect." };
   }
+  await clearFailures(owner.email); // correct password → wipe the penalty
 
   const newHash = await bcrypt.hash(newPassword, 10);
   // Also bumps tokenVersion → every existing session for this account dies,

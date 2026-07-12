@@ -25,6 +25,7 @@ import { auth } from "@/auth";
 import { requireDashboardAccess } from "@/lib/auth-guard";
 import { getRestaurantBySlug, updateRestaurantSettings } from "@/lib/restaurants";
 import { updateNotificationPrefs } from "@/lib/owners";
+import { isValidGoogleReviewUrl, GOOGLE_REVIEW_URL_ERROR } from "@/lib/review-url";
 
 export type SettingsState =
   | { ok: true }
@@ -66,9 +67,10 @@ export async function saveSettings(
 
   if (!name) errors.name = "Restaurant name is required.";
 
-  if (googleReviewUrl && !/^https?:\/\/.+/.test(googleReviewUrl)) {
-    errors.googleReviewUrl =
-      "Enter a valid link starting with http:// or https:// (or leave it blank).";
+  // Must be a real Google review link (M25). Constraining this to Google hosts is
+  // what stops /go-review from becoming an open redirect off our own domain.
+  if (googleReviewUrl && !isValidGoogleReviewUrl(googleReviewUrl)) {
+    errors.googleReviewUrl = GOOGLE_REVIEW_URL_ERROR;
   }
 
   const positiveThreshold = Number(positiveThresholdRaw);

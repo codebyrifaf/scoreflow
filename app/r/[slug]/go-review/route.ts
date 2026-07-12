@@ -18,6 +18,7 @@
 import { NextResponse } from "next/server";
 import { getRestaurantBySlug } from "@/lib/restaurants";
 import { markReviewClicked } from "@/lib/feedback";
+import { isValidGoogleReviewUrl } from "@/lib/review-url";
 
 export async function GET(
   request: Request,
@@ -32,9 +33,12 @@ export async function GET(
     restaurant = null;
   }
 
-  // No restaurant, or no review URL set → send them somewhere sane rather than
-  // 404-ing a diner who's trying to be nice. Back to the feedback page.
-  if (!restaurant?.googleReviewUrl) {
+  // No restaurant, no review URL, or a URL that isn't actually a Google link →
+  // send them back to the feedback page rather than redirecting off-domain. The
+  // save-time validation (M25) should already guarantee Google-only URLs, but we
+  // re-check HERE too: this is the thing that actually performs the redirect, so it
+  // must never trust a stored value (defense-in-depth against any legacy/bad row).
+  if (!restaurant?.googleReviewUrl || !isValidGoogleReviewUrl(restaurant.googleReviewUrl)) {
     return NextResponse.redirect(new URL(`/r/${slug}/feedback`, request.url));
   }
 

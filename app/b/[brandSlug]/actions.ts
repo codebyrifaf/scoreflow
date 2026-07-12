@@ -22,6 +22,7 @@ import {
 } from "@/lib/restaurants";
 import { getOwnerByEmail, updateOwnerPassword } from "@/lib/owners";
 import { getOperatorByEmail } from "@/lib/operators";
+import { isValidGoogleReviewUrl, GOOGLE_REVIEW_URL_ERROR } from "@/lib/review-url";
 import { validateNewPassword } from "@/lib/passwords";
 
 const SALT_ROUNDS = 10;
@@ -48,8 +49,8 @@ function readBranchFields(formData: FormData) {
   if (!slug) errors.slug = "Slug is required.";
   else if (!/^[a-z0-9-]+$/.test(slug))
     errors.slug = "Slug can only contain lowercase letters, numbers, and hyphens.";
-  if (googleReviewUrl && !/^https?:\/\/.+/.test(googleReviewUrl))
-    errors.googleReviewUrl = "Enter a valid URL starting with http:// or https://.";
+  if (googleReviewUrl && !isValidGoogleReviewUrl(googleReviewUrl))
+    errors.googleReviewUrl = GOOGLE_REVIEW_URL_ERROR;
   if (
     !positiveThresholdRaw ||
     !Number.isInteger(positiveThreshold) ||
