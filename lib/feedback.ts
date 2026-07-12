@@ -12,32 +12,30 @@
  */
 
 import { prisma } from "./prisma";
-import type { FeedbackPayload, FeedbackRecord } from "./types";
+import { lastLocalDays, localDayKey, weekdayNarrow } from "./time";
+import type {
+  FeedbackPayload,
+  FeedbackRecord,
+  FeedbackStats,
+  ReviewInviteStats,
+  TrendDay,
+} from "./types";
 
 /**
- * Read feedback for ONE restaurant, oldest first.
- *
- * The `where: { restaurantId }` filter is the isolation boundary — the dashboard
- * for a given restaurant only ever gets that restaurant's rows. We translate each
- * database row into the `FeedbackRecord` shape the dashboard expects (its
- * `createdAt` Date becomes an ISO `timestamp` string).
- *
- * `since` (Milestone 9) optionally limits results to submissions on/after that
- * moment — used by the dashboard's Today / This week / This month filters. Omit
- * it to get all feedback.
+ * ⚠️ DEPRECATED (Milestone 24). Loads EVERY feedback row for a restaurant. This was
+ * the dashboard's data source, and on a busy venue it meant fetching thousands of
+ * rows into memory on every page load. It has been replaced by the BOUNDED queries
+ * below (`getFeedbackStats`, `getDailyTrend`, `getLowestRated`, `getRecentFeedback`,
+ * `getTopTags`). Do not reach for this in new code.
  */
 export async function getFeedbackForRestaurant(
   restaurantId: number,
   since?: Date
 ): Promise<FeedbackRecord[]> {
   const rows = await prisma.feedback.findMany({
-    where: {
-      restaurantId,
-      ...(since ? { createdAt: { gte: since } } : {}),
-    },
+    where: { restaurantId, ...(since ? { createdAt: { gte: since } } : {}) },
     orderBy: { createdAt: "asc" },
   });
-
   return rows.map(toRecord);
 }
 
@@ -49,6 +47,8 @@ function toRecord(row: {
   rating: number;
   comment: string;
   tags: string[];
+  contactName: string | null;
+  contactPhone: string | null;
   resolvedAt: Date | null;
   createdAt: Date;
 }): FeedbackRecord {
@@ -59,10 +59,170 @@ function toRecord(row: {
     rating: row.rating,
     comment: row.comment,
     tags: row.tags,
+    contactName: row.contactName ?? "",
+    contactPhone: row.contactPhone ?? "",
     resolvedAt: row.resolvedAt?.toISOString() ?? null,
     // The database stores a real Date; the rest of the app uses an ISO string.
     timestamp: row.createdAt.toISOString(),
   };
+}
+
+// ── Bounded dashboard queries (Milestone 24) ────────────────────────────────
+//
+// Each of these is bounded — an aggregate (no rows in memory), or a `take`-limited
+// slice — so the dashboard's cost no longer grows with a restaurant's history. All
+// use the `[restaurantId, createdAt]` index from M17.
+
+/**
+ * The window's total responses + average rating, computed in SQL.
+ * `since` (inclusive) and `until` (exclusive) bound the window; omit both for all
+ * time. `until` is what lets the dashboard measure the PREVIOUS period for its
+ * "vs previous" delta ([prevStart, since)).
+ */
+export async function getFeedbackStats(
+  restaurantId: number,
+  since?: Date,
+  until?: Date
+): Promise<FeedbackStats> {
+  const createdAt =
+    since || until
+      ? { ...(since ? { gte: since } : {}), ...(until ? { lt: until } : {}) }
+      : undefined;
+  const agg = await prisma.feedback.aggregate({
+    where: { restaurantId, ...(createdAt ? { createdAt } : {}) },
+    _count: { _all: true },
+    _avg: { rating: true },
+  });
+  return { total: agg._count._all, average: agg._avg.rating };
+}
+
+/**
+ * The 7-day daily-average trend, bucketed by LOCAL (Europe/London) day — so
+ * "yesterday" is a real local day, not a UTC one (Milestone 24 timezone fix).
+ * Loads only the last 7 local days of rows, never the whole history.
+ */
+export async function getDailyTrend(
+  restaurantId: number,
+  now: Date = new Date()
+): Promise<TrendDay[]> {
+  const days = lastLocalDays(7, now);
+  const rows = await prisma.feedback.findMany({
+    where: { restaurantId, createdAt: { gte: days[0].start } },
+    select: { rating: true, createdAt: true },
+  });
+
+  // Sum + count per local day.
+  const byDay = new Map<string, { sum: number; count: number }>();
+  for (const r of rows) {
+    const key = localDayKey(r.createdAt);
+    const cur = byDay.get(key) ?? { sum: 0, count: 0 };
+    cur.sum += r.rating;
+    cur.count += 1;
+    byDay.set(key, cur);
+  }
+
+  return days.map((d) => {
+    const agg = byDay.get(d.key);
+    return {
+      label: weekdayNarrow(d.date),
+      avg: agg && agg.count > 0 ? agg.sum / agg.count : null,
+      count: agg?.count ?? 0,
+    };
+  });
+}
+
+/** The lowest-rated orders in the window (worst first). Bounded by `take`. */
+export async function getLowestRated(
+  restaurantId: number,
+  since: Date | undefined,
+  take = 5
+): Promise<FeedbackRecord[]> {
+  const rows = await prisma.feedback.findMany({
+    where: { restaurantId, ...(since ? { createdAt: { gte: since } } : {}) },
+    orderBy: [{ rating: "asc" }, { createdAt: "desc" }],
+    take,
+  });
+  return rows.map(toRecord);
+}
+
+/** The most recent submissions in the window. Bounded by `take` (pagination). */
+export async function getRecentFeedback(
+  restaurantId: number,
+  since: Date | undefined,
+  take = 50
+): Promise<FeedbackRecord[]> {
+  const rows = await prisma.feedback.findMany({
+    where: { restaurantId, ...(since ? { createdAt: { gte: since } } : {}) },
+    orderBy: { createdAt: "desc" },
+    take,
+  });
+  return rows.map(toRecord);
+}
+
+/**
+ * Top quick-tap "mentions" in the window. Counted over the most recent `sample`
+ * submissions rather than the entire history — bounded, and representative enough
+ * for what is a directional "what keeps coming up?" signal, not exact accounting.
+ */
+export async function getTopTags(
+  restaurantId: number,
+  since: Date | undefined,
+  sample = 500
+): Promise<{ tag: string; count: number }[]> {
+  const rows = await prisma.feedback.findMany({
+    where: { restaurantId, ...(since ? { createdAt: { gte: since } } : {}) },
+    select: { tags: true },
+    orderBy: { createdAt: "desc" },
+    take: sample,
+  });
+  const counts = new Map<string, number>();
+  for (const r of rows) {
+    for (const tag of r.tags) counts.set(tag, (counts.get(tag) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 6)
+    .map(([tag, count]) => ({ tag, count }));
+}
+
+/**
+ * Review-invite ROI (Milestone 24): of the diners who submitted (and were therefore
+ * shown the Google invite), how many actually tapped through.
+ *
+ * `invited` is the number of submissions in the window — every diner is shown the
+ * same invite when a review URL is set, so submissions ≈ invitations. `clicked` is
+ * those with `reviewClickedAt` stamped. The dashboard only surfaces this when a
+ * review URL is actually set, so "invited" is meaningful.
+ */
+export async function getReviewInviteStats(
+  restaurantId: number,
+  since?: Date
+): Promise<ReviewInviteStats> {
+  const where = { restaurantId, ...(since ? { createdAt: { gte: since } } : {}) };
+  const [invited, clicked] = await Promise.all([
+    prisma.feedback.count({ where }),
+    prisma.feedback.count({ where: { ...where, reviewClickedAt: { not: null } } }),
+  ]);
+  return { invited, clicked };
+}
+
+/**
+ * Stamp that THIS diner tapped through to Google (Milestone 24). Called by the
+ * `/r/<slug>/go-review` redirect.
+ *
+ * SECURITY: `id` comes from a public URL, so it's scoped to `restaurantId` (a
+ * forged id from another tenant matches nothing), and `reviewClickedAt: null` means
+ * we count each diner's click at most once. Best-effort — the redirect never waits
+ * on or fails because of this.
+ */
+export async function markReviewClicked(
+  id: number,
+  restaurantId: number
+): Promise<void> {
+  await prisma.feedback.updateMany({
+    where: { id, restaurantId, reviewClickedAt: null },
+    data: { reviewClickedAt: new Date() },
+  });
 }
 
 /**
@@ -124,7 +284,9 @@ export async function reopenFeedback(
 }
 
 /**
- * Save one new feedback submission for ONE restaurant.
+ * Save one new feedback submission for ONE restaurant, and RETURN its id
+ * (Milestone 24 — the thank-you screen needs the id to build a review link that
+ * we can attribute a click back to).
  *
  * `restaurantId` is resolved server-side from the URL slug (never trusted from
  * the browser). `createdAt` is filled in automatically by the database default.
@@ -133,8 +295,8 @@ export async function createFeedback(
   restaurantId: number,
   input: FeedbackPayload,
   ipHash?: string | null
-): Promise<void> {
-  await prisma.feedback.create({
+): Promise<number> {
+  const row = await prisma.feedback.create({
     data: {
       restaurantId,
       table: input.table,
@@ -142,9 +304,13 @@ export async function createFeedback(
       rating: input.rating,
       comment: input.comment,
       tags: input.tags,
+      contactName: input.contactName || null,
+      contactPhone: input.contactPhone || null,
       ipHash: ipHash ?? null,
     },
+    select: { id: true },
   });
+  return row.id;
 }
 
 /**

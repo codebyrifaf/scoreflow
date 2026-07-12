@@ -105,7 +105,15 @@ export async function notifyComplaint(restaurantId: number): Promise<void> {
 function buildComplaintEmail(
   restaurantName: string,
   slug: string,
-  complaints: { rating: number; table: string | null; orderNumber: string; comment: string; tags: string[] }[]
+  complaints: {
+    rating: number;
+    table: string | null;
+    orderNumber: string;
+    comment: string;
+    tags: string[];
+    contactName: string;
+    contactPhone: string;
+  }[]
 ): string {
   const lines = [
     complaints.length === 1
@@ -118,6 +126,12 @@ function buildComplaintEmail(
     lines.push(`  ${c.rating}/10 — order ${c.orderNumber}${c.table ? `, table ${c.table}` : ""}`);
     if (c.tags.length) lines.push(`  Tagged: ${c.tags.join(", ")}`);
     if (c.comment) lines.push(`  "${c.comment}"`);
+    // The win-back detail — if they left a number, put it right in the email so
+    // the owner can call from their phone without opening anything (M24).
+    if (c.contactName || c.contactPhone) {
+      const who = [c.contactName, c.contactPhone].filter(Boolean).join(" · ");
+      lines.push(`  ↳ Wants to be contacted: ${who}`);
+    }
     lines.push("");
   }
 

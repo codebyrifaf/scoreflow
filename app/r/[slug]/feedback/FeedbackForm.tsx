@@ -90,11 +90,21 @@ export default function FeedbackForm({
   const [rating, setRating] = useState(0); // 0 means "nothing selected yet"
   const [comment, setComment] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  // Optional win-back contact (M24) — offered to an unhappy diner so the restaurant
+  // can reach out. Both optional.
+  const [contactName, setContactName] = useState("");
+  const [contactPhone, setContactPhone] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   const [errorMessage, setErrorMessage] = useState("");
+  // After a successful submit, the API returns the new feedback's id. We use it to
+  // build a review link that attributes the click back to this diner (M24).
+  const [feedbackId, setFeedbackId] = useState<number | null>(null);
   // Honeypot: a field humans never see. Real users leave it empty; bots that
   // auto-fill every input trip it, and the server rejects the submission.
   const [website, setWebsite] = useState("");
+
+  // Whether this diner is unhappy — drives the win-back contact prompt below.
+  const isUnhappy = rating > 0 && rating < positiveThreshold;
 
   // The quick-tap chips for the currently selected rating: "what did you love?" for
   // a good score, "what could be better?" for a poor one; empty until a rating is
@@ -145,6 +155,9 @@ export default function FeedbackForm({
       rating,
       comment: comment.trim(),
       tags: selectedTags,
+      // Only send contact when it was actually offered (unhappy path).
+      contactName: isUnhappy ? contactName.trim() : "",
+      contactPhone: isUnhappy ? contactPhone.trim() : "",
     };
 
     try {
@@ -160,6 +173,9 @@ export default function FeedbackForm({
         throw new Error(data?.error ?? "Something went wrong.");
       }
 
+      // Keep the new feedback's id for the review link (M24).
+      const data = (await res.json().catch(() => null)) as { id?: number } | null;
+      setFeedbackId(typeof data?.id === "number" ? data.id : null);
       setStatus("success");
     } catch (err) {
       setStatus("error");
@@ -229,11 +245,20 @@ export default function FeedbackForm({
           )}
 
           {/* THE REVIEW INVITE — offered to everyone, identically. If the owner
-              hasn't set a link we show nothing at all, rather than a dead button. */}
+              hasn't set a link we show nothing at all, rather than a dead button.
+
+              The link points at our own /go-review redirect (which records the
+              click, then forwards to Google) so the owner can see how many invites
+              actually convert — M24. If we somehow didn't get an id back, fall
+              straight through to the Google URL so the diner is never blocked. */}
           {googleReviewUrl && (
             <>
               <a
-                href={googleReviewUrl}
+                href={
+                  feedbackId
+                    ? `/r/${slug}/go-review?f=${feedbackId}`
+                    : googleReviewUrl
+                }
                 className={`mt-8 block ${PRIMARY_BTN_CLASS}`}
               >
                 Leave a review on Google
@@ -391,6 +416,41 @@ export default function FeedbackForm({
               className={`${FIELD_CLASS} resize-none`}
             />
           </div>
+
+          {/* Win-back contact (M24) — shown only to an UNHAPPY diner. This is the
+              restaurant's chance to reach out and fix it before it becomes a public
+              one-star. Entirely optional; most people skip it, and that's fine. */}
+          {isUnhappy && (
+            <div className="flex flex-col gap-3 rounded-2xl bg-[#F9FAFB] p-4">
+              <div>
+                <p className="text-sm font-semibold text-[#111827]">
+                  Want the team to make it right?
+                </p>
+                <p className="mt-0.5 text-sm text-[#6B7280]">
+                  Leave your details and {restaurantName} will be in touch. Optional.
+                </p>
+              </div>
+              <input
+                type="text"
+                value={contactName}
+                onChange={(e) => setContactName(e.target.value)}
+                placeholder="Your name"
+                autoComplete="name"
+                maxLength={80}
+                className={FIELD_CLASS}
+              />
+              <input
+                type="tel"
+                value={contactPhone}
+                onChange={(e) => setContactPhone(e.target.value)}
+                placeholder="Phone number"
+                autoComplete="tel"
+                inputMode="tel"
+                maxLength={40}
+                className={FIELD_CLASS}
+              />
+            </div>
+          )}
 
           {/* Validation / server error message ------------------------------- */}
           {errorMessage && (

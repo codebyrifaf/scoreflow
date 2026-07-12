@@ -30,6 +30,13 @@ export interface FeedbackPayload {
    * ["Slow service", "Food was cold"]. Empty array if they picked none.
    */
   tags: string[];
+  /**
+   * OPTIONAL win-back contact (Milestone 24). A diner — usually an unhappy one —
+   * can leave a name + phone so the restaurant can reach out and make it right.
+   * Empty string when not given. This is personal data; handled with care.
+   */
+  contactName: string;
+  contactPhone: string;
 }
 
 /**
@@ -55,4 +62,25 @@ export interface FeedbackRecord extends FeedbackPayload {
    * open. Only meaningful for ratings at/below the restaurant's `alertThreshold`.
    */
   resolvedAt: string | null;
+}
+
+/** A day in the 7-day trend: its label and the average rating that day (Milestone 24). */
+export interface TrendDay {
+  label: string;
+  avg: number | null;
+  count: number;
+}
+
+/** The window's headline numbers, computed in SQL not in memory (Milestone 24). */
+export interface FeedbackStats {
+  total: number;
+  average: number | null;
+}
+
+/** Review-invite conversion for proving ROI (Milestone 24). */
+export interface ReviewInviteStats {
+  /** Diners shown the Google invite (i.e. submissions while a review URL was set). */
+  invited: number;
+  /** Of those, how many tapped through to Google. */
+  clicked: number;
 }

@@ -335,6 +335,13 @@ model Feedback {
   // Quick-tap suggestion chips the customer selected (Milestone 9), e.g.
   // ["Slow service", "Food was cold"]. Empty when they picked none.
   tags         String[]   @default([])
+  // WIN-BACK CONTACT (Milestone 24). Optional. An unhappy diner can leave a name +
+  // phone so the restaurant can reach out and make it right BEFORE it becomes a
+  // public one-star. Most diners leave these blank; that's expected.
+  // ⚠️ This is diner PERSONAL DATA — it raises the (already-open) need for a real
+  // privacy policy before selling. Length-capped and sanitised at the API.
+  contactName  String?
+  contactPhone String?
   // Hashed caller IP (Milestone 13 — spam guard). We store only a salted SHA-256
   // hash, never the raw IP, and use it to rate-limit submissions. Null for older
   // rows / when no IP is available.
@@ -348,6 +355,12 @@ model Feedback {
   // Stamped once this row has been included in an alert email, so a diner is never
   // reported twice (alerts are BATCHED — see lib/notifications.ts).
   alertedAt    DateTime?
+  // REVIEW-INVITE CLICK TRACKING (Milestone 24 — proving ROI). Every diner is shown
+  // the Google review invite; this is stamped when THIS diner actually taps through
+  // (via the /r/<slug>/go-review redirect). The owner's dashboard turns it into
+  // "N invited → M clicked", which is the number that answers "what am I paying
+  // for?" and stops month-two churn. Nullable, stamped at most once.
+  reviewClickedAt DateTime?
   createdAt    DateTime   @default(now())
 
   // Speeds up the "how many recent submissions from this IP?" rate-limit query.

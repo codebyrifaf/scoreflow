@@ -14,13 +14,25 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getRestaurantBySlug } from "@/lib/restaurants";
-import { getFeedbackForRestaurant, getOpenComplaints } from "@/lib/feedback";
+import {
+  getFeedbackStats,
+  getDailyTrend,
+  getLowestRated,
+  getRecentFeedback,
+  getTopTags,
+  getReviewInviteStats,
+  getOpenComplaints,
+} from "@/lib/feedback";
+import { startOfTodayLocal, formatInAppTz } from "@/lib/time";
 import { requireDashboardAccess } from "@/lib/auth-guard";
 import { logout } from "@/app/login/actions";
 import ChangePassword from "./ChangePassword";
 import NeedsAttention from "./NeedsAttention";
 import SubscriptionLocked from "@/app/SubscriptionLocked";
 import type { FeedbackRecord } from "@/lib/types";
+
+/** How many recent submissions the "All submissions" list shows (pagination cap). */
+const RECENT_LIMIT = 50;
 
 // Always render on each request so the owner sees the latest feedback.
 export const dynamic = "force-dynamic";
@@ -40,29 +52,20 @@ const RANGE_LABELS: Record<Range, string> = {
   month: "Month",
 };
 
-/** The earliest timestamp to include for a range (null = no limit / all time). */
-function cutoffFor(range: Range, now: number): Date | null {
+/**
+ * The earliest timestamp to include for a range (null = no limit / all time).
+ *
+ * ⚠️ "today" now means the start of the current LOCAL (Europe/London) day, not the
+ * server's UTC midnight (Milestone 24). On Vercel the server is UTC, so the old
+ * `setHours(0,0,0,0)` put "today" an hour off in summer and dropped late-evening
+ * diners into the wrong day. "week"/"month" are rolling windows, which are
+ * timezone-independent, so they're unchanged.
+ */
+function cutoffFor(range: Range, now: Date): Date | null {
   if (range === "all") return null;
-  if (range === "today") {
-    const d = new Date(now);
-    d.setHours(0, 0, 0, 0); // since midnight today
-    return d;
-  }
+  if (range === "today") return startOfTodayLocal(now);
   const days = range === "week" ? 7 : 30; // rolling 7 / 30 days
-  return new Date(now - days * 24 * 60 * 60 * 1000);
-}
-
-/** Average rating of a list, or null when it's empty. */
-function averageOf(list: FeedbackRecord[]): number | null {
-  if (list.length === 0) return null;
-  return list.reduce((sum, r) => sum + r.rating, 0) / list.length;
-}
-
-/** A readable timestamp, e.g. "7/6/2026, 5:03:35 PM". */
-function formatTimestamp(iso: string): string {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return iso;
-  return date.toLocaleString();
+  return new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
 }
 
 /** Colour a rating so an owner can scan good/ok/bad at a glance. */
@@ -92,7 +95,7 @@ function FeedbackItem({ record }: { record: FeedbackRecord }) {
             </span>
           </span>
           <span className="flex-none text-xs text-[#9CA3AF]">
-            {formatTimestamp(record.timestamp)}
+            {formatInAppTz(record.timestamp)}
           </span>
         </div>
         {record.comment && (
@@ -109,6 +112,13 @@ function FeedbackItem({ record }: { record: FeedbackRecord }) {
               </span>
             ))}
           </div>
+        )}
+        {/* Win-back contact, if this diner left one (M24). */}
+        {(record.contactName || record.contactPhone) && (
+          <p className="mt-2 rounded-lg bg-amber-50 px-2.5 py-1.5 text-sm font-medium text-amber-900">
+            Contact:{" "}
+            {[record.contactName, record.contactPhone].filter(Boolean).join(" · ")}
+          </p>
         )}
       </div>
     </div>
@@ -167,74 +177,48 @@ export default async function DashboardPage({
     notFound();
   }
 
-  // Fetch ALL feedback once, then derive each view in memory (volumes are small).
-  // The open-complaints worklist is a separate, indexed query (M18) — it ignores
-  // the time-range filter on purpose: an unhappy diner from last week is still
-  // waiting on you, and hiding them behind a "Today" tab would defeat the point.
-  const [all, openComplaints] = await Promise.all([
-    getFeedbackForRestaurant(restaurant.id),
-    getOpenComplaints(restaurant.id, restaurant.alertThreshold),
-  ]);
-  const now = Date.now();
-  const since = cutoffFor(range, now);
+  // ── BOUNDED data loading (Milestone 24) ─────────────────────────────────────
+  // Previously this fetched EVERY feedback row and derived everything in memory —
+  // fine at 50 responses, a multi-MB page and slow query at 10,000. Now each piece
+  // is an aggregate (no rows) or a `take`-limited slice, so the dashboard's cost no
+  // longer grows with the restaurant's history. All use the [restaurantId,
+  // createdAt] index. The open-complaints worklist deliberately ignores the range
+  // filter — an unhappy diner from last week is still waiting on you.
+  const now = new Date();
+  const since = cutoffFor(range, now) ?? undefined;
 
-  // Feedback within the selected window.
-  const current = since
-    ? all.filter((f) => new Date(f.timestamp).getTime() >= since.getTime())
-    : all;
+  const [stats, days, lowestRated, recent, topTags, reviewStats, openComplaints] =
+    await Promise.all([
+      getFeedbackStats(restaurant.id, since),
+      getDailyTrend(restaurant.id, now),
+      getLowestRated(restaurant.id, since, 5),
+      getRecentFeedback(restaurant.id, since, RECENT_LIMIT),
+      getTopTags(restaurant.id, since),
+      getReviewInviteStats(restaurant.id, since),
+      getOpenComplaints(restaurant.id, restaurant.alertThreshold),
+    ]);
 
-  const total = current.length;
-  const averageRating = averageOf(current);
+  const total = stats.total;
+  const averageRating = stats.average;
 
   // "Are we improving?" — compare this window's average to the SAME-length window
-  // immediately before it. Only meaningful for a specific range with data in both.
+  // immediately before it (a separate bounded aggregate, not rows in memory).
   let delta: number | null = null;
   if (since) {
-    const length = now - since.getTime();
-    const prevStart = since.getTime() - length;
-    const prev = all.filter((f) => {
-      const t = new Date(f.timestamp).getTime();
-      return t >= prevStart && t < since.getTime();
-    });
-    const a = averageOf(current);
-    const p = averageOf(prev);
-    if (a !== null && p !== null) delta = a - p;
+    const windowMs = now.getTime() - since.getTime();
+    const prevStart = new Date(since.getTime() - windowMs);
+    const prev = await getFeedbackStats(restaurant.id, prevStart, since);
+    if (averageRating !== null && prev.average !== null) {
+      delta = averageRating - prev.average;
+    }
   }
 
-  // Derived lists (copy before sorting so they don't interfere).
-  const lowestRated = [...current].sort((a, b) => a.rating - b.rating).slice(0, 5);
-  const mostRecentFirst = [...current].sort(
-    (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-  );
-
-  // Top mentions (most-picked quick-tap tags) within the window.
-  const tagCounts = new Map<string, number>();
-  for (const f of current) {
-    for (const tag of f.tags) tagCounts.set(tag, (tagCounts.get(tag) ?? 0) + 1);
-  }
-  const topTags = [...tagCounts.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 6);
-
-  // Last-7-days daily-average trend (always the last 7 days, from ALL feedback).
-  const startToday = new Date(now);
-  startToday.setHours(0, 0, 0, 0);
-  const days = Array.from({ length: 7 }, (_, idx) => {
-    const i = 6 - idx; // 6 days ago → today
-    const dayStart = startToday.getTime() - i * 24 * 60 * 60 * 1000;
-    const dayEnd = dayStart + 24 * 60 * 60 * 1000;
-    const items = all.filter((f) => {
-      const t = new Date(f.timestamp).getTime();
-      return t >= dayStart && t < dayEnd;
-    });
-    return {
-      label: new Date(dayStart).toLocaleDateString(undefined, {
-        weekday: "narrow",
-      }),
-      avg: averageOf(items),
-      count: items.length,
-    };
-  });
+  // Review-invite conversion — the ROI number (M24). Only meaningful once a Google
+  // link is set (otherwise nobody is being invited).
+  const reviewRatePct =
+    reviewStats.invited > 0
+      ? Math.round((reviewStats.clicked / reviewStats.invited) * 100)
+      : null;
 
   return (
     <main className="font-system min-h-dvh w-full bg-white text-[#111827]">
@@ -321,7 +305,7 @@ export default async function DashboardPage({
         </div>
 
         {/* Summary cards */}
-        <section className="mb-4 grid grid-cols-2 gap-3">
+        <section className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
           <div className={CARD_CLASS}>
             <div className="text-sm text-[#6B7280]">Total responses</div>
             <div className="mt-1 text-3xl font-bold text-[#111827]">{total}</div>
@@ -343,6 +327,20 @@ export default async function DashboardPage({
               </div>
             )}
           </div>
+          {/* Review-invite ROI (M24). This is the number that answers "what am I
+              paying for?" — how many diners we sent to Google actually went. Only
+              shown once a review link is set. */}
+          {restaurant.googleReviewUrl && (
+            <div className={`col-span-2 sm:col-span-1 ${CARD_CLASS}`}>
+              <div className="text-sm text-[#6B7280]">Google reviews</div>
+              <div className="mt-1 text-3xl font-bold text-[#111827]">
+                {reviewRatePct === null ? "—" : `${reviewRatePct}%`}
+              </div>
+              <div className="mt-1 text-xs text-[#9CA3AF]">
+                {reviewStats.clicked} of {reviewStats.invited} invited tapped through
+              </div>
+            </div>
+          )}
         </section>
 
         {/* Trend — last 7 days daily average */}
@@ -383,7 +381,7 @@ export default async function DashboardPage({
           <section className={`mb-8 ${CARD_CLASS}`}>
             <div className="mb-3 text-sm text-[#6B7280]">Top mentions</div>
             <div className="flex flex-wrap gap-2">
-              {topTags.map(([tag, count]) => (
+              {topTags.map(({ tag, count }) => (
                 <span
                   key={tag}
                   className="rounded-full bg-[#F3F4F6] px-3 py-1 text-sm font-medium text-[#111827]"
@@ -415,11 +413,20 @@ export default async function DashboardPage({
             </section>
 
             <section>
-              <h2 className="mb-3 text-lg font-semibold text-[#111827]">
-                All submissions ({total})
+              <h2 className="mb-1 text-lg font-semibold text-[#111827]">
+                {total > RECENT_LIMIT
+                  ? `Latest ${RECENT_LIMIT} submissions`
+                  : `All submissions (${total})`}
               </h2>
-              <div className="flex flex-col gap-2">
-                {mostRecentFirst.map((r) => (
+              {/* Bounded to the most recent 50 (M24) — a busy restaurant could have
+                  thousands, and rendering them all was the old page's perf problem. */}
+              {total > RECENT_LIMIT && (
+                <p className="mb-3 text-sm text-[#9CA3AF]">
+                  Showing the {RECENT_LIMIT} most recent of {total} in this period.
+                </p>
+              )}
+              <div className="mt-3 flex flex-col gap-2">
+                {recent.map((r) => (
                   <FeedbackItem key={r.id} record={r} />
                 ))}
               </div>

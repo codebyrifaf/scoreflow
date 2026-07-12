@@ -72,6 +72,27 @@ function ComplaintCard({
           </div>
         )}
 
+        {/* The win-back contact — the whole point of this worklist (M24). If the
+            diner left a number, the owner can call them right now and turn a
+            one-star into a regular. A tap-to-call link on mobile. */}
+        {(record.contactName || record.contactPhone) && (
+          <div className="mt-2 rounded-lg bg-white px-2.5 py-1.5 text-sm">
+            <span className="font-medium text-[#111827]">
+              {record.contactName || "Diner"} wants to hear from you:
+            </span>{" "}
+            {record.contactPhone ? (
+              <a
+                href={`tel:${record.contactPhone.replace(/\s+/g, "")}`}
+                className="font-semibold text-amber-700 underline"
+              >
+                {record.contactPhone}
+              </a>
+            ) : (
+              <span className="text-[#6B7280]">no number left</span>
+            )}
+          </div>
+        )}
+
         <form action={action} className="mt-3 flex items-center gap-3">
           <button
             type="submit"

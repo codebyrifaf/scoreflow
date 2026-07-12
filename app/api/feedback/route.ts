@@ -70,6 +70,9 @@ const MAX_COMMENT_LENGTH = 1000;
 const MAX_ORDER_NUMBER_LENGTH = 32;
 const MAX_TABLE_LENGTH = 30;
 const MAX_TAGS = 10;
+// Optional win-back contact (M24). Capped like everything else a stranger can send.
+const MAX_CONTACT_NAME_LENGTH = 80;
+const MAX_CONTACT_PHONE_LENGTH = 40;
 
 /**
  * POST /api/feedback
@@ -135,6 +138,19 @@ export async function POST(request: Request) {
     return Response.json({ error: "Invalid table." }, { status: 400 });
   }
 
+  // Optional win-back contact (M24). Both optional; capped and trimmed. We don't
+  // over-validate the phone (people write "+44 …", "text me on …") — just bound it.
+  const contactName =
+    typeof body.contactName === "string" ? body.contactName.trim() : "";
+  const contactPhone =
+    typeof body.contactPhone === "string" ? body.contactPhone.trim() : "";
+  if (
+    contactName.length > MAX_CONTACT_NAME_LENGTH ||
+    contactPhone.length > MAX_CONTACT_PHONE_LENGTH
+  ) {
+    return Response.json({ error: "Contact details are too long." }, { status: 400 });
+  }
+
   // 4. Build a clean payload (the timestamp is added by the database default).
   //    Tags come from the quick-tap chips (M9). They're a CLOSED set, so we accept
   //    ONLY strings that match a real chip (M17) — anything else is silently
@@ -145,6 +161,8 @@ export async function POST(request: Request) {
     orderNumber,
     rating,
     comment,
+    contactName,
+    contactPhone,
     tags: Array.isArray(body.tags)
       ? Array.from(
           new Set(
@@ -202,9 +220,12 @@ export async function POST(request: Request) {
     );
   }
 
-  // 6. Save it, tied to the resolved restaurant's id (with the hashed IP).
+  // 6. Save it, tied to the resolved restaurant's id (with the hashed IP). We keep
+  //    the new row's id so the thank-you screen can build a review link we can
+  //    attribute a click back to (M24).
+  let feedbackId: number;
   try {
-    await createFeedback(restaurant.id, payload, ipHash);
+    feedbackId = await createFeedback(restaurant.id, payload, ipHash);
   } catch (err) {
     console.error("Failed to save feedback:", err);
     return Response.json(
@@ -230,6 +251,9 @@ export async function POST(request: Request) {
     after(() => notifyComplaint(restaurant.id));
   }
 
-  // 8. Success. 201 Created is the conventional status for "we made a new record".
-  return Response.json({ ok: true }, { status: 201 });
+  // 8. Success. Return the feedback id so the thank-you screen's review link can
+  //    carry it (…/go-review?f=<id>) and we can attribute the click. The id is a
+  //    plain autoincrement — not sensitive, and only handed to the diner who just
+  //    created it.
+  return Response.json({ ok: true, id: feedbackId }, { status: 201 });
 }
