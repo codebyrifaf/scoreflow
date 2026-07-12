@@ -265,6 +265,101 @@ html {
   }
 }
 
+/* ── Liquid glass (marketing + chrome ONLY) ───────────────────────────────────
+   Frosted, translucent surfaces — the Apple recipe: blur + a big saturation boost
+   (the saturation is what stops the blur looking like grey fog), a hairline border,
+   and a 1px inner highlight along the top edge so light appears to catch it.
+
+   ⚠️ SCOPE, deliberately: this is used on the LANDING PAGE and the nav only. It is
+   NOT used on the diner's feedback form or on dashboard data. Translucency lowers
+   text contrast, and those two screens are exactly where that is unaffordable — the
+   form is tapped in ten seconds in dim restaurant lighting on a stranger's phone,
+   and the dashboard is dense numbers. Glass sells the product; it must not get in
+   the way of using it.
+
+   ⚠️ Glass over a flat white page is INVISIBLE — there is nothing behind it to
+   refract. `.ambient-*` below supplies that colour. Glass without ambience is just
+   a slower way to draw a white box. */
+.glass {
+  background-color: rgb(255 255 255 / 0.62);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgb(255 255 255 / 0.7);
+  box-shadow:
+    inset 0 1px 0 0 rgb(255 255 255 / 0.75),
+    0 1px 2px rgb(0 0 0 / 0.04),
+    0 12px 32px -12px rgb(0 0 0 / 0.12);
+}
+
+/* The nav: same material, flatter (it sits ON content, so it stays subtle). */
+.glass-nav {
+  background-color: rgb(255 255 255 / 0.72);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+}
+
+/* FALLBACKS — the material must never cost anyone legibility.
+   1. Browsers with no backdrop-filter would render the raw 62% alpha over whatever
+      is behind it, so text could sit on a busy gradient. Go opaque instead.
+   2. `prefers-reduced-transparency` is a real accessibility setting (macOS/iOS
+      "Reduce Transparency", Windows). Honour it: same layout, solid surface. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass,
+  .glass-nav {
+    background-color: rgb(255 255 255 / 0.97);
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .glass,
+  .glass-nav {
+    background-color: rgb(255 255 255 / 0.97);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+/* ── Ambience ────────────────────────────────────────────────────────────────
+   Soft, slow colour washes that live BEHIND the glass. Two of them, in the brand
+   amber and a cool counterweight, kept at low opacity so the page still reads as
+   white — they exist to give the frosted surfaces something to pick up. Purely
+   decorative, so they're `pointer-events: none` and hidden from assistive tech. */
+.ambient {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+.ambient::before,
+.ambient::after {
+  content: "";
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(80px);
+}
+.ambient::before {
+  width: 44rem;
+  height: 44rem;
+  top: -14rem;
+  right: -10rem;
+  background: radial-gradient(
+    circle,
+    rgb(245 158 11 / 0.18) 0%,
+    rgb(245 158 11 / 0) 70%
+  );
+}
+.ambient::after {
+  width: 40rem;
+  height: 40rem;
+  top: 6rem;
+  left: -12rem;
+  background: radial-gradient(
+    circle,
+    rgb(56 132 255 / 0.13) 0%,
+    rgb(56 132 255 / 0) 70%
+  );
+}
+
 /* ── Scrollbars ───────────────────────────────────────────────────────────────
    This used to hide the scrollbar on EVERY element on EVERY page (`* { scrollbar-
    width: none }`). It looked clean on the landing page and quietly hurt everywhere

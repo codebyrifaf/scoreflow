@@ -89,8 +89,11 @@ function PriceCard({
     <div
       className={`flex flex-col rounded-3xl p-8 ${
         featured
-          ? "bg-[#1D1D1F] text-white"
-          : "border border-[#D2D2D7] bg-white text-[#1D1D1F]"
+          ? // The featured card stays SOLID near-black. Glass on the card you most
+            // want read would be a strange thing to do — it needs to be the most
+            // legible object on the page, not the most decorative.
+            "bg-[#1D1D1F] text-white shadow-[0_24px_60px_-20px_rgba(0,0,0,0.45)]"
+          : "glass text-[#1D1D1F]"
       }`}
     >
       <p
@@ -171,8 +174,12 @@ export default function Home() {
       <SiteNav />
 
       {/* ── Hero ──────────────────────────────────────────────────────────── */}
-      <section className="overflow-hidden pt-32 pb-24 sm:pt-40 sm:pb-32">
-        <div className={`${CONTAINER} text-center`}>
+      <section className="relative overflow-hidden pt-32 pb-24 sm:pt-40 sm:pb-32">
+        {/* The colour the frosted nav picks up as you scroll over it. Decorative
+            only — see `.ambient` in globals.css. */}
+        <div className="ambient" aria-hidden="true" />
+
+        <div className={`relative z-10 ${CONTAINER} text-center`}>
           <p
             className="animate-rise text-[14px] font-medium text-[#6E6E73]"
             style={{ "--rise-delay": "0ms" } as React.CSSProperties}
@@ -320,8 +327,12 @@ export default function Home() {
       </section>
 
       {/* ── Pricing ───────────────────────────────────────────────────────── */}
-      <section id="pricing" className={SECTION}>
-        <div className={CONTAINER}>
+      <section id="pricing" className={`relative overflow-hidden ${SECTION}`}>
+        {/* Ambience again — without colour behind it, the glass price card would
+            just be a white box with extra render cost. */}
+        <div className="ambient" aria-hidden="true" />
+
+        <div className={`relative z-10 ${CONTAINER}`}>
           <Reveal>
             <div className="text-center">
               <h2 className="text-[30px] font-semibold leading-[1.1] tracking-[-0.02em] text-[#1D1D1F] sm:text-[44px]">

@@ -33,8 +33,11 @@ export default function SiteNav() {
   return (
     <header
       className={`fixed inset-x-0 top-0 z-50 border-b transition-all duration-200 ${
+        // `.glass-nav` (globals.css) adds the saturation boost the old
+        // `bg-white/80 backdrop-blur-xl` was missing — blur alone reads as grey fog;
+        // it's the saturation that makes colour bloom through and look like glass.
         scrolled
-          ? "border-[#D2D2D7]/70 bg-white/80 backdrop-blur-xl"
+          ? "glass-nav border-[#D2D2D7]/60"
           : "border-transparent bg-transparent"
       }`}
     >
