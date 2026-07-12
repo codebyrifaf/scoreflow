@@ -18,6 +18,7 @@ import { getOwnerByEmail } from "@/lib/owners";
 import { emailIsConfigured } from "@/lib/email";
 import SubscriptionLocked from "@/app/SubscriptionLocked";
 import SettingsForm from "./SettingsForm";
+import LogoUploader from "./LogoUploader";
 
 // Always fresh — settings change and must show their new values immediately.
 export const dynamic = "force-dynamic";
@@ -98,6 +99,19 @@ export default async function SettingsPage({
           isBrandOwner={!!me?.brandId}
           emailConfigured={emailIsConfigured()}
         />
+
+        {/* Logo — ACCOUNT OWNER only. It's a BRAND-WIDE look that shows on every
+            branch's feedback page, so a single branch manager doesn't own that call
+            (M26). The save action re-checks this server-side. */}
+        {me?.brandId && (
+          <div className="mt-6">
+            <LogoUploader
+              slug={slug}
+              currentLogo={me.brand?.logoDataUrl ?? null}
+              fallbackInitial={restaurant.name.charAt(0).toUpperCase()}
+            />
+          </div>
+        )}
 
         {/* The slug is NOT editable here, on purpose — see actions.ts. Say why,
             so the owner doesn't go hunting for it. */}

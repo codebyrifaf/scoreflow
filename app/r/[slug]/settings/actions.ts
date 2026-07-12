@@ -25,6 +25,7 @@ import { auth } from "@/auth";
 import { requireDashboardAccess } from "@/lib/auth-guard";
 import { getRestaurantBySlug, updateRestaurantSettings } from "@/lib/restaurants";
 import { updateNotificationPrefs } from "@/lib/owners";
+import { updateBrandLogo } from "@/lib/brands";
 import { isValidGoogleReviewUrl, GOOGLE_REVIEW_URL_ERROR } from "@/lib/review-url";
 
 export type SettingsState =
@@ -135,5 +136,77 @@ export async function saveSettings(
   revalidatePath(`/r/${slug}/settings`);
   revalidatePath(`/r/${slug}/feedback`);
 
+  return { ok: true };
+}
+
+// ── Brand logo (Milestone 26) ───────────────────────────────────────────────
+
+/** Max length of the stored data URL. The browser resizes to ~256px first, so a
+ *  real logo is ~10–40 KB; this generous cap just bounds abuse + DB bloat. */
+const MAX_LOGO_CHARS = 300 * 1024; // ~300 KB
+
+/**
+ * Validate a client-supplied logo data URL. Returns an error message or null.
+ *
+ * ⚠️ This is a security boundary: the data URL comes from the browser and is later
+ * rendered in an `<img src>`. We accept ONLY base64 PNG/JPEG/WebP — never SVG
+ * (which can carry script) and never `data:text/html` — and we cap the size. The
+ * strict regex also guarantees it's genuinely base64, so nothing odd rides along.
+ */
+function validateLogoDataUrl(dataUrl: string): string | null {
+  if (dataUrl.length > MAX_LOGO_CHARS) {
+    return "That image is too large — please use a smaller logo.";
+  }
+  if (!/^data:image\/(png|jpe?g|webp);base64,[A-Za-z0-9+/]+=*$/.test(dataUrl)) {
+    return "Please upload a PNG, JPG or WebP image.";
+  }
+  return null;
+}
+
+export type LogoState = { ok: true } | { error: string } | undefined;
+
+/**
+ * Set or clear the BRAND's logo (Milestone 26). Bound in the client as
+ * `saveLogo.bind(null, slug)`; `dataUrl` is a resized image data URL, or null to
+ * remove it.
+ *
+ * SECURITY:
+ *   • `requireDashboardAccess(slug)` — you may touch this restaurant at all.
+ *   • `isAccountOwner` — a BRANCH MANAGER cannot change the whole brand's logo;
+ *     only the account (brand) owner can. This is a brand-wide, cross-branch
+ *     change, so it's not a per-branch manager's call.
+ *   • The image itself is validated (type + size) above.
+ */
+export async function saveLogo(
+  slug: string,
+  dataUrl: string | null
+): Promise<LogoState> {
+  const access = await requireDashboardAccess(slug);
+  if (!access.authorized) {
+    return { error: "You are not authorized to do this." };
+  }
+  if (!access.isAccountOwner) {
+    return { error: "Only the account owner can change the logo." };
+  }
+
+  const restaurant = await getRestaurantBySlug(slug);
+  if (!restaurant?.brandId) {
+    return { error: "This restaurant has no brand to attach a logo to." };
+  }
+
+  if (dataUrl !== null) {
+    const invalid = validateLogoDataUrl(dataUrl);
+    if (invalid) return { error: invalid };
+  }
+
+  try {
+    await updateBrandLogo(restaurant.brandId, dataUrl);
+  } catch {
+    return { error: "Could not save the logo. Please try again." };
+  }
+
+  // The logo shows on the diner-facing feedback page and in Settings.
+  revalidatePath(`/r/${slug}/feedback`);
+  revalidatePath(`/r/${slug}/settings`);
   return { ok: true };
 }

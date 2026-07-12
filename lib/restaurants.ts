@@ -20,6 +20,20 @@ export async function getRestaurantBySlug(slug: string) {
   return prisma.restaurant.findUnique({ where: { slug } });
 }
 
+/**
+ * The restaurant PLUS its brand's logo (Milestone 26) — for the diner-facing
+ * feedback page, which brands itself with the account's logo. We pull the logo
+ * ONLY here (not in the lean `getRestaurantBySlug` that the rest of the app uses),
+ * so the (potentially chunky) data-URL blob isn't dragged into every restaurant
+ * lookup.
+ */
+export async function getRestaurantForFeedback(slug: string) {
+  return prisma.restaurant.findUnique({
+    where: { slug },
+    include: { brand: { select: { logoDataUrl: true } } },
+  });
+}
+
 // NOTE (M22): `getAllRestaurantsForAdmin()` and `getPlatformStats()` lived here to
 // feed the old `/admin` area, where the operator created and edited every account
 // by hand. That whole area has been RETIRED — restaurants now sign themselves up,

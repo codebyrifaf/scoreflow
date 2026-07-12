@@ -177,6 +177,14 @@ model Brand {
   // fractions of a penny, and a billing ledger must never do that. 0 = unpriced.
   monthlyPricePence Int      @default(0)
   payments         Payment[] // back-relation: the money actually collected
+
+  // BRAND LOGO (Milestone 26). Shown at the top of the diner-facing feedback page
+  // for EVERY branch of this brand, so the form looks like the restaurant's own.
+  // Stored as a small data: URL (the browser shrinks the image to ~256px before
+  // upload) — no external file store to set up. Null = fall back to the initial-
+  // on-a-disc placeholder. Hard-capped + MIME-validated at the save action, since
+  // it's client-supplied. The CSP already permits `img-src data:`.
+  logoDataUrl      String? // e.g. "data:image/webp;base64,..."
 }
 
 /// An OPERATOR's use of a privileged lever (Milestone 22).

@@ -11,7 +11,7 @@
  */
 
 import { notFound } from "next/navigation";
-import { getRestaurantBySlug } from "@/lib/restaurants";
+import { getRestaurantForFeedback } from "@/lib/restaurants";
 import FeedbackForm from "./FeedbackForm";
 
 export default async function FeedbackPage({
@@ -24,7 +24,7 @@ export default async function FeedbackPage({
   const { slug } = await params;
   const { table } = await searchParams;
 
-  const restaurant = await getRestaurantBySlug(slug);
+  const restaurant = await getRestaurantForFeedback(slug);
   // Unknown restaurant → render the nearest not-found.tsx (a real HTTP 404).
   if (!restaurant) {
     notFound();
@@ -34,6 +34,9 @@ export default async function FeedbackPage({
     <FeedbackForm
       slug={restaurant.slug}
       restaurantName={restaurant.name}
+      // The brand's logo (M26), shown at the top instead of the initial disc when
+      // set. Null for legacy standalone restaurants (no brand) or when unset.
+      logoUrl={restaurant.brand?.logoDataUrl ?? null}
       // Pass NULL when no review URL is set — never "#" (Milestone 18).
       // It used to fall back to "#", which meant a happy diner tapped a big amber
       // "Leave us a Google review" button that went NOWHERE, silently. The whole

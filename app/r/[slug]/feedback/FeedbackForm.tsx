@@ -51,6 +51,12 @@ interface FeedbackFormProps {
   positiveThreshold: number;
   /** Table number from the URL (`?table=`), or null if not provided. */
   table: string | null;
+  /**
+   * The brand's uploaded logo as a small data: URL (Milestone 26), or `null` to
+   * fall back to the first-initial disc. Set by the account owner in Settings; it
+   * shows on every branch's feedback page so the form looks like the restaurant's.
+   */
+  logoUrl: string | null;
 }
 
 // ── Shared style tokens (kept here so every field/screen stays consistent) ────
@@ -69,8 +75,25 @@ const FIELD_CLASS =
 const PRIMARY_BTN_CLASS =
   "w-full rounded-2xl bg-amber-500 px-6 py-4 text-base font-semibold text-white shadow-sm transition-all duration-150 hover:bg-amber-600 active:scale-[0.98]";
 
-/** The circular brand logo — the restaurant's first initial on a brand-color disc. */
-function BrandLogo({ name }: { name: string }) {
+/**
+ * The brand mark at the top of the form (Milestone 26).
+ *
+ * If the account owner has uploaded a logo, we show that (contained in a rounded
+ * square so it's never cropped or stretched). Otherwise we fall back to the
+ * restaurant's first initial on a brand-color disc — so a form with no logo still
+ * looks finished. The `logoUrl` is a `data:` URL, which our CSP permits for images.
+ */
+function BrandLogo({ name, logoUrl }: { name: string; logoUrl: string | null }) {
+  if (logoUrl) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element -- data: URL, not a remote asset
+      <img
+        src={logoUrl}
+        alt={name}
+        className="h-16 w-16 rounded-2xl border border-[#E5E7EB] bg-white object-contain p-1 shadow-sm"
+      />
+    );
+  }
   return (
     <div className="flex h-16 w-16 items-center justify-center rounded-full bg-amber-500 text-3xl font-semibold text-white shadow-sm">
       {name.charAt(0)}
@@ -84,6 +107,7 @@ export default function FeedbackForm({
   googleReviewUrl,
   positiveThreshold,
   table,
+  logoUrl,
 }: FeedbackFormProps) {
   // ── Form state ────────────────────────────────────────────────────────────
   const [orderNumber, setOrderNumber] = useState("");
@@ -279,7 +303,7 @@ export default function FeedbackForm({
       <div className={CARD_CLASS}>
         {/* Header: brand logo + restaurant name + table chip */}
         <header className="mb-8 flex flex-col items-center gap-3 text-center">
-          <BrandLogo name={restaurantName} />
+          <BrandLogo name={restaurantName} logoUrl={logoUrl} />
           <h1 className="text-2xl font-bold tracking-tight text-[#111827]">
             {restaurantName}
           </h1>

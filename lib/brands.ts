@@ -16,6 +16,22 @@ export async function getBrandBySlug(slug: string) {
 }
 
 /**
+ * Set (or clear) a brand's logo (Milestone 26). The logo is stored as a small
+ * data: URL and shown on every branch's diner-facing feedback page. `null` removes
+ * it (the feedback page falls back to the initial-on-a-disc placeholder). The
+ * caller validates the data URL's size + type first — see the settings action.
+ */
+export async function updateBrandLogo(
+  brandId: number,
+  logoDataUrl: string | null
+) {
+  return prisma.brand.update({
+    where: { id: brandId },
+    data: { logoDataUrl },
+  });
+}
+
+/**
  * Where a brand OWNER's home is (Milestone 20 — single-venue routing).
  *
  * The account model reuses `Brand` for everyone, but a customer with ONE location
