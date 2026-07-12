@@ -115,10 +115,14 @@ function ComplaintCard({
 export default function NeedsAttention({
   slug,
   complaints,
+  totalOpen,
   alertThreshold,
 }: {
   slug: string;
+  /** The first page of open complaints — capped, so a big backlog can't bloat the page. */
   complaints: FeedbackRecord[];
+  /** How many are REALLY open. May exceed `complaints.length` (see lib/feedback). */
+  totalOpen: number;
   alertThreshold: number;
 }) {
   // Formatting lives here (not passed from the server) so the timestamp renders in
@@ -149,8 +153,9 @@ export default function NeedsAttention({
     <section className="mb-8">
       <div className="mb-3 flex items-center gap-2">
         <h2 className="text-lg font-semibold text-[#111827]">Needs attention</h2>
+        {/* The TRUE total, not the number of cards we render below. */}
         <span className="rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-bold text-red-700">
-          {complaints.length}
+          {totalOpen}
         </span>
       </div>
       <p className="mb-3 text-sm text-[#6B7280]">
@@ -167,6 +172,16 @@ export default function NeedsAttention({
           />
         ))}
       </div>
+
+      {/* Say so when there are more than we're showing — a silently truncated
+          worklist would let complaints go missing, which is the one thing this
+          feature exists to prevent. */}
+      {totalOpen > complaints.length && (
+        <p className="mt-3 text-center text-sm text-[#6B7280]">
+          Showing the {complaints.length} most recent of {totalOpen} open.
+          Resolve some to see the rest.
+        </p>
+      )}
     </section>
   );
 }

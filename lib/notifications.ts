@@ -209,6 +209,12 @@ export async function sendDailyDigests(): Promise<number> {
     const totalComplaints = rows.reduce((n, r) => n + r.newComplaints, 0);
     const totalOpen = rows.reduce((n, r) => n + r.stillOpen, 0);
 
+    // Nothing happened and nothing is waiting → send NOTHING. A daily email that
+    // says "0 new complaints" is the fastest way to train someone to ignore us, and
+    // the day it finally matters they won't read it either. Silence means good news;
+    // an email from ScoreFlow should always mean "something needs you".
+    if (totalComplaints === 0 && totalOpen === 0) continue;
+
     const lines = [
       `${heading}:`,
       "",

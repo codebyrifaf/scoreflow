@@ -1,13 +1,18 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
+/**
+ * Only the MONO face is a real webfont — it's used by `font-mono` for slugs and NFC
+ * links, where a fixed-width face genuinely helps you read a URL character by
+ * character.
+ *
+ * Geist SANS used to be downloaded here too and was never rendered once: `body` fell
+ * back to Arial and every screen set `.font-system` (the native stack) over the top.
+ * The app's whole look is built on the platform's own UI font, so the sans webfont
+ * was pure weight on every page load — including the diner's, on restaurant wifi.
+ */
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
@@ -75,7 +80,7 @@ export default function RootLayout({
     <html
       // en-GB, not en-US: the product is sold in the UK.
       lang="en-GB"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         {children}

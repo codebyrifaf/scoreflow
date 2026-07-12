@@ -19,12 +19,24 @@
 
 import { prisma } from "./prisma";
 import { subscriptionState } from "./subscriptions";
+import { APP_TIMEZONE, lastLocalDays, localDayKey } from "./time";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-/** Is this a legacy/operator-made account (no trial clock, not paying) → comped. */
+/**
+ * Is this a legacy/operator-made account (no trial clock, not paying) → comped.
+ *
+ * `canceled` is excluded deliberately: a comped account the operator has SUSPENDED
+ * is not comped any more, it's cut off. Leaving it in this bucket would report a
+ * suspended account as a happy freebie and hide it from the "lapsed" count — and it
+ * has to agree with `subscriptionState`, which now locks it out (see that file).
+ */
 function isComped(b: { trialEndsAt: Date | null; subStatus: string }): boolean {
-  return b.trialEndsAt === null && b.subStatus !== "active";
+  return (
+    b.trialEndsAt === null &&
+    b.subStatus !== "active" &&
+    b.subStatus !== "canceled"
+  );
 }
 
 export interface SalesOverview {
@@ -197,32 +209,44 @@ export async function getAccountsForOperator(): Promise<OperatorAccountRow[]> {
   });
 }
 
-/** Daily new-signup counts for the last `days` days — the growth bar chart. */
+/**
+ * Daily new-signup counts for the last `days` days — the growth bar chart.
+ *
+ * ⚠️ Bucketed by LOCAL (Europe/London) day via lib/time, NOT by `setHours()`.
+ * `setHours(0,0,0,0)` means "midnight in the SERVER's timezone" — which on Vercel is
+ * UTC, not London. Through British Summer Time that put every signup between
+ * midnight and 1am BST into the previous day's bar, so the operator's growth chart
+ * disagreed with every owner-facing chart (M24 fixed those and missed this one).
+ * Same timezone everywhere, or two screens tell you two different stories.
+ */
 export async function getSignupTrend(
   days = 30
 ): Promise<{ label: string; count: number }[]> {
-  const start = new Date();
-  start.setHours(0, 0, 0, 0);
-  const from = new Date(start.getTime() - (days - 1) * DAY_MS);
+  const buckets = lastLocalDays(days);
 
   const brands = await prisma.brand.findMany({
-    where: { createdAt: { gte: from }, trialEndsAt: { not: null } }, // real signups only
+    where: {
+      createdAt: { gte: buckets[0].start },
+      trialEndsAt: { not: null }, // real signups only
+    },
     select: { createdAt: true },
   });
 
-  return Array.from({ length: days }, (_, i) => {
-    const dayStart = from.getTime() + i * DAY_MS;
-    const dayEnd = dayStart + DAY_MS;
-    const count = brands.filter((b) => {
-      const t = b.createdAt.getTime();
-      return t >= dayStart && t < dayEnd;
-    }).length;
-    return {
-      label: new Date(dayStart).toLocaleDateString(undefined, {
-        day: "numeric",
-        month: "short",
-      }),
-      count,
-    };
+  // Count each signup into the local day it actually happened on.
+  const byDay = new Map<string, number>();
+  for (const b of brands) {
+    const key = localDayKey(b.createdAt);
+    byDay.set(key, (byDay.get(key) ?? 0) + 1);
+  }
+
+  const label = new Intl.DateTimeFormat("en-GB", {
+    timeZone: APP_TIMEZONE,
+    day: "numeric",
+    month: "short",
   });
+
+  return buckets.map((d) => ({
+    label: label.format(d.date),
+    count: byDay.get(d.key) ?? 0,
+  }));
 }

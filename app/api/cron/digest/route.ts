@@ -5,12 +5,16 @@
  * per branch, how each branch is rating, and what's still waiting on someone.
  * (Branch managers get instant alerts instead — see lib/notifications.ts.)
  *
- * ── Status: built, but not yet switched on ──────────────────────────────────
- * Email currently LOGS instead of sending (no sending domain yet — see
- * lib/email.ts), and no scheduler is calling this route. To turn it on later:
- *   1. wire a real provider in lib/email.ts;
- *   2. add a `vercel.json` cron entry hitting this path once a day;
- *   3. set `CRON_SECRET` in the Vercel env.
+ * ── Status: SWITCHED ON ─────────────────────────────────────────────────────
+ * `vercel.json` schedules this at 07:00 UTC daily, and Vercel Cron automatically
+ * sends `Authorization: Bearer $CRON_SECRET`.
+ *
+ * ⚠️ It only actually sends if BOTH are true in the Vercel env:
+ *   • `CRON_SECRET` is set — otherwise this route refuses (503, fail-closed);
+ *   • `EMAIL_PROVIDER` (+ credentials) is set — otherwise lib/email.ts only LOGS.
+ * Miss either and the job runs but nobody is emailed. This route was written months
+ * before anything scheduled it, which meant a brand owner who chose "daily digest"
+ * over instant alerts silently received nothing at all.
  *
  * ── Why the secret ──────────────────────────────────────────────────────────
  * This route sends mail to real customers, so it must not be a public URL anyone

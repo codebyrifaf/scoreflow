@@ -232,10 +232,19 @@ export async function markReviewClicked(
  *
  * This is what makes a notification into a workflow. The owner sees the unhappy
  * diners waiting on them, not just a red dot.
+ *
+ * ⚠️ BOUNDED (`take`). It wasn't: M24 put a ceiling on every other dashboard query
+ * and missed this one, so a restaurant that stopped working its queue (or got
+ * review-bombed — M17 permits up to 300 submissions/hour) would load EVERY open
+ * complaint into memory and render a card, with its own form and action binding, for
+ * each. The dashboard would get slower precisely when the owner most needs it. The
+ * true total comes from `countOpenComplaints` so the badge never lies about how many
+ * are really waiting.
  */
 export async function getOpenComplaints(
   restaurantId: number,
-  alertThreshold: number
+  alertThreshold: number,
+  take = 25
 ): Promise<FeedbackRecord[]> {
   const rows = await prisma.feedback.findMany({
     where: {
@@ -244,8 +253,23 @@ export async function getOpenComplaints(
       resolvedAt: null,
     },
     orderBy: { createdAt: "desc" },
+    take,
   });
   return rows.map(toRecord);
+}
+
+/**
+ * How many complaints are REALLY still open (a COUNT in SQL — no rows loaded).
+ * Pairs with the bounded `getOpenComplaints` above so the dashboard can show the
+ * honest total ("14") while only rendering the first page of cards.
+ */
+export async function countOpenComplaints(
+  restaurantId: number,
+  alertThreshold: number
+): Promise<number> {
+  return prisma.feedback.count({
+    where: { restaurantId, rating: { lte: alertThreshold }, resolvedAt: null },
+  });
 }
 
 /**

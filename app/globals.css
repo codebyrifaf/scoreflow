@@ -5,10 +5,21 @@
   --foreground: #171717;
 }
 
+/* The product's typeface: the platform's own UI font (SF on Apple, Segoe on
+   Windows, Roboto on Android). It's what makes the app feel native rather than
+   "a website", it costs zero bytes, and it can't cause a font-swap flash.
+
+   ⚠️ We used to ALSO download Geist Sans on every page and never render a single
+   character in it: `body` fell back to Arial, and every screen overrode that with
+   `.font-system` (the stack below). So every visitor — including a diner on
+   restaurant wifi tapping an NFC chip — paid for a webfont nobody ever saw. */
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro",
+    "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  /* Geist Mono IS used — the `font-mono` class on slugs and NFC links. */
   --font-mono: var(--font-geist-mono);
 }
 
@@ -20,7 +31,9 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  /* Was `Arial, Helvetica` — so anything that forgot `.font-system` silently
+     rendered in Arial. The native stack is now the default, everywhere. */
+  font-family: var(--font-sans);
 }
 
 /* ── Customer feedback page (Milestone 9 — premium redesign) ──────────────────
@@ -252,14 +265,44 @@ html {
   }
 }
 
-/* Hide scrollbars app-wide (content still scrolls via wheel / touch / keyboard).
-   Firefox uses scrollbar-width; WebKit/Chromium uses ::-webkit-scrollbar;
-   -ms-overflow-style covers old Edge/IE. */
-* {
+/* ── Scrollbars ───────────────────────────────────────────────────────────────
+   This used to hide the scrollbar on EVERY element on EVERY page (`* { scrollbar-
+   width: none }`). It looked clean on the landing page and quietly hurt everywhere
+   else: on the owner's dashboard — a long, scrolling list of feedback — a desktop
+   user lost both the "there is more below" cue and the ability to grab the bar and
+   drag. A scrollbar is not decoration, it's the only thing telling you how much
+   you haven't read.
+
+   So: keep it, but style it to match the product (slim, grey, unobtrusive). Anything
+   that genuinely wants a hidden bar can opt in with `.no-scrollbar`. */
+:root {
+  scrollbar-width: thin;
+  scrollbar-color: #D1D5DB transparent;
+}
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background-color: #D1D5DB;
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: #9CA3AF;
+  background-clip: content-box;
+}
+
+/* Opt-in, for the rare strip that scrolls sideways and shouldn't show a bar. */
+.no-scrollbar {
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
-*::-webkit-scrollbar {
+.no-scrollbar::-webkit-scrollbar {
   display: none;
   width: 0;
   height: 0;

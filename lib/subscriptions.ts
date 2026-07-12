@@ -46,14 +46,23 @@ export function subscriptionState(
   sub: SubscriptionInfo,
   now: Date = new Date()
 ): SubscriptionState {
+  // ⚠️ CANCELED IS CHECKED FIRST, AND THAT ORDER IS THE WHOLE POINT.
+  //
+  // It used to be checked *after* the comped rule below, which quietly broke the
+  // operator's "Suspend" button for any comped/legacy account: suspending writes
+  // subStatus "canceled" but leaves `trialEndsAt` null, so the comped rule matched
+  // first and returned `live: true`. The operator saw the account flip to
+  // "canceled" in their console and reasonably believed they'd cut off a
+  // non-paying customer — who in fact kept full access to the product, forever.
+  // An explicit suspension must always win over an implicit "comped" default.
+  if (sub.subStatus === "canceled") {
+    return { live: false, kind: "canceled" };
+  }
+
   // Comped / legacy accounts: no trial clock was ever set and they're not on a paid
   // plan → treat as always-on (the operator runs them by hand).
   if (sub.trialEndsAt === null && sub.subStatus !== "active") {
     return { live: true, kind: "active" };
-  }
-
-  if (sub.subStatus === "canceled") {
-    return { live: false, kind: "canceled" };
   }
 
   if (sub.subStatus === "active") {

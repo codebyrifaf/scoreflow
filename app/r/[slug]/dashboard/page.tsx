@@ -22,6 +22,7 @@ import {
   getTopTags,
   getReviewInviteStats,
   getOpenComplaints,
+  countOpenComplaints,
 } from "@/lib/feedback";
 import { startOfTodayLocal, formatInAppTz } from "@/lib/time";
 import { requireDashboardAccess } from "@/lib/auth-guard";
@@ -187,7 +188,16 @@ export default async function DashboardPage({
   const now = new Date();
   const since = cutoffFor(range, now) ?? undefined;
 
-  const [stats, days, lowestRated, recent, topTags, reviewStats, openComplaints] =
+  const [
+    stats,
+    days,
+    lowestRated,
+    recent,
+    topTags,
+    reviewStats,
+    openComplaints,
+    openComplaintCount,
+  ] =
     await Promise.all([
       getFeedbackStats(restaurant.id, since),
       getDailyTrend(restaurant.id, now),
@@ -195,7 +205,10 @@ export default async function DashboardPage({
       getRecentFeedback(restaurant.id, since, RECENT_LIMIT),
       getTopTags(restaurant.id, since),
       getReviewInviteStats(restaurant.id, since),
+      // The list is capped (see lib/feedback); the COUNT is the honest total, so a
+      // backlog of 200 never renders as 200 cards but also never lies as "25".
       getOpenComplaints(restaurant.id, restaurant.alertThreshold),
+      countOpenComplaints(restaurant.id, restaurant.alertThreshold),
     ]);
 
   const total = stats.total;
@@ -281,6 +294,7 @@ export default async function DashboardPage({
         <NeedsAttention
           slug={slug}
           complaints={openComplaints}
+          totalOpen={openComplaintCount}
           alertThreshold={restaurant.alertThreshold}
         />
 
