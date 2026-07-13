@@ -275,10 +275,19 @@ function SupportTools({ a }: { a: AccountRow }) {
 
       {/* DELETE — abuse / legal / purge. Suspend first if it's just non-payment. */}
       <form action={delAction} className="mt-4 border-t border-[#E5E7EB] pt-3">
-        <label className="text-xs text-[#6B7280]">
-          Delete this account and all its data (abuse or a legal request). For
-          non-payment, <b>suspend</b> instead — that&apos;s reversible; this isn&apos;t.
-          Type <span className="font-semibold text-[#111827]">{a.name}</span> to confirm.
+        {/* Rewritten for clarity (the old one-liner read as a cramped run-on, and the
+            "suspend instead" hint was easy to miss). The explicit `{" "}` spacers around
+            the bold words are just belt-and-suspenders so a space is never in doubt. */}
+        <label className="text-xs leading-relaxed text-[#6B7280]">
+          <b className="text-[#111827]">Permanently delete</b>{" "}
+          this account and all its data — every location and all its diner feedback.
+          This{" "}
+          <b className="text-[#111827]">cannot be undone</b>, so only use it for abuse
+          or a legal request. For non-payment, use{" "}
+          <b className="text-[#111827]">Suspend</b>{" "}
+          instead — that just pauses the account and can be switched back on later.
+          To confirm, type the account name,{" "}
+          <span className="font-semibold text-[#111827]">{a.name}</span>, below.
         </label>
         <div className="mt-1.5 flex gap-2">
           <input
@@ -356,7 +365,12 @@ export default function OperatorAccounts({
                       Record payment
                     </button>
                   )}
-                  {a.subStatus === "active" && (
+                  {/* Suspend = cut the account off (reversible). Shown for ANY LIVE
+                      account — trialing OR paying — so the delete tool's "use Suspend
+                      instead" is always actionable (it used to show only for paying
+                      accounts, so a trial account had no Suspend button at all).
+                      A lapsed account is already cut off, so it doesn't need it. */}
+                  {a.live && (
                     <form action={suspendAccountAction.bind(null, a.id)}>
                       <button
                         type="submit"
