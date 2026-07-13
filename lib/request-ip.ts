@@ -78,7 +78,16 @@ export function clientIpFrom(headers: Headers): string {
  * the moment we're under attack.
  */
 export function hashIp(ip: string): string {
-  const salt = process.env.IP_HASH_SALT ?? process.env.AUTH_SECRET ?? "";
+  // ⚠️ `||`, NOT `??`. Nullish coalescing treats an EMPTY STRING as a real value, so
+  // `IP_HASH_SALT=""` — which is exactly what `.env.example` used to ship, and what
+  // a blank field in a hosting dashboard produces — resolved to a salt of "" and
+  // silently skipped the fallback to AUTH_SECRET. The result was plain, UNSALTED
+  // SHA-256 of the IP. There are only ~4.3 billion IPv4 addresses, so an unsalted
+  // hash of one is reversible with a rainbow table in minutes, which defeats the
+  // whole point of this function: that the database holds nothing that identifies a
+  // diner's network. An empty/whitespace value must mean "not set".
+  const salt =
+    process.env.IP_HASH_SALT?.trim() || process.env.AUTH_SECRET?.trim() || "";
   return createHash("sha256").update(`${ip}:${salt}`).digest("hex");
 }
 
