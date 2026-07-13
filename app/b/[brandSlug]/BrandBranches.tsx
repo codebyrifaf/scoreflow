@@ -112,6 +112,12 @@ function BranchForm({
           placeholder="https://search.google.com/local/writereview?placeid=…"
           className={FIELD}
         />
+        {/* Only Google is editable here — this is the quick-add path. Say where the
+            others live, so a brand owner doesn't think they're missing (M29). */}
+        <p className="text-xs text-[#9CA3AF]">
+          Tripadvisor, Yelp and Zomato links are set per branch, in that
+          branch&apos;s Settings.
+        </p>
         <FieldError message={errors.googleReviewUrl} />
       </div>
       <div className="flex flex-col gap-1.5">

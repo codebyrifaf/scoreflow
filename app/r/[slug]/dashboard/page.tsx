@@ -375,12 +375,15 @@ export default async function DashboardPage({
               the owner can see which one is worth keeping and which is dead weight. */}
           {hasReviewLink && (
             <div className={`col-span-2 sm:col-span-1 ${CARD_CLASS}`}>
-              <div className="text-sm text-[#6B7280]">Reviews left</div>
+              {/* "Reviews left" was ambiguous — it reads as "reviews REMAINING", not
+                  "reviews they left", and sitting above a percentage it was actively
+                  confusing. This is a click-through rate; say so. */}
+              <div className="text-sm text-[#6B7280]">Tapped through</div>
               <div className="mt-1 text-3xl font-bold text-[#111827]">
                 {reviewRatePct === null ? "—" : `${reviewRatePct}%`}
               </div>
               <div className="mt-1 text-xs text-[#9CA3AF]">
-                {reviewStats.clicked} of {reviewStats.invited} invited tapped through
+                {reviewStats.clicked} of {reviewStats.invited} guests invited
               </div>
               {clicksByPlatform.length > 0 && (
                 <div className="mt-2 text-xs text-[#6B7280]">
