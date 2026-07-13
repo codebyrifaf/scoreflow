@@ -25,6 +25,7 @@
 
 import { prisma } from "./prisma";
 import { sendEmail } from "./email";
+import { appUrl } from "./app-url";
 import {
   getUnalertedComplaints,
   lastAlertAtFor,
@@ -238,11 +239,4 @@ export async function sendDailyDigests(): Promise<number> {
   }
 
   return sent;
-}
-
-/** The public URL to link back to. Vercel sets VERCEL_URL automatically. */
-function appUrl(): string {
-  if (process.env.APP_URL) return process.env.APP_URL;
-  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
-  return "http://localhost:3000";
 }

@@ -17,7 +17,6 @@ import { getRestaurantBySlug } from "@/lib/restaurants";
 import {
   getFeedbackStats,
   getDailyTrend,
-  getLowestRated,
   getRecentFeedback,
   getTopTags,
   getReviewInviteStats,
@@ -30,13 +29,19 @@ import {
   REVIEW_PLATFORMS,
   type ReviewPlatform,
 } from "@/lib/review-platforms";
-import { startOfTodayLocal, formatInAppTz } from "@/lib/time";
+import {
+  RANGES,
+  RANGE_LABELS,
+  parseRange,
+  cutoffFor,
+  type Range,
+} from "@/lib/dashboard-range";
 import { requireDashboardAccess } from "@/lib/auth-guard";
 import { logout } from "@/app/login/actions";
 import ChangePassword from "./ChangePassword";
 import NeedsAttention from "./NeedsAttention";
+import FeedbackItem from "../FeedbackItem";
 import SubscriptionLocked from "@/app/SubscriptionLocked";
-import type { FeedbackRecord } from "@/lib/types";
 
 /** How many recent submissions the "All submissions" list shows (pagination cap). */
 const RECENT_LIMIT = 50;
@@ -49,33 +54,6 @@ const CARD_CLASS = "rounded-2xl border border-[#E5E7EB] bg-white p-5";
 const PILL_BTN_CLASS =
   "rounded-full border border-[#E5E7EB] px-3 py-1.5 text-sm font-medium text-[#111827] transition-colors hover:bg-[#F9FAFB]";
 
-// ── Time-range filter ─────────────────────────────────────────────────────────
-type Range = "all" | "today" | "week" | "month";
-const RANGES: Range[] = ["all", "today", "week", "month"];
-const RANGE_LABELS: Record<Range, string> = {
-  all: "All",
-  today: "Today",
-  week: "Week",
-  month: "Month",
-};
-
-/**
- * The earliest timestamp to include for a range (null = no limit / all time).
- *
- * ⚠️ "today" now means the start of the current LOCAL (Europe/London) day, not the
- * server's UTC midnight (Milestone 24). On Vercel the server is UTC, so the old
- * `setHours(0,0,0,0)` put "today" an hour off in summer and dropped late-evening
- * diners into the wrong day. "week"/"month" are rolling windows, which are
- * timezone-independent, so they're unchanged.
- */
-function cutoffFor(range: Range, now: Date): Date | null {
-  if (range === "all") return null;
-  if (range === "today") return startOfTodayLocal(now);
-  const days = range === "week" ? 7 : 30; // rolling 7 / 30 days
-  return new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
-}
-
-/** Colour a rating so an owner can scan good/ok/bad at a glance. */
 /**
  * A platform id → its display name ("yelp" → "Yelp"). Falls back to the raw id, so an
  * old row written before a platform was renamed still shows *something* rather than
@@ -84,62 +62,6 @@ function cutoffFor(range: Range, now: Date): Date | null {
 function platformName(id: string): string {
   return (
     REVIEW_PLATFORMS.find((p) => p.id === (id as ReviewPlatform))?.name ?? id
-  );
-}
-
-function ratingTone(rating: number): string {
-  if (rating >= 8) return "bg-green-50 text-green-700";
-  if (rating >= 5) return "bg-amber-50 text-amber-700";
-  return "bg-red-50 text-red-700";
-}
-
-/** One feedback submission as a clean, mobile-friendly card (replaces the table). */
-function FeedbackItem({ record }: { record: FeedbackRecord }) {
-  return (
-    <div className="flex gap-3 rounded-2xl border border-[#E5E7EB] p-4">
-      <div
-        className={`flex h-11 w-11 flex-none items-center justify-center rounded-xl text-sm font-bold ${ratingTone(
-          record.rating
-        )}`}
-      >
-        {record.rating}
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-baseline justify-between gap-2">
-          <span className="text-sm font-semibold text-[#111827]">
-            Order {record.orderNumber}
-            <span className="font-normal text-[#6B7280]">
-              {" · "}Table {record.table ?? "—"}
-            </span>
-          </span>
-          <span className="flex-none text-xs text-[#9CA3AF]">
-            {formatInAppTz(record.timestamp)}
-          </span>
-        </div>
-        {record.comment && (
-          <p className="mt-1 text-sm text-[#374151]">{record.comment}</p>
-        )}
-        {record.tags.length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {record.tags.map((tag) => (
-              <span
-                key={tag}
-                className="rounded-full bg-[#F3F4F6] px-2.5 py-0.5 text-xs font-medium text-[#374151]"
-              >
-                {tag}
-              </span>
-            ))}
-          </div>
-        )}
-        {/* Win-back contact, if this diner left one (M24). */}
-        {(record.contactName || record.contactPhone) && (
-          <p className="mt-2 rounded-lg bg-amber-50 px-2.5 py-1.5 text-sm font-medium text-amber-900">
-            Contact:{" "}
-            {[record.contactName, record.contactPhone].filter(Boolean).join(" · ")}
-          </p>
-        )}
-      </div>
-    </div>
   );
 }
 
@@ -174,11 +96,8 @@ export default async function DashboardPage({
   const { slug } = await params;
   const sp = await searchParams;
 
-  // Which time window? (defaults to "all"). searchParams values can be arrays.
-  const rawRange = Array.isArray(sp.range) ? sp.range[0] : sp.range;
-  const range: Range = RANGES.includes(rawRange as Range)
-    ? (rawRange as Range)
-    : "all";
+  // Which time window? (defaults to "all"). Shared with the All-orders page.
+  const range: Range = parseRange(sp.range);
 
   // ── SECURITY GATE ───────────────────────────────────────────────────────────
   const access = await requireDashboardAccess(slug);
@@ -208,7 +127,6 @@ export default async function DashboardPage({
   const [
     stats,
     days,
-    lowestRated,
     recent,
     topTags,
     reviewStats,
@@ -219,7 +137,6 @@ export default async function DashboardPage({
     await Promise.all([
       getFeedbackStats(restaurant.id, since),
       getDailyTrend(restaurant.id, now),
-      getLowestRated(restaurant.id, since, 5),
       getRecentFeedback(restaurant.id, since, RECENT_LIMIT),
       getTopTags(restaurant.id, since),
       getReviewInviteStats(restaurant.id, since),
@@ -260,17 +177,41 @@ export default async function DashboardPage({
   return (
     <main className="font-system min-h-dvh w-full bg-white text-[#111827]">
       <div className="mx-auto w-full max-w-3xl px-5 py-8">
-        {/* Header */}
-        <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-[#111827]">
-              {restaurant.name}
-            </h1>
-            <p className="text-sm text-[#6B7280]">Feedback dashboard</p>
+        {/* Header (reorganised M31).
+            Row 1: who you are + the SESSION control. Sign out is pulled out to the
+            top-right corner and coloured red — it's the one destructive/exit action,
+            so it shouldn't sit in the middle of the neutral navigation pills where it's
+            easy to hit by accident.
+            Row 2: the navigation actions (where you go), including the new All orders. */}
+        <header className="mb-6">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight text-[#111827]">
+                {restaurant.name}
+              </h1>
+              <p className="text-sm text-[#6B7280]">Feedback dashboard</p>
+            </div>
+            <div className="flex flex-none items-center gap-3">
+              <span className="hidden text-sm text-[#9CA3AF] sm:inline">
+                {access.ownerEmail}
+              </span>
+              <form action={logout}>
+                <button
+                  type="submit"
+                  className="rounded-full border border-red-200 px-3 py-1.5 text-sm font-semibold text-red-600 transition-colors hover:bg-red-50"
+                >
+                  Sign out
+                </button>
+              </form>
+            </div>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <Link href={`/r/${slug}/orders`} className={PILL_BTN_CLASS}>
+              All orders
+            </Link>
             <Link href={`/r/${slug}/tables`} className={PILL_BTN_CLASS}>
-              Tables &amp; NFC links
+              Tables &amp; QR
             </Link>
             <Link href={`/r/${slug}/settings`} className={PILL_BTN_CLASS}>
               Settings
@@ -285,12 +226,6 @@ export default async function DashboardPage({
               </Link>
             )}
             <ChangePassword />
-            <span className="text-sm text-[#9CA3AF]">{access.ownerEmail}</span>
-            <form action={logout}>
-              <button type="submit" className={PILL_BTN_CLASS}>
-                Sign out
-              </button>
-            </form>
           </div>
         </header>
 
@@ -446,45 +381,47 @@ export default async function DashboardPage({
           </section>
         )}
 
-        {/* Feedback lists */}
+        {/* Recent feedback.
+            NOTE (M31): the old "Lowest-rated orders" section was REMOVED. With only
+            good ratings it proudly listed 8s and 9s as your "lowest-rated", which read
+            like a problem when it wasn't — and it duplicated "Needs attention" (the real
+            worklist of unhappy diners). "Show me my worst" now lives on the All-orders
+            page, which sorts by rating across the WHOLE history, not just the last few. */}
         {total === 0 ? (
           <p className="rounded-2xl border border-dashed border-[#E5E7EB] p-8 text-center text-[#6B7280]">
             No feedback in this period. Try a different range, or submissions from
             the customer form will show up here.
           </p>
         ) : (
-          <>
-            <section className="mb-8">
-              <h2 className="mb-3 text-lg font-semibold text-[#111827]">
-                Lowest-rated orders
+          <section>
+            <div className="mb-3 flex items-baseline justify-between gap-3">
+              <h2 className="text-lg font-semibold text-[#111827]">
+                Recent feedback
               </h2>
-              <div className="flex flex-col gap-2">
-                {lowestRated.map((r) => (
-                  <FeedbackItem key={r.id} record={r} />
-                ))}
-              </div>
-            </section>
-
-            <section>
-              <h2 className="mb-1 text-lg font-semibold text-[#111827]">
-                {total > RECENT_LIMIT
-                  ? `Latest ${RECENT_LIMIT} submissions`
-                  : `All submissions (${total})`}
-              </h2>
-              {/* Bounded to the most recent 50 (M24) — a busy restaurant could have
-                  thousands, and rendering them all was the old page's perf problem. */}
-              {total > RECENT_LIMIT && (
-                <p className="mb-3 text-sm text-[#9CA3AF]">
-                  Showing the {RECENT_LIMIT} most recent of {total} in this period.
-                </p>
-              )}
-              <div className="mt-3 flex flex-col gap-2">
-                {recent.map((r) => (
-                  <FeedbackItem key={r.id} record={r} />
-                ))}
-              </div>
-            </section>
-          </>
+              {/* The dashboard shows a live snapshot; the full, paginated history —
+                  with sort — is one tap away. */}
+              <Link
+                href={`/r/${slug}/orders`}
+                className="flex-none text-sm font-medium text-amber-600 hover:underline"
+              >
+                All orders →
+              </Link>
+            </div>
+            {total > RECENT_LIMIT && (
+              <p className="mb-3 text-sm text-[#9CA3AF]">
+                Showing the {RECENT_LIMIT} most recent of {total} in this period.{" "}
+                <Link href={`/r/${slug}/orders`} className="font-medium underline">
+                  See all
+                </Link>
+                .
+              </p>
+            )}
+            <div className="mt-3 flex flex-col gap-2">
+              {recent.map((r) => (
+                <FeedbackItem key={r.id} record={r} />
+              ))}
+            </div>
+          </section>
         )}
       </div>
     </main>

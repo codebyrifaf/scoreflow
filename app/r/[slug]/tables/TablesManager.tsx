@@ -12,13 +12,17 @@
 
 import { useActionState, useEffect, useRef, useState } from "react";
 import { addTable, removeTable, type AddTableState } from "./actions";
+import QrCode from "@/app/QrCode";
+import type { QrMatrix } from "@/lib/qr";
 
 interface TableRow {
   id: number;
   label: string;
+  /** The table's feedback-link QR, generated server-side (M30). */
+  qr: QrMatrix;
 }
 
-/** One table as a card: label, its NFC link, and Copy / Remove actions. */
+/** One table as a card: its QR, label, link, and Copy / Remove actions. */
 function TableItem({
   slug,
   table,
@@ -49,33 +53,43 @@ function TableItem({
   }
 
   return (
-    <div className="rounded-2xl border border-[#E5E7EB] bg-white p-4">
-      <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0 text-base font-semibold text-[#111827]">
-          {table.label}
-        </div>
-        <div className="flex flex-none items-center gap-1">
-          <button
-            type="button"
-            onClick={copy}
-            className="rounded-lg border border-[#E5E7EB] px-3 py-1.5 text-sm font-medium text-[#111827] transition-colors hover:bg-[#F9FAFB]"
-          >
-            {copied ? "Copied!" : "Copy link"}
-          </button>
-          <form action={boundRemove}>
+    <div className="flex gap-4 rounded-2xl border border-[#E5E7EB] bg-white p-4">
+      {/* QR preview (M30) — the owner can screen-share or photograph one table's code
+          without printing the whole kit. */}
+      <QrCode
+        matrix={table.qr}
+        title={`Feedback QR for table ${table.label}`}
+        className="h-16 w-16 flex-none"
+      />
+
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0 text-base font-semibold text-[#111827]">
+            {table.label}
+          </div>
+          <div className="flex flex-none items-center gap-1">
             <button
-              type="submit"
-              aria-label={`Remove table ${table.label}`}
-              className="rounded-lg px-2.5 py-1.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50"
+              type="button"
+              onClick={copy}
+              className="rounded-lg border border-[#E5E7EB] px-3 py-1.5 text-sm font-medium text-[#111827] transition-colors hover:bg-[#F9FAFB]"
             >
-              Remove
+              {copied ? "Copied!" : "Copy link"}
             </button>
-          </form>
+            <form action={boundRemove}>
+              <button
+                type="submit"
+                aria-label={`Remove table ${table.label}`}
+                className="rounded-lg px-2.5 py-1.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50"
+              >
+                Remove
+              </button>
+            </form>
+          </div>
         </div>
+        <code className="mt-2 block break-all font-mono text-xs text-[#6B7280]">
+          {url}
+        </code>
       </div>
-      <code className="mt-2 block break-all font-mono text-xs text-[#6B7280]">
-        {url}
-      </code>
     </div>
   );
 }
@@ -85,6 +99,7 @@ export default function TablesManager({
   tables,
 }: {
   slug: string;
+  /** Each row carries its server-generated QR matrix (M30). */
   tables: TableRow[];
 }) {
   // Bind the slug so useActionState only deals with (prevState, formData).

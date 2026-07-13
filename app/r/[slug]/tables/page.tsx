@@ -13,6 +13,8 @@ import { notFound } from "next/navigation";
 import { requireDashboardAccess } from "@/lib/auth-guard";
 import { getRestaurantBySlug } from "@/lib/restaurants";
 import { getTablesForRestaurant } from "@/lib/tables";
+import { feedbackUrl } from "@/lib/app-url";
+import { qrMatrix } from "@/lib/qr";
 import SubscriptionLocked from "@/app/SubscriptionLocked";
 import TablesManager from "./TablesManager";
 
@@ -63,41 +65,55 @@ export default async function TablesPage({
 
   const tables = await getTablesForRestaurant(restaurant.id);
 
+  // A QR matrix per table (M30), generated server-side and passed down. The encoder
+  // never reaches the client — TablesManager renders these with the pure <QrCode>.
+  const tablesWithQr = tables.map((t) => ({
+    id: t.id,
+    label: t.label,
+    qr: qrMatrix(feedbackUrl(slug, t.label)),
+  }));
+
   return (
     <main className="font-system min-h-dvh w-full bg-white text-[#111827]">
       <div className="mx-auto w-full max-w-3xl px-5 py-8">
         <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-[#111827]">
-              {restaurant.name} — Tables &amp; NFC links
+              {restaurant.name} — Tables &amp; links
             </h1>
             <p className="text-sm text-[#6B7280]">
-              Add a table, then copy its link onto that table&apos;s NFC chip.
+              Add a table, then put its QR code or NFC link on that table.
             </p>
           </div>
-          <Link
-            href={`/r/${slug}/dashboard`}
-            className="rounded-full border border-[#E5E7EB] px-3 py-1.5 text-sm font-medium text-[#111827] transition-colors hover:bg-[#F9FAFB]"
-          >
-            ← Back to dashboard
-          </Link>
+          <div className="flex flex-none items-center gap-2">
+            {/* The QR kit — the zero-hardware way to go live (M30). */}
+            <Link
+              href={`/r/${slug}/tables/print`}
+              className="rounded-full bg-amber-500 px-3 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-amber-600"
+            >
+              Print QR kit →
+            </Link>
+            <Link
+              href={`/r/${slug}/dashboard`}
+              className="rounded-full border border-[#E5E7EB] px-3 py-1.5 text-sm font-medium text-[#111827] transition-colors hover:bg-[#F9FAFB]"
+            >
+              ← Dashboard
+            </Link>
+          </div>
         </header>
 
-        {/* How-to hint */}
+        {/* How-to hint — QR first (no hardware), NFC as the premium option. */}
         <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-          Write each link onto that table&apos;s NFC chip (using a free app like
-          &ldquo;NFC Tools&rdquo;). When a customer taps the chip, the feedback
-          form opens for that exact table.{" "}
-          <span className="text-amber-700">
-            Note: these links use this site&apos;s current address, so they work
-            fully once ScoreFlow is deployed to a real domain.
-          </span>
+          <b>Two ways to go live, your choice.</b> The quickest:{" "}
+          <Link href={`/r/${slug}/tables/print`} className="font-semibold underline">
+            print the QR kit
+          </Link>{" "}
+          and put a card on each table — no hardware. Or, for a tap-to-rate NFC chip,
+          copy a table&apos;s link onto it with a free app like &ldquo;NFC Tools&rdquo;.
+          Either way, opening it shows the feedback form for that exact table.
         </div>
 
-        <TablesManager
-          slug={slug}
-          tables={tables.map((t) => ({ id: t.id, label: t.label }))}
-        />
+        <TablesManager slug={slug} tables={tablesWithQr} />
       </div>
     </main>
   );

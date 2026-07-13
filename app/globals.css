@@ -404,3 +404,31 @@ html {
   width: 0;
   height: 0;
 }
+
+/* ── Print: the QR starter kit (Milestone 30) ─────────────────────────────────
+   The kit is a normal web page that the owner prints (or "Saves as PDF") with the
+   browser's own dialog — no PDF library, nothing external, so it stays inside the CSP.
+   These rules just make the printed sheet tidy. Tailwind's `print:hidden` handles the
+   toolbar; this handles page-level setup Tailwind can't express. */
+@media print {
+  /* A4 with a comfortable margin. */
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+  /* Ink-free background; the cards define their own borders. */
+  html,
+  body {
+    background: #ffffff !important;
+  }
+  /* Never split a QR card across a page break — a half-card is a wasted print and an
+     unscannable code. */
+  .qr-card {
+    break-inside: avoid;
+    page-break-inside: avoid; /* older print engines */
+  }
+  /* The on-screen sheet padding is generous; drop it for print. */
+  .qr-sheet {
+    padding: 0 !important;
+  }
+}

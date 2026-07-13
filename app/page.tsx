@@ -275,8 +275,8 @@ export default function Home() {
                 "A score out of ten and a couple of one-tap reasons. That's why guests actually finish it.",
               ],
               [
-                "NFC table links",
-                "A unique link for every table, ready to write onto a chip. No app, no sign-up.",
+                "QR codes or NFC — your choice",
+                "Print a QR card for every table in one click, or tap-to-rate with an NFC chip. No app, no sign-up, no hardware needed to start.",
               ],
               [
                 "Trends, not guesses",
@@ -432,9 +432,10 @@ export default function Home() {
             </Reveal>
             <Reveal delay={180}>
               <Faq q="How long does setup take?">
-                Minutes. Sign up, add your tables, and write each table&apos;s link
-                onto an NFC chip. Your Google review link goes in once, in settings,
-                and you&apos;re live.
+                Minutes, with no hardware to buy. Sign up, add your tables, then print
+                the built-in QR kit and stand a card on each table — that&apos;s it.
+                Prefer tap-to-rate? Write each table&apos;s link onto an NFC chip
+                instead. Add your review links once, in settings, and you&apos;re live.
               </Faq>
             </Reveal>
             <Reveal delay={240}>

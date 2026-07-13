@@ -25,7 +25,7 @@ import type {
  * ⚠️ DEPRECATED (Milestone 24). Loads EVERY feedback row for a restaurant. This was
  * the dashboard's data source, and on a busy venue it meant fetching thousands of
  * rows into memory on every page load. It has been replaced by the BOUNDED queries
- * below (`getFeedbackStats`, `getDailyTrend`, `getLowestRated`, `getRecentFeedback`,
+ * below (`getFeedbackStats`, `getDailyTrend`, `getRecentFeedback`,
  * `getTopTags`). Do not reach for this in new code.
  */
 export async function getFeedbackForRestaurant(
@@ -131,20 +131,6 @@ export async function getDailyTrend(
   });
 }
 
-/** The lowest-rated orders in the window (worst first). Bounded by `take`. */
-export async function getLowestRated(
-  restaurantId: number,
-  since: Date | undefined,
-  take = 5
-): Promise<FeedbackRecord[]> {
-  const rows = await prisma.feedback.findMany({
-    where: { restaurantId, ...(since ? { createdAt: { gte: since } } : {}) },
-    orderBy: [{ rating: "asc" }, { createdAt: "desc" }],
-    take,
-  });
-  return rows.map(toRecord);
-}
-
 /** The most recent submissions in the window. Bounded by `take` (pagination). */
 export async function getRecentFeedback(
   restaurantId: number,
@@ -154,6 +140,41 @@ export async function getRecentFeedback(
   const rows = await prisma.feedback.findMany({
     where: { restaurantId, ...(since ? { createdAt: { gte: since } } : {}) },
     orderBy: { createdAt: "desc" },
+    take,
+  });
+  return rows.map(toRecord);
+}
+
+/** How feedback can be ordered on the All-orders page (Milestone 31). */
+export type FeedbackSort = "newest" | "lowest" | "highest";
+
+/**
+ * One PAGE of feedback for the All-orders page (Milestone 31) — the dashboard only
+ * ever showed the most recent 50 and gave no way to reach older rows, so a busy
+ * restaurant's history was effectively invisible past the cap. This is real
+ * pagination: `skip`/`take` over the full history (still scoped to one restaurant,
+ * still on the `[restaurantId, createdAt]` index), ordered by the owner's choice.
+ *
+ * The secondary `createdAt desc` on the rating sorts gives a stable, meaningful order
+ * (newest first *within* a rating) so paging never repeats or drops a row.
+ */
+export async function getFeedbackPage(
+  restaurantId: number,
+  opts: { since?: Date; sort?: FeedbackSort; skip?: number; take?: number }
+): Promise<FeedbackRecord[]> {
+  const { since, sort = "newest", skip = 0, take = 25 } = opts;
+
+  const orderBy =
+    sort === "lowest"
+      ? ([{ rating: "asc" }, { createdAt: "desc" }] as const)
+      : sort === "highest"
+        ? ([{ rating: "desc" }, { createdAt: "desc" }] as const)
+        : ([{ createdAt: "desc" }] as const);
+
+  const rows = await prisma.feedback.findMany({
+    where: { restaurantId, ...(since ? { createdAt: { gte: since } } : {}) },
+    orderBy: [...orderBy],
+    skip,
     take,
   });
   return rows.map(toRecord);
