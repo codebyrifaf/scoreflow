@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { operatorLogin, type OperatorLoginState } from "./actions";
+import PasswordInput from "@/app/PasswordInput";
 
 const FIELD =
   "w-full rounded-2xl border border-[#E5E7EB] bg-white px-4 py-3.5 text-base text-[#111827] outline-none transition duration-200 placeholder:text-[#9CA3AF] focus:border-[#111827] focus:ring-4 focus:ring-[#111827]/10";
@@ -32,10 +33,9 @@ export default function OperatorLoginForm() {
         <label htmlFor="password" className="text-sm font-medium text-[#111827]">
           Password
         </label>
-        <input
+        <PasswordInput
           id="password"
           name="password"
-          type="password"
           autoComplete="current-password"
           required
           className={FIELD}

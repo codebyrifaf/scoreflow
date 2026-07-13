@@ -9,6 +9,7 @@
 import { useActionState } from "react";
 import Link from "next/link";
 import { requestSignup, type SignupState } from "./actions";
+import PasswordInput from "@/app/PasswordInput";
 
 const FIELD =
   "w-full rounded-2xl border border-[#E5E7EB] bg-white px-4 py-3.5 text-base text-[#111827] outline-none transition duration-200 placeholder:text-[#9CA3AF] focus:border-amber-500 focus:ring-4 focus:ring-amber-500/15";
@@ -62,10 +63,9 @@ export default function SignupForm() {
           Password{" "}
           <span className="font-normal text-[#9CA3AF]">(at least 12 characters)</span>
         </label>
-        <input
+        <PasswordInput
           id="password"
           name="password"
-          type="password"
           autoComplete="new-password"
           className={FIELD}
         />

@@ -21,14 +21,9 @@
 
 import Link from "next/link";
 import { requireOperator } from "@/lib/auth-guard";
-import {
-  getSalesOverview,
-  getAccountsForOperator,
-  getSignupTrend,
-} from "@/lib/operator-stats";
+import { getSalesOverview, getSignupTrend } from "@/lib/operator-stats";
 import { logout } from "@/app/login/actions";
 import { formatGbp } from "@/lib/money";
-import OperatorAccounts from "./OperatorAccounts";
 
 export const dynamic = "force-dynamic";
 
@@ -86,9 +81,10 @@ export default async function OperatorPage() {
     return <NotAuthorized homeHref={access.homeHref} />;
   }
 
-  const [overview, accounts, trend] = await Promise.all([
+  // The full customer LIST now lives on /operator/customers (M33) — the dashboard
+  // just needs the summary + the count, so we no longer load every account here.
+  const [overview, trend] = await Promise.all([
     getSalesOverview(),
-    getAccountsForOperator(),
     getSignupTrend(30),
   ]);
 
@@ -107,14 +103,20 @@ export default async function OperatorPage() {
               Sales &amp; growth
             </h1>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {/* No "manage accounts" link — there is nothing to manage (M22). The old
-                /admin area is retired: restaurants sign themselves up, change their
-                own settings, reset their own passwords, and close their own
-                accounts. This console is sales-only. */}
-            <span className="text-sm text-[#9CA3AF]">{access.operatorEmail}</span>
+          <div className="flex flex-none items-center gap-3">
+            <span className="hidden text-sm text-[#9CA3AF] sm:inline">
+              {access.operatorEmail}
+            </span>
+            <Link href="/operator/customers" className={PILL}>
+              Customers
+            </Link>
+            {/* Sign out — red, set apart from the neutral pills (matches the owner
+                dashboard, M31). */}
             <form action={logout}>
-              <button type="submit" className={PILL}>
+              <button
+                type="submit"
+                className="rounded-full border border-red-200 px-3 py-1.5 text-sm font-semibold text-red-600 transition-colors hover:bg-red-50"
+              >
                 Sign out
               </button>
             </form>
@@ -193,17 +195,29 @@ export default async function OperatorPage() {
           </div>
         </section>
 
-        {/* The customers */}
+        {/* The customers — the full list (filter / sort / pagination + the
+            record-payment and support-tools actions) lives on its own page now (M33),
+            so this dashboard stays a scannable snapshot. */}
         <section>
-          <h2 className="mb-1 text-lg font-semibold">
-            Customers ({accounts.length})
-          </h2>
-          <p className="mb-4 text-sm text-[#6B7280]">
-            Record a payment here and their account switches on.
-            &ldquo;Last used&rdquo; turns red when an account has gone quiet — that&apos;s
-            your churn warning.
-          </p>
-          <OperatorAccounts accounts={accounts} />
+          <Link
+            href="/operator/customers"
+            className={`${CARD} flex items-center justify-between gap-4 transition-colors hover:bg-[#F9FAFB]`}
+          >
+            <div>
+              <h2 className="text-lg font-semibold">
+                Customers ({overview.totalAccounts})
+              </h2>
+              <p className="mt-1 text-sm text-[#6B7280]">
+                Record payments, filter by status, and spot churn — open the full list.
+              </p>
+            </div>
+            <span
+              aria-hidden="true"
+              className="flex-none text-lg font-semibold text-[#6B7280]"
+            >
+              →
+            </span>
+          </Link>
         </section>
       </div>
     </main>

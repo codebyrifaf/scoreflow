@@ -120,6 +120,24 @@ export async function getSalesOverview(): Promise<SalesOverview> {
   };
 }
 
+/**
+ * Which bucket an account falls in (Milestone 33) — the operator's Customers page
+ * filters on this. Same classification the overview counts use (see `getSalesOverview`),
+ * kept as one pure, testable function so the filter and the summary cards can never
+ * disagree about who's "lapsed".
+ */
+export type AccountBucket = "trialing" | "active" | "lapsed" | "comped";
+
+export function accountBucket(row: {
+  isComped: boolean;
+  live: boolean;
+  subStatus: string;
+}): AccountBucket {
+  if (row.isComped) return "comped"; // operator-made freebie
+  if (!row.live) return "lapsed"; // trial ran out, or suspended
+  return row.subStatus === "active" ? "active" : "trialing";
+}
+
 export interface OperatorAccountRow {
   id: number;
   name: string;

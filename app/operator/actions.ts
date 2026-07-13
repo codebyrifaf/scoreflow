@@ -14,7 +14,7 @@ import { requireOperator } from "@/lib/auth-guard";
 import { prisma } from "@/lib/prisma";
 import { recordPayment } from "@/lib/payments";
 import { poundsToPence } from "@/lib/money";
-import { suspendBrand } from "@/lib/subscriptions";
+import { suspendBrand, compBrand, uncompBrand } from "@/lib/subscriptions";
 import { deleteBrandCascade } from "@/lib/brands";
 import { getOwnerByEmail } from "@/lib/owners";
 import { getOperatorByEmail } from "@/lib/operators";
@@ -75,6 +75,61 @@ export async function suspendAccountAction(
 
   await suspendBrand(brandId);
   revalidatePath("/operator");
+  revalidatePath("/operator/customers");
+}
+
+/**
+ * Give an account FREE, permanent access — "comp" it (Milestone 33). For a friend's
+ * restaurant, a free pilot, or your own demo. Reversible via `uncompAccountAction`,
+ * and recorded in the audit log (not dangerous, but "who got free service and when"
+ * is worth keeping). Not customer-notified — it's good news the operator can pass on.
+ */
+export async function compAccountAction(brandId: number): Promise<void> {
+  const access = await requireOperator();
+  if (!access.authorized) return;
+
+  const brand = await prisma.brand.findUnique({
+    where: { id: brandId },
+    select: { name: true },
+  });
+  if (!brand) return;
+
+  await compBrand(brandId);
+  await audit({
+    operatorEmail: access.operatorEmail,
+    action: "comp_account",
+    targetBrandId: brandId,
+    targetLabel: brand.name,
+    detail: "granted free (comped) access",
+  });
+
+  revalidatePath("/operator");
+  revalidatePath("/operator/customers");
+}
+
+/** End an account's free access (Milestone 33) — reverse of `compAccountAction`.
+ *  Drops them onto a fresh 14-day trial rather than cutting them off. Audited. */
+export async function uncompAccountAction(brandId: number): Promise<void> {
+  const access = await requireOperator();
+  if (!access.authorized) return;
+
+  const brand = await prisma.brand.findUnique({
+    where: { id: brandId },
+    select: { name: true },
+  });
+  if (!brand) return;
+
+  await uncompBrand(brandId);
+  await audit({
+    operatorEmail: access.operatorEmail,
+    action: "uncomp_account",
+    targetBrandId: brandId,
+    targetLabel: brand.name,
+    detail: "ended free access — moved to a 14-day trial",
+  });
+
+  revalidatePath("/operator");
+  revalidatePath("/operator/customers");
 }
 
 // ── The two emergency levers (Milestone 22) ─────────────────────────────────
@@ -94,7 +149,7 @@ export async function suspendAccountAction(
 /** Write an immutable record of a privileged action. Never blocks the action. */
 async function audit(input: {
   operatorEmail: string;
-  action: "rescue_email" | "delete_account";
+  action: "rescue_email" | "delete_account" | "comp_account" | "uncomp_account";
   targetBrandId: number;
   targetLabel: string;
   detail: string;

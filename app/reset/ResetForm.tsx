@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { resetPassword, type ResetState } from "./actions";
+import PasswordInput from "@/app/PasswordInput";
 
 const FIELD =
   "w-full rounded-2xl border border-[#E5E7EB] bg-white px-4 py-3.5 text-base text-[#111827] outline-none transition duration-200 placeholder:text-[#9CA3AF] focus:border-amber-500 focus:ring-4 focus:ring-amber-500/15";
@@ -37,10 +38,9 @@ export default function ResetForm({ email }: { email: string }) {
           New password{" "}
           <span className="font-normal text-[#9CA3AF]">(at least 12 characters)</span>
         </label>
-        <input
+        <PasswordInput
           id="newPassword"
           name="newPassword"
-          type="password"
           autoComplete="new-password"
           className={FIELD}
         />
@@ -50,10 +50,9 @@ export default function ResetForm({ email }: { email: string }) {
         <label htmlFor="confirmPassword" className={LABEL}>
           Confirm new password
         </label>
-        <input
+        <PasswordInput
           id="confirmPassword"
           name="confirmPassword"
-          type="password"
           autoComplete="new-password"
           className={FIELD}
         />

@@ -14,6 +14,8 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import {
   recordPaymentAction,
   suspendAccountAction,
+  compAccountAction,
+  uncompAccountAction,
   rescueAccountEmail,
   deleteAccountAsOperator,
   type PaymentState,
@@ -361,6 +363,28 @@ export default function OperatorAccounts({
                         className="rounded-lg px-2.5 py-1.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50"
                       >
                         Suspend
+                      </button>
+                    </form>
+                  )}
+                  {/* Comp / un-comp (M33). "Make free" gives permanent free access
+                      (a pilot, a friend's venue, your demo); "End free access" winds
+                      it back to a trial. Both reversible + audited. */}
+                  {a.isComped ? (
+                    <form action={uncompAccountAction.bind(null, a.id)}>
+                      <button
+                        type="submit"
+                        className="rounded-lg px-2.5 py-1.5 text-sm font-medium text-[#6B7280] transition-colors hover:bg-[#F9FAFB]"
+                      >
+                        End free access
+                      </button>
+                    </form>
+                  ) : (
+                    <form action={compAccountAction.bind(null, a.id)}>
+                      <button
+                        type="submit"
+                        className="rounded-lg px-2.5 py-1.5 text-sm font-medium text-[#6B7280] transition-colors hover:bg-[#F9FAFB]"
+                      >
+                        Make free
                       </button>
                     </form>
                   )}

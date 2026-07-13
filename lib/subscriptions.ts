@@ -126,3 +126,45 @@ export async function suspendBrand(brandId: number) {
     data: { subStatus: "canceled" },
   });
 }
+
+/**
+ * Operator gives an account FREE, permanent access — a "comp" (Milestone 33).
+ *
+ * How comping works WITHOUT a new column: an account is "comped" exactly when it has
+ * no trial clock (`trialEndsAt = null`) and isn't `active`/`canceled` — that's the
+ * state `subscriptionState`'s comped branch treats as always-live, and it's precisely
+ * how legacy operator-made accounts already look. So we just put it there: clear the
+ * trial clock and any paid period, and set a non-active status. `monthlyPricePence`
+ * goes to 0 so a freebie never inflates MRR.
+ *
+ * ⚠️ Reversible via `uncompBrand`. It's the operator's call, and it's audited.
+ */
+export async function compBrand(brandId: number) {
+  return prisma.brand.update({
+    where: { id: brandId },
+    data: {
+      trialEndsAt: null, // no trial clock …
+      subStatus: "trialing", // … and not "active"/"canceled" ⇒ comped (see isComped)
+      currentPeriodEnd: null,
+      monthlyPricePence: 0, // pays nothing ⇒ contributes nothing to MRR
+    },
+  });
+}
+
+/**
+ * End an account's free access (Milestone 33) — the reverse of `compBrand`.
+ *
+ * Rather than cut them off instantly, we drop them onto a fresh 14-day trial, so a
+ * comp that's being wound down doesn't strand a restaurant mid-service. If they don't
+ * subscribe, they lapse naturally when the trial runs out.
+ */
+export async function uncompBrand(brandId: number) {
+  return prisma.brand.update({
+    where: { id: brandId },
+    data: {
+      trialEndsAt: newTrialEndsAt(),
+      subStatus: "trialing",
+      currentPeriodEnd: null,
+    },
+  });
+}

@@ -12,6 +12,7 @@
 import { useActionState } from "react";
 import Link from "next/link";
 import { login, type LoginState } from "./actions";
+import PasswordInput from "@/app/PasswordInput";
 
 // Style tokens shared with the customer feedback page, so the two feel like one
 // product (rounded fields, soft brand focus ring, brand-accent button).
@@ -66,10 +67,9 @@ export default function LoginForm({
             Forgot?
           </Link>
         </div>
-        <input
+        <PasswordInput
           id="password"
           name="password"
-          type="password"
           autoComplete="current-password"
           required
           placeholder="Your password"

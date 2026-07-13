@@ -11,6 +11,7 @@
 import { useActionState, useEffect, useRef, useState } from "react";
 import { logout } from "@/app/login/actions";
 import { changePassword, type ChangePasswordState } from "./actions";
+import PasswordInput from "@/app/PasswordInput";
 
 const FIELD_CLASS =
   "w-full rounded-2xl border border-[#E5E7EB] bg-white px-4 py-3 text-base text-[#111827] outline-none transition duration-200 placeholder:text-[#9CA3AF] focus:border-amber-500 focus:ring-4 focus:ring-amber-500/15";
@@ -104,10 +105,9 @@ export default function ChangePassword() {
                 >
                   Current password
                 </label>
-                <input
+                <PasswordInput
                   id="currentPassword"
                   name="currentPassword"
-                  type="password"
                   autoComplete="current-password"
                   className={FIELD_CLASS}
                 />
@@ -122,10 +122,9 @@ export default function ChangePassword() {
                     (at least 12 characters)
                   </span>
                 </label>
-                <input
+                <PasswordInput
                   id="newPassword"
                   name="newPassword"
-                  type="password"
                   autoComplete="new-password"
                   className={FIELD_CLASS}
                 />
@@ -137,10 +136,9 @@ export default function ChangePassword() {
                 >
                   Confirm new password
                 </label>
-                <input
+                <PasswordInput
                   id="confirmPassword"
                   name="confirmPassword"
-                  type="password"
                   autoComplete="new-password"
                   className={FIELD_CLASS}
                 />
