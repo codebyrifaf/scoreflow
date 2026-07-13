@@ -136,15 +136,25 @@ export async function updateRestaurantSettings(
   data: {
     name: string;
     googleReviewUrl: string | null;
+    /** The other review platforms (M29). Null clears the link → tile disappears. */
+    tripadvisorUrl: string | null;
+    yelpUrl: string | null;
+    zomatoUrl: string | null;
     positiveThreshold: number;
     alertThreshold: number;
   }
 ) {
   return prisma.restaurant.update({
     where: { id },
+    // Every field is listed EXPLICITLY — that's the point of this function. A stray
+    // extra field in a form post can never reach the database, and `slug` in
+    // particular can never be written here (see the note above).
     data: {
       name: data.name,
       googleReviewUrl: data.googleReviewUrl,
+      tripadvisorUrl: data.tripadvisorUrl,
+      yelpUrl: data.yelpUrl,
+      zomatoUrl: data.zomatoUrl,
       positiveThreshold: data.positiveThreshold,
       alertThreshold: data.alertThreshold,
     },

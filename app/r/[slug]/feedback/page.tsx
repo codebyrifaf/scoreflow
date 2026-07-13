@@ -12,6 +12,7 @@
 
 import { notFound } from "next/navigation";
 import { getRestaurantForFeedback } from "@/lib/restaurants";
+import { activeReviewLinks } from "@/lib/review-platforms";
 import FeedbackForm from "./FeedbackForm";
 
 export default async function FeedbackPage({
@@ -37,13 +38,14 @@ export default async function FeedbackPage({
       // The brand's logo (M26), shown at the top instead of the initial disc when
       // set. Null for legacy standalone restaurants (no brand) or when unset.
       logoUrl={restaurant.brand?.logoDataUrl ?? null}
-      // Pass NULL when no review URL is set — never "#" (Milestone 18).
-      // It used to fall back to "#", which meant a happy diner tapped a big amber
-      // "Leave us a Google review" button that went NOWHERE, silently. The whole
-      // point of the product quietly stopped working and nobody found out. Now the
-      // form simply doesn't render the button, and the owner is warned on their
-      // dashboard (which they can now fix themselves, on their settings page).
-      googleReviewUrl={restaurant.googleReviewUrl || null}
+      // The review platforms this restaurant has ACTUALLY set (M29) — one logo tile
+      // each, in a fixed order. An EMPTY array renders no tiles and no heading at all.
+      //
+      // That emptiness is deliberate, and it's the M18 lesson: the review link used to
+      // fall back to "#", so a diner tapped a big button that went NOWHERE, silently,
+      // and the owner never found out their funnel was dead. We show a real link or we
+      // show nothing — never a dead button. The owner is warned on their dashboard.
+      reviewLinks={activeReviewLinks(restaurant)}
       // Smart review routing (M7): ratings at/above this go to the Google nudge.
       positiveThreshold={restaurant.positiveThreshold}
       table={table ?? null}

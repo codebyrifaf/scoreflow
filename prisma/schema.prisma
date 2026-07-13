@@ -29,7 +29,23 @@ model Restaurant {
   // before. The customer URL stays flat (/r/<slug>/…) so existing NFC chips work.
   brandId         Int?
   brand           Brand?     @relation(fields: [brandId], references: [id])
-  googleReviewUrl String? // optional; the thank-you screen's review link
+  // ── REVIEW LINKS (Milestone 29) ────────────────────────────────────────────
+  // Where the thank-you screen sends a diner who wants to review publicly. All
+  // four are OPTIONAL and independent: a link that's set gets a logo tile on the
+  // feedback page, a blank one shows nothing at all (never a dead button — M18).
+  //
+  // Each holds THIS restaurant's own page on that platform (e.g. their Yelp
+  // business page), not a link to the platform's homepage.
+  //
+  // ⚠️ EVERY ONE OF THESE IS A REDIRECT TARGET ON OUR OWN DOMAIN. The diner's tile
+  // points at /r/<slug>/go-review, which stamps the click and then forwards here.
+  // So an unvalidated value = an OPEN REDIRECT on scoreflow — exactly the hole M25
+  // closed for Google. They are host-allowlisted at every write AND again at the
+  // redirect itself; see lib/review-url.ts. Never relax that to "any https URL".
+  googleReviewUrl String? // e.g. https://g.page/r/…/review
+  tripadvisorUrl  String? // e.g. https://www.tripadvisor.co.uk/Restaurant_Review-…
+  yelpUrl         String? // e.g. https://www.yelp.com/biz/…
+  zomatoUrl       String? // e.g. https://www.zomato.com/london/…
   // POSITIVE-EXPERIENCE line (1–10). Milestone 23 renamed this from
   // `reviewThreshold` and stripped its old job.
   //
@@ -369,6 +385,11 @@ model Feedback {
   // "N invited → M clicked", which is the number that answers "what am I paying
   // for?" and stops month-two churn. Nullable, stamped at most once.
   reviewClickedAt DateTime?
+  // WHICH platform they tapped (Milestone 29): "google" | "tripadvisor" | "yelp" |
+  // "zomato". Without this, adding four tiles would cost us the ability to say which
+  // one actually earns its keep — the dashboard could only report that *something*
+  // was clicked. Null for older rows and for anyone who never tapped through.
+  reviewClickedPlatform String?
   createdAt    DateTime   @default(now())
 
   // Speeds up the "how many recent submissions from this IP?" rate-limit query.

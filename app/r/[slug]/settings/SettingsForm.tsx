@@ -10,11 +10,17 @@
 
 import { useActionState, useEffect, useState } from "react";
 import { saveSettings, type SettingsState } from "./actions";
+import { REVIEW_PLATFORMS, type ReviewPlatformDef } from "@/lib/review-platforms";
+import { isValidReviewUrl } from "@/lib/review-url";
 
 interface SettingsFormProps {
   slug: string;
   name: string;
+  /** The four review links (M29). Empty string = not set = no tile for that platform. */
   googleReviewUrl: string;
+  tripadvisorUrl: string;
+  yelpUrl: string;
+  zomatoUrl: string;
   positiveThreshold: number;
   alertThreshold: number;
   /** The signed-in person's own notification preferences. */
@@ -83,6 +89,107 @@ function Toggle({
   );
 }
 
+/**
+ * One review-link field (Milestone 29) — logo, input, and a "Test this link" escape
+ * hatch.
+ *
+ * ── Why "Test this link" exists ──────────────────────────────────────────────
+ * We can prove a link points at yelp.com. We CANNOT prove it points at *this*
+ * restaurant rather than the one next door. An owner who pastes a neighbour's page
+ * would silently send their diners to review someone else's venue, and nothing would
+ * look broken. So we can't validate it away — we make it visible, and let the owner
+ * see for themselves where the link actually lands.
+ *
+ * ── ⚠️ Why the link is GATED, and why that is not optional ───────────────────
+ * This puts a user-typed string into an `href`. If an owner typed — or was talked
+ * into pasting — `javascript:alert(document.cookie)`, clicking it would execute IN
+ * OUR ORIGIN, inside their authenticated session: self-XSS, ending in session theft.
+ *
+ * So the anchor is only RENDERED when the typed value already passes
+ * `isValidReviewUrl`, the very same allowlist the server enforces — which demands
+ * `https:` and a known host. A `javascript:`/`data:` URL, or any off-allowlist domain,
+ * simply never becomes a clickable element. Plus `rel="noopener"`, so the page we open
+ * can't reach back through `window.opener`.
+ */
+function ReviewLinkField({
+  platform,
+  initial,
+  error,
+}: {
+  platform: ReviewPlatformDef;
+  initial: string;
+  error?: string;
+}) {
+  const [value, setValue] = useState(initial);
+  const trimmed = value.trim();
+
+  // THE GATE. Same function the server calls — see the note above.
+  const safeToOpen = trimmed !== "" && isValidReviewUrl(platform.id, trimmed);
+  const looksWrong = trimmed !== "" && !safeToOpen;
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label
+        htmlFor={platform.field}
+        className={`flex items-center gap-2 ${LABEL}`}
+      >
+        {/* Local SVG — the CSP forbids remote images. Decorative, so alt="". */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={platform.logo}
+          alt=""
+          width={20}
+          height={20}
+          className="h-5 w-5 flex-none object-contain"
+        />
+        {platform.name}
+        <span className="font-normal text-[#9CA3AF]">Optional</span>
+      </label>
+
+      <input
+        id={platform.field}
+        name={platform.field}
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        placeholder={platform.example}
+        className={FIELD}
+      />
+
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <p className={HINT}>{platform.help}</p>
+
+        {safeToOpen && (
+          <a
+            href={trimmed}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex-none text-sm font-medium text-amber-600 underline-offset-2 hover:underline"
+          >
+            Test this link ↗
+          </a>
+        )}
+      </div>
+
+      {/* Live nudge while typing. The server re-checks regardless; this just saves the
+          owner a round-trip to find out they pasted the wrong thing. */}
+      {looksWrong && (
+        <p className="text-sm text-amber-700">
+          That doesn&apos;t look like a {platform.name} link yet.
+        </p>
+      )}
+
+      {/* The full URL, readable. An <input> visually truncates a long link, so an
+          owner could never actually check what they'd pasted. Plain React text, so
+          it's escaped and inert. */}
+      {trimmed !== "" && (
+        <p className="break-all text-xs text-[#9CA3AF]">Goes to: {trimmed}</p>
+      )}
+
+      <FieldError message={error} />
+    </div>
+  );
+}
+
 export default function SettingsForm(props: SettingsFormProps) {
   const boundSave = saveSettings.bind(null, props.slug);
   const [state, action, pending] = useActionState<SettingsState, FormData>(
@@ -101,6 +208,13 @@ export default function SettingsForm(props: SettingsFormProps) {
   }, [state]);
 
   const errors = state && "errors" in state ? state.errors : {};
+
+  // Has the owner set ANY review link? Drives the "nobody is being invited anywhere"
+  // warning. Checked across all four platforms — an owner who has deliberately chosen
+  // Tripadvisor-only must not be nagged about Google.
+  const hasAnyLink = REVIEW_PLATFORMS.some(
+    (p) => (props[p.field] ?? "").trim() !== ""
+  );
 
   return (
     <form action={action} className="flex flex-col gap-6">
@@ -124,30 +238,47 @@ export default function SettingsForm(props: SettingsFormProps) {
             <FieldError message={errors.name} />
           </div>
 
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="googleReviewUrl" className={LABEL}>
-              Google review link
-            </label>
-            <input
-              id="googleReviewUrl"
-              name="googleReviewUrl"
-              defaultValue={props.googleReviewUrl}
-              placeholder="https://g.page/r/…/review"
-              className={FIELD}
+        </div>
+      </section>
+
+      {/* ── Review links (M29) ──────────────────────────────────────────────────
+          Four platforms, all optional and independent. A link you set becomes a logo
+          tile on your feedback page; one you leave blank shows nothing at all — never
+          a dead button (the M18 silent-failure rule). */}
+      <section className={CARD}>
+        <h2 className="mb-1 text-lg font-semibold text-[#111827]">Review links</h2>
+        <p className={`mb-4 ${HINT}`}>
+          Add the ones you actually care about. Each link you set appears as a logo on
+          your feedback page after a guest submits; the rest simply don&apos;t show.
+        </p>
+
+        {!hasAnyLink && (
+          <p className="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-900">
+            <b>You haven&apos;t set any review link yet</b>, so guests aren&apos;t
+            being invited to review you anywhere.
+          </p>
+        )}
+
+        {/* ⚠️ Paste YOUR restaurant's page on each site. We check the link really
+            belongs to that platform, but we can't tell whose restaurant it points at —
+            so use "Test this link" and make sure it opens YOUR page. */}
+        <p className="mb-5 rounded-xl bg-[#F9FAFB] px-3 py-2.5 text-sm text-[#6B7280]">
+          Paste the link to <b className="text-[#111827]">your own page</b> on each
+          site. We check it really is a Google/Tripadvisor/Yelp/Zomato link — but we
+          can&apos;t tell whether it&apos;s <i>your</i> restaurant, so tap{" "}
+          <b className="text-[#111827]">Test this link</b> and make sure it opens your
+          page, not someone else&apos;s.
+        </p>
+
+        <div className="flex flex-col gap-6">
+          {REVIEW_PLATFORMS.map((platform) => (
+            <ReviewLinkField
+              key={platform.id}
+              platform={platform}
+              initial={props[platform.field] ?? ""}
+              error={errors[platform.field]}
             />
-            <p className={HINT}>
-              Where happy diners are sent to leave a public review.{" "}
-              {props.googleReviewUrl ? (
-                "Paste the link from your Google Business profile."
-              ) : (
-                <span className="font-medium text-red-600">
-                  You haven&apos;t set this yet, so happy diners aren&apos;t being
-                  sent anywhere.
-                </span>
-              )}
-            </p>
-            <FieldError message={errors.googleReviewUrl} />
-          </div>
+          ))}
         </div>
       </section>
 

@@ -92,6 +92,9 @@ export default async function SettingsPage({
           slug={slug}
           name={restaurant.name}
           googleReviewUrl={restaurant.googleReviewUrl ?? ""}
+          tripadvisorUrl={restaurant.tripadvisorUrl ?? ""}
+          yelpUrl={restaurant.yelpUrl ?? ""}
+          zomatoUrl={restaurant.zomatoUrl ?? ""}
           positiveThreshold={restaurant.positiveThreshold}
           alertThreshold={restaurant.alertThreshold}
           alertsEnabled={me?.alertsEnabled ?? true}

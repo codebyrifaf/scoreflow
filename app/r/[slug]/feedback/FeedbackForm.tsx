@@ -21,6 +21,7 @@
 import { useState } from "react";
 import type { FeedbackPayload } from "@/lib/types";
 import { chipsForRating } from "@/lib/feedback-chips";
+import type { ActiveReviewLink } from "@/lib/review-platforms";
 
 /** The 10 rating values, [1, 2, 3, ... 10], built once so we can `.map()` over them. */
 const RATINGS = Array.from({ length: 10 }, (_, i) => i + 1);
@@ -35,12 +36,15 @@ interface FeedbackFormProps {
   /** Display name, e.g. "Fucco". */
   restaurantName: string;
   /**
-   * Where the thank-you "Leave us a Google review" link points, or `null` if this
-   * restaurant hasn't set one. When it's null we show NO button rather than a dead
-   * one (Milestone 18) — a button that goes nowhere is worse than no button, because
-   * the diner thinks they've left a review and the owner never finds out they haven't.
+   * The review platforms this restaurant has actually set (Milestone 29) — one logo
+   * tile each, all equal weight, in a fixed order.
+   *
+   * EMPTY means the owner has set no review link at all, and we then render nothing:
+   * no heading, no tiles. That's the M18 rule — a button that goes nowhere is worse
+   * than no button, because the diner believes they've reviewed you and the owner
+   * never finds out they haven't.
    */
-  googleReviewUrl: string | null;
+  reviewLinks: ActiveReviewLink[];
   /**
    * The "positive experience" line (1–10). It sets the TONE only — which chips we
    * offer and how the thank-you is worded.
@@ -104,7 +108,7 @@ function BrandLogo({ name, logoUrl }: { name: string; logoUrl: string | null }) 
 export default function FeedbackForm({
   slug,
   restaurantName,
-  googleReviewUrl,
+  reviewLinks,
   positiveThreshold,
   table,
   logoUrl,
@@ -268,29 +272,61 @@ export default function FeedbackForm({
             </p>
           )}
 
-          {/* THE REVIEW INVITE — offered to everyone, identically. If the owner
-              hasn't set a link we show nothing at all, rather than a dead button.
+          {/* THE REVIEW INVITE (M29) — offered to EVERYONE, identically.
 
-              The link points at our own /go-review redirect (which records the
-              click, then forwards to Google) so the owner can see how many invites
-              actually convert — M24. If we somehow didn't get an id back, fall
-              straight through to the Google URL so the diner is never blocked. */}
-          {googleReviewUrl && (
-            <>
-              <a
-                href={
-                  feedbackId
-                    ? `/r/${slug}/go-review?f=${feedbackId}`
-                    : googleReviewUrl
-                }
-                className={`mt-8 block ${PRIMARY_BTN_CLASS}`}
-              >
-                Leave a review on Google
-              </a>
-              <p className="mt-3 text-[13px] text-[#9CA3AF]">
+              One logo tile per platform the restaurant has set, all the same weight:
+              a diner recognises the mark and knows exactly where tapping it goes. If
+              the owner set none, we render nothing at all — no heading, no empty box,
+              and above all no dead button (the M18 lesson: a link that goes nowhere is
+              worse than no link, because the diner thinks they've reviewed you and the
+              owner never finds out they haven't).
+
+              Each tile points at our own /go-review redirect, which records WHICH
+              platform was tapped and then forwards them (M24/M29) — that's how the
+              owner learns which platform is actually worth having. If we somehow never
+              got a feedback id back, we fall straight through to the raw URL: the
+              diner is never blocked by our analytics. */}
+          {reviewLinks.length > 0 && (
+            <div className="mt-8">
+              <p className="text-[15px] font-semibold text-[#111827]">
+                Leave a review
+              </p>
+
+              <div className="mt-4 flex flex-wrap items-start justify-center gap-3">
+                {reviewLinks.map((link) => (
+                  <a
+                    key={link.platform}
+                    href={
+                      feedbackId
+                        ? `/r/${slug}/go-review?f=${feedbackId}&p=${link.platform}`
+                        : link.url
+                    }
+                    aria-label={`Leave a review on ${link.name}`}
+                    className="flex w-[72px] flex-col items-center gap-1.5"
+                  >
+                    <span className="flex h-14 w-14 items-center justify-center rounded-2xl border border-[#E5E7EB] bg-white shadow-sm transition-all duration-150 hover:border-[#D1D5DB] hover:shadow-md active:scale-[0.96]">
+                      {/* Local SVG — the CSP (M25) forbids remote images. The name is
+                          spelled out below, so the image itself is decorative. */}
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={link.logo}
+                        alt=""
+                        width={28}
+                        height={28}
+                        className="h-7 w-7 object-contain"
+                      />
+                    </span>
+                    <span className="text-center text-[11px] font-medium leading-tight text-[#6B7280]">
+                      {link.name}
+                    </span>
+                  </a>
+                ))}
+              </div>
+
+              <p className="mt-5 text-[13px] text-[#9CA3AF]">
                 Sharing your honest experience publicly is entirely up to you.
               </p>
-            </>
+            </div>
           )}
         </div>
       </main>

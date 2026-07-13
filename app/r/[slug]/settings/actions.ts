@@ -26,7 +26,8 @@ import { requireDashboardAccess } from "@/lib/auth-guard";
 import { getRestaurantBySlug, updateRestaurantSettings } from "@/lib/restaurants";
 import { updateNotificationPrefs } from "@/lib/owners";
 import { updateBrandLogo } from "@/lib/brands";
-import { isValidGoogleReviewUrl, GOOGLE_REVIEW_URL_ERROR } from "@/lib/review-url";
+import { isValidReviewUrl, reviewUrlError } from "@/lib/review-url";
+import { REVIEW_PLATFORMS } from "@/lib/review-platforms";
 
 export type SettingsState =
   | { ok: true }
@@ -60,7 +61,6 @@ export async function saveSettings(
   }
 
   const name = String(formData.get("name") ?? "").trim();
-  const googleReviewUrl = String(formData.get("googleReviewUrl") ?? "").trim();
   const positiveThresholdRaw = String(formData.get("positiveThreshold") ?? "").trim();
   const alertThresholdRaw = String(formData.get("alertThreshold") ?? "").trim();
 
@@ -68,10 +68,23 @@ export async function saveSettings(
 
   if (!name) errors.name = "Restaurant name is required.";
 
-  // Must be a real Google review link (M25). Constraining this to Google hosts is
-  // what stops /go-review from becoming an open redirect off our own domain.
-  if (googleReviewUrl && !isValidGoogleReviewUrl(googleReviewUrl)) {
-    errors.googleReviewUrl = GOOGLE_REVIEW_URL_ERROR;
+  // ── The four review links (M29) ───────────────────────────────────────────
+  // Each is OPTIONAL (blank = no tile for that platform) and each is validated
+  // against ITS OWN platform's host allowlist — a Yelp URL pasted into the
+  // Tripadvisor box is rejected, not silently accepted.
+  //
+  // ⚠️ This is the check that keeps /r/<slug>/go-review from becoming an OPEN
+  // REDIRECT on our own domain: that route forwards a diner to whatever is stored
+  // here, so "any https URL" would let an owner launder a phishing link through our
+  // credibility (the M25 finding). Four platforms = four chances to reopen that hole.
+  // The redirect re-checks these too, but this is the front door.
+  const reviewUrls: Record<string, string | null> = {};
+  for (const platform of REVIEW_PLATFORMS) {
+    const raw = String(formData.get(platform.field) ?? "").trim();
+    if (raw && !isValidReviewUrl(platform.id, raw)) {
+      errors[platform.field] = reviewUrlError(platform.id);
+    }
+    reviewUrls[platform.field] = raw || null; // blank clears the link
   }
 
   const positiveThreshold = Number(positiveThresholdRaw);
@@ -118,7 +131,10 @@ export async function saveSettings(
   try {
     await updateRestaurantSettings(restaurant.id, {
       name,
-      googleReviewUrl: googleReviewUrl || null,
+      googleReviewUrl: reviewUrls.googleReviewUrl,
+      tripadvisorUrl: reviewUrls.tripadvisorUrl,
+      yelpUrl: reviewUrls.yelpUrl,
+      zomatoUrl: reviewUrls.zomatoUrl,
       positiveThreshold,
       alertThreshold,
     });

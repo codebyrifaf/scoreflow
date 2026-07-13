@@ -217,12 +217,44 @@ export async function getReviewInviteStats(
  */
 export async function markReviewClicked(
   id: number,
-  restaurantId: number
+  restaurantId: number,
+  platform: string
 ): Promise<void> {
   await prisma.feedback.updateMany({
     where: { id, restaurantId, reviewClickedAt: null },
-    data: { reviewClickedAt: new Date() },
+    // WHICH platform they chose (M29) — without this we'd have four tiles and no way
+    // to tell the owner which one is worth keeping.
+    data: { reviewClickedAt: new Date(), reviewClickedPlatform: platform },
   });
+}
+
+/**
+ * How many diners tapped through to EACH platform (Milestone 29) — the split behind
+ * the dashboard's "12 clicked — 9 Google, 3 Tripadvisor".
+ *
+ * A grouped COUNT in SQL; no rows are loaded. Scoped to one restaurant, as always.
+ */
+export async function getReviewClicksByPlatform(
+  restaurantId: number,
+  since?: Date
+): Promise<{ platform: string; count: number }[]> {
+  const rows = await prisma.feedback.groupBy({
+    by: ["reviewClickedPlatform"],
+    where: {
+      restaurantId,
+      reviewClickedAt: { not: null },
+      reviewClickedPlatform: { not: null },
+      ...(since ? { createdAt: { gte: since } } : {}),
+    },
+    _count: { _all: true },
+  });
+
+  return rows
+    .map((r) => ({
+      platform: r.reviewClickedPlatform as string,
+      count: r._count._all,
+    }))
+    .sort((a, b) => b.count - a.count);
 }
 
 /**

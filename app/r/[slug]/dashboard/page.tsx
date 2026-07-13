@@ -21,9 +21,15 @@ import {
   getRecentFeedback,
   getTopTags,
   getReviewInviteStats,
+  getReviewClicksByPlatform,
   getOpenComplaints,
   countOpenComplaints,
 } from "@/lib/feedback";
+import {
+  hasAnyReviewLink,
+  REVIEW_PLATFORMS,
+  type ReviewPlatform,
+} from "@/lib/review-platforms";
 import { startOfTodayLocal, formatInAppTz } from "@/lib/time";
 import { requireDashboardAccess } from "@/lib/auth-guard";
 import { logout } from "@/app/login/actions";
@@ -70,6 +76,17 @@ function cutoffFor(range: Range, now: Date): Date | null {
 }
 
 /** Colour a rating so an owner can scan good/ok/bad at a glance. */
+/**
+ * A platform id → its display name ("yelp" → "Yelp"). Falls back to the raw id, so an
+ * old row written before a platform was renamed still shows *something* rather than
+ * a blank in the middle of a sentence.
+ */
+function platformName(id: string): string {
+  return (
+    REVIEW_PLATFORMS.find((p) => p.id === (id as ReviewPlatform))?.name ?? id
+  );
+}
+
 function ratingTone(rating: number): string {
   if (rating >= 8) return "bg-green-50 text-green-700";
   if (rating >= 5) return "bg-amber-50 text-amber-700";
@@ -197,6 +214,7 @@ export default async function DashboardPage({
     reviewStats,
     openComplaints,
     openComplaintCount,
+    clicksByPlatform,
   ] =
     await Promise.all([
       getFeedbackStats(restaurant.id, since),
@@ -209,7 +227,13 @@ export default async function DashboardPage({
       // backlog of 200 never renders as 200 cards but also never lies as "25".
       getOpenComplaints(restaurant.id, restaurant.alertThreshold),
       countOpenComplaints(restaurant.id, restaurant.alertThreshold),
+      // Which platform diners actually chose (M29).
+      getReviewClicksByPlatform(restaurant.id, since),
     ]);
+
+  // Has this restaurant set a review link on ANY platform? Drives both the
+  // "nobody is being invited anywhere" warning and whether the ROI card renders.
+  const hasReviewLink = hasAnyReviewLink(restaurant);
 
   const total = stats.total;
   const averageRating = stats.average;
@@ -270,20 +294,24 @@ export default async function DashboardPage({
           </div>
         </header>
 
-        {/* The silent-failure warning (M18). With no Google link set, a happy diner
-            used to tap a button that went nowhere and nobody ever found out. Now the
-            button isn't shown at all — and we tell the owner, who can fix it
-            themselves in one click. */}
-        {!restaurant.googleReviewUrl && (
+        {/* The silent-failure warning (M18, widened in M29). With no review link at
+            all, a diner used to tap a button that went nowhere and nobody ever found
+            out. Now no button is shown — and we tell the owner, who can fix it in one
+            click.
+
+            ⚠️ The test is "no link on ANY platform", not "no Google link". An owner who
+            has deliberately chosen Tripadvisor-only is not misconfigured, and nagging
+            them about Google would be us being wrong, loudly, on their dashboard. */}
+        {!hasReviewLink && (
           <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-4">
             <p className="text-sm text-amber-900">
-              <b>No Google review link set.</b> Happy diners aren&apos;t being sent
-              anywhere, so you&apos;re not getting any new reviews.{" "}
+              <b>No review links set.</b> Your guests aren&apos;t being invited to
+              review you anywhere, so you&apos;re not getting any new reviews.{" "}
               <Link
                 href={`/r/${slug}/settings`}
                 className="font-semibold underline"
               >
-                Add your link
+                Add your links
               </Link>
               .
             </p>
@@ -341,18 +369,26 @@ export default async function DashboardPage({
               </div>
             )}
           </div>
-          {/* Review-invite ROI (M24). This is the number that answers "what am I
-              paying for?" — how many diners we sent to Google actually went. Only
-              shown once a review link is set. */}
-          {restaurant.googleReviewUrl && (
+          {/* Review-invite ROI (M24; per-platform in M29). This is the number that
+              answers "what am I paying for?" — how many diners we invited actually
+              went. Shown once ANY review link is set, and broken down by platform, so
+              the owner can see which one is worth keeping and which is dead weight. */}
+          {hasReviewLink && (
             <div className={`col-span-2 sm:col-span-1 ${CARD_CLASS}`}>
-              <div className="text-sm text-[#6B7280]">Google reviews</div>
+              <div className="text-sm text-[#6B7280]">Reviews left</div>
               <div className="mt-1 text-3xl font-bold text-[#111827]">
                 {reviewRatePct === null ? "—" : `${reviewRatePct}%`}
               </div>
               <div className="mt-1 text-xs text-[#9CA3AF]">
                 {reviewStats.clicked} of {reviewStats.invited} invited tapped through
               </div>
+              {clicksByPlatform.length > 0 && (
+                <div className="mt-2 text-xs text-[#6B7280]">
+                  {clicksByPlatform
+                    .map((c) => `${platformName(c.platform)} ${c.count}`)
+                    .join(" · ")}
+                </div>
+              )}
             </div>
           )}
         </section>
