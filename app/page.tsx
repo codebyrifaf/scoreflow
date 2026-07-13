@@ -189,8 +189,14 @@ export default function Home() {
 
           {/* The whole product in one line: you hear about it while you can still
               do something about it. */}
+          {/* MOBILE SIZE IS DELIBERATE (30px, not 40px). At 40px the line "Hear it at
+              the table." needs ~410px, but a 375px phone leaves only 327px of content
+              width — so it wrapped in the middle of the phrase, and `leading-[1.05]`
+              (beautiful at 68px, far too tight at 40px) made the wrapped lines collide.
+              30px lets each line land intact even on the narrowest phone still in use.
+              `sm:` restores the desktop values exactly. */}
           <h1
-            className="animate-rise mx-auto mt-4 max-w-3xl text-[40px] font-semibold leading-[1.05] tracking-[-0.03em] text-[#1D1D1F] sm:text-[60px] lg:text-[68px]"
+            className="animate-rise mx-auto mt-4 max-w-3xl text-[30px] font-semibold leading-[1.12] tracking-[-0.03em] text-[#1D1D1F] sm:text-[60px] sm:leading-[1.05] lg:text-[68px]"
             style={{ "--rise-delay": "90ms" } as React.CSSProperties}
           >
             Hear it at the table.
@@ -207,11 +213,14 @@ export default function Home() {
             still sitting there.
           </p>
 
+          {/* On a phone these stack: a full-width primary button (a proper thumb
+              target, and the standard mobile pattern) with the secondary link beneath.
+              `sm:` puts them back on one row exactly as they are today. */}
           <div
-            className="animate-rise mt-9 flex flex-wrap items-center justify-center gap-6"
+            className="animate-rise mt-8 flex flex-col items-center justify-center gap-5 sm:mt-9 sm:flex-row sm:flex-wrap sm:gap-6"
             style={{ "--rise-delay": "270ms" } as React.CSSProperties}
           >
-            <Link href="/signup" className={BTN_DARK}>
+            <Link href="/signup" className={`w-full sm:w-auto ${BTN_DARK}`}>
               Start {TRIAL_DAYS} days free
             </Link>
             <Link
@@ -443,7 +452,7 @@ export default function Home() {
       <section className={`bg-[#F5F5F7] ${SECTION}`}>
         <div className={`${CONTAINER} text-center`}>
           <Reveal>
-            <h2 className="mx-auto max-w-2xl text-[34px] font-semibold leading-[1.05] tracking-[-0.03em] text-[#1D1D1F] sm:text-[52px]">
+            <h2 className="mx-auto max-w-2xl text-[30px] font-semibold leading-[1.1] tracking-[-0.03em] text-[#1D1D1F] sm:text-[52px] sm:leading-[1.05]">
               Put it on the table.
             </h2>
             <p className="mx-auto mt-5 max-w-md text-[17px] leading-relaxed text-[#6E6E73]">
@@ -451,7 +460,7 @@ export default function Home() {
               instead of Google.
             </p>
             <div className="mt-9">
-              <Link href="/signup" className={BTN_DARK}>
+              <Link href="/signup" className={`w-full sm:w-auto ${BTN_DARK}`}>
                 Start {TRIAL_DAYS} days free
               </Link>
             </div>

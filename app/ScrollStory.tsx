@@ -349,27 +349,44 @@ export default function ScrollStory() {
     <section ref={sectionRef} className="relative h-[500vh] bg-[#F5F5F7]">
       <div className="sticky top-0 flex h-dvh items-center overflow-hidden">
         <div className="mx-auto w-full max-w-5xl px-6">
-          <div className="grid items-center gap-8 lg:grid-cols-2 lg:gap-16">
-            {/* The phone — pinned. Only the screen inside it changes. */}
-            <div className="order-1 flex justify-center lg:order-2">
-              <PhoneFrame width="w-[248px] lg:w-[290px]">
-                <div className="relative h-[420px] lg:h-[478px]">
-                  {screens.map((screen, i) => (
-                    <div
-                      key={i}
-                      data-active={active === i}
-                      className="story-layer absolute inset-0"
-                    >
-                      {screen}
-                    </div>
-                  ))}
-                </div>
-              </PhoneFrame>
+          <div className="grid items-center gap-5 sm:gap-8 lg:grid-cols-2 lg:gap-16">
+            {/*
+              The phone — pinned. Only the screen inside it changes.
+
+              ⚠️ ON PHONES IT IS SCALED, NOT RESIZED. Stacked, this column plus the
+              copy came to ~711px inside a `h-dvh` + `overflow-hidden` container: on a
+              large phone that filled the screen edge to edge with no margin, and on a
+              small one (SE-sized, ~560px usable) it was simply CUT OFF.
+
+              The obvious fix — a narrower `w-[…]` — is wrong: the mock screens inside
+              are hand-tuned to a 248×420 box (fixed 9–11px type, a 5-column chip
+              grid), so shrinking the frame reflows them and clips their *contents*
+              instead. A transform scales the whole thing uniformly, like zooming out,
+              so the mock stays exactly right, just smaller. The fixed-height wrapper
+              is what stops the un-scaled 438px layout box from still reserving the
+              space a transform doesn't reclaim.
+            */}
+            <div className="order-1 flex h-[320px] items-center justify-center sm:h-auto lg:order-2">
+              <div className="scale-[0.72] sm:scale-100">
+                <PhoneFrame width="w-[248px] lg:w-[290px]">
+                  <div className="relative h-[420px] lg:h-[478px]">
+                    {screens.map((screen, i) => (
+                      <div
+                        key={i}
+                        data-active={active === i}
+                        className="story-layer absolute inset-0"
+                      >
+                        {screen}
+                      </div>
+                    ))}
+                  </div>
+                </PhoneFrame>
+              </div>
             </div>
 
             {/* The copy — changes in sync. */}
             <div className="order-2 lg:order-1">
-              <div className="mb-7 flex gap-1.5 lg:mb-9">
+              <div className="mb-4 flex gap-1.5 sm:mb-7 lg:mb-9">
                 {STEPS.map((_, i) => (
                   <span
                     key={i}
@@ -380,17 +397,20 @@ export default function ScrollStory() {
                 ))}
               </div>
 
-              <div className="relative h-[210px] lg:h-[250px]">
+              {/* Fixed height so the cross-dissolving layers don't shift the page.
+                  Shorter on phones to match the smaller type below — every value is
+                  restored at `sm:`, so tablet and desktop are untouched. */}
+              <div className="relative h-[168px] sm:h-[210px] lg:h-[250px]">
                 {STEPS.map((s, i) => (
                   <div
                     key={i}
                     data-active={active === i}
                     className="story-layer absolute inset-0"
                   >
-                    <h3 className="text-[26px] font-semibold leading-[1.1] tracking-[-0.02em] text-[#1D1D1F] lg:text-[40px]">
+                    <h3 className="text-[22px] font-semibold leading-[1.15] tracking-[-0.02em] text-[#1D1D1F] sm:text-[26px] sm:leading-[1.1] lg:text-[40px]">
                       {s.title}
                     </h3>
-                    <p className="mt-3 max-w-md text-[15px] leading-relaxed text-[#6E6E73] lg:mt-5 lg:text-[17px]">
+                    <p className="mt-2.5 max-w-md text-[14px] leading-relaxed text-[#6E6E73] sm:mt-3 sm:text-[15px] lg:mt-5 lg:text-[17px]">
                       {s.copy}
                     </p>
                   </div>
