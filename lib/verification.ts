@@ -38,10 +38,16 @@ function generateCode(): string {
  * Issue a fresh code for `email` + `purpose`, and return the PLAINTEXT so the
  * caller can email it. Any previous code for the same email+purpose is deleted
  * first, so only the newest one works.
+ *
+ * `ttlMs` overrides the default 10-minute lifetime. A branch-manager INVITE
+ * (Milestone 36) uses a much longer window, because the manager might not open their
+ * email for a day or two — a 10-minute invite would nearly always be dead on arrival.
+ * If it does lapse, the account already exists, so "Forgot password" issues a new one.
  */
 export async function issueCode(
   email: string,
-  purpose: VerificationPurpose
+  purpose: VerificationPurpose,
+  ttlMs: number = CODE_TTL_MS
 ): Promise<string> {
   const code = generateCode();
   await prisma.$transaction([
@@ -51,7 +57,7 @@ export async function issueCode(
         email,
         purpose,
         codeHash: hashCode(code),
-        expiresAt: new Date(Date.now() + CODE_TTL_MS),
+        expiresAt: new Date(Date.now() + ttlMs),
       },
     }),
   ]);

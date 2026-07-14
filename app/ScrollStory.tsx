@@ -19,8 +19,8 @@
  * sells the product: **the instant alert.**
  *
  * The story now matches reality, and leads with the thing an owner actually buys:
- *   1. tap  2. ten seconds  3. EVERY guest is invited to review  4. you're told
- *   immediately  5. it all lands on your dashboard
+ *   1. scan  2. ten seconds  3. EVERY guest is invited to review (all four
+ *   platforms)  4. you're told immediately  5. it all lands on your dashboard
  *
  * Mechanics unchanged: JS only computes which step is active and sets `data-active`;
  * all motion lives in CSS (`.story-layer`), so we only animate opacity + transform.
@@ -28,13 +28,19 @@
 
 import { useEffect, useRef, useState } from "react";
 import PhoneFrame from "./PhoneFrame";
+import { REVIEW_PLATFORMS } from "@/lib/review-platforms";
 
 const RATINGS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
 const STEPS = [
   {
-    title: "It starts with a tap.",
-    copy: "A guest taps the chip on the table. The form opens instantly — no app, no sign-up, no QR to squint at.",
+    // ⚠️ This line USED to read "…no QR to squint at". That was written when the
+    // product was NFC-only — and M30 then made the printable QR kit the flagship
+    // way to go live (no hardware to buy). The page was disparaging its own best
+    // feature. It now names both, QR first, because QR is the one that gets a
+    // restaurant live tonight.
+    title: "It starts with a scan.",
+    copy: "A guest scans the QR card on the table — or taps an NFC chip, if you prefer. The form opens instantly: no app, no sign-up.",
   },
   {
     title: "Ten seconds. No typing.",
@@ -157,33 +163,64 @@ function FormScreen({ picked }: { picked: boolean }) {
  * Step 3: the thank-you an UNHAPPY guest sees.
  *
  * This screen is the proof of the compliance claim, so it must be exactly what the
- * product renders: a private acknowledgement AND the same Google review button
- * everyone else gets. If you're going to say "we don't gate reviews", the picture
- * had better show it.
+ * product renders: a private acknowledgement AND the same review invite everyone
+ * else gets. If you're going to say "we don't gate reviews", the picture had better
+ * show it.
+ *
+ * ⚠️ It used to show ONE amber "Leave a review on Google" button — which stopped
+ * being the truth at M29, when the invite became a row of equal-weight logo tiles
+ * (Google, Tripadvisor, Yelp, Zomato — whichever the restaurant has set). So the
+ * page was hiding a whole feature *and* misrepresenting the screen it was using as
+ * evidence. It now mirrors FeedbackForm.tsx: same tiles, same order, same idea.
+ *
+ * The tiles are driven off REVIEW_PLATFORMS so this mock can never silently drift
+ * from the product again. That module is dependency-free by design (see its header),
+ * so a client component may import it.
  */
 function ThankYouScreen() {
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-3 px-5 text-center">
-      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#F2F2F7] text-2xl text-[#8E8E93]">
+    <div className="flex h-full flex-col items-center justify-center gap-2.5 px-4 text-center">
+      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#F2F2F7] text-xl text-[#8E8E93]">
         ✓
       </div>
-      <p className="text-[14px] font-semibold text-[#1D1D1F]">
+      <p className="text-[13px] font-semibold text-[#1D1D1F]">
         Thank you — we hear you
       </p>
-      <p className="text-[11px] leading-relaxed text-[#6E6E73]">
+      <p className="text-[10px] leading-relaxed text-[#6E6E73]">
         We&apos;re sorry your experience at Fucco fell short.
       </p>
 
-      <p className="w-full rounded-lg bg-[#F2F2F7] px-3 py-2 text-[10px] leading-relaxed text-[#3A3A3C]">
+      <p className="w-full rounded-lg bg-[#F2F2F7] px-3 py-1.5 text-[9px] leading-relaxed text-[#3A3A3C]">
         What you told us has gone straight to the Fucco team so they can put it
         right.
       </p>
 
       {/* The same invite everyone gets — shown here to a 3/10. That's the point. */}
-      <div className="mt-1 w-full rounded-lg bg-amber-500 py-2.5 text-[11px] font-semibold text-white">
-        Leave a review on Google
+      <p className="mt-1 text-[10px] font-semibold text-[#1D1D1F]">
+        Leave a review
+      </p>
+      <div className="flex items-start justify-center gap-1.5">
+        {REVIEW_PLATFORMS.map((p) => (
+          <div key={p.id} className="flex w-10.5 flex-col items-center gap-0.5">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#E5E5EA] bg-white shadow-sm">
+              {/* Local SVG — the CSP (M25) forbids remote images. Decorative here:
+                  the platform is named underneath. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={p.logo}
+                alt=""
+                width={18}
+                height={18}
+                className="h-4.5 w-4.5 object-contain"
+              />
+            </span>
+            <span className="text-[7px] font-medium leading-tight text-[#6E6E73]">
+              {p.name}
+            </span>
+          </div>
+        ))}
       </div>
-      <p className="text-[9px] text-[#AEAEB2]">
+      <p className="text-[8px] text-[#AEAEB2]">
         Sharing your honest experience publicly is entirely up to you.
       </p>
     </div>

@@ -1,16 +1,18 @@
 "use client";
 
 /**
- * Step 2 of self-serve signup (Milestone 20) — CLIENT component.
- * Enter the 6-digit code we emailed; on success the account is created and we go
- * to sign-in. Also offers a "resend" for when the email is slow.
+ * Step 2 of self-serve signup (Milestone 20; boxes + cooldown in M37) — CLIENT
+ * component. Enter the 6-digit code we emailed; on success the account is created and
+ * we go to sign-in. "Resend" is on a 60-second cooldown so nobody can hammer it (and
+ * so we don't blast our email quota).
  */
 
-import { useActionState, useState, useTransition } from "react";
+import { useActionState, useEffect, useState, useTransition } from "react";
 import { confirmSignup, resendSignupCode, type VerifyState } from "../actions";
+import CodeInput from "@/app/CodeInput";
 
-const FIELD =
-  "w-full rounded-2xl border border-[#E5E7EB] bg-white px-4 py-3.5 text-center text-2xl tracking-[0.4em] text-[#111827] outline-none transition duration-200 placeholder:tracking-normal placeholder:text-[#9CA3AF] focus:border-amber-500 focus:ring-4 focus:ring-amber-500/15";
+/** Seconds the "Resend" button stays disabled after landing / after a resend. */
+const RESEND_COOLDOWN = 60;
 
 export default function VerifyForm({ email }: { email: string }) {
   const boundConfirm = confirmSignup.bind(null, email);
@@ -23,25 +25,29 @@ export default function VerifyForm({ email }: { email: string }) {
   const [resent, setResent] = useState(false);
   const [isResending, startResend] = useTransition();
 
+  // Countdown: starts at 60 on mount, ticks to 0, resets to 60 on each resend.
+  const [cooldown, setCooldown] = useState(RESEND_COOLDOWN);
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const t = setTimeout(() => setCooldown((s) => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [cooldown]);
+
+  const canResend = cooldown <= 0 && !isResending;
+
   function resend() {
+    if (!canResend) return;
     startResend(async () => {
       await resendSignupCode(email);
       setResent(true);
+      setCooldown(RESEND_COOLDOWN);
       setTimeout(() => setResent(false), 4000);
     });
   }
 
   return (
     <form action={action} className="flex flex-col gap-4">
-      <input
-        name="code"
-        inputMode="numeric"
-        autoComplete="one-time-code"
-        maxLength={6}
-        placeholder="000000"
-        autoFocus
-        className={FIELD}
-      />
+      <CodeInput name="code" autoFocus />
 
       {error && (
         <p role="alert" className="text-center text-sm font-medium text-red-600">
@@ -62,10 +68,16 @@ export default function VerifyForm({ email }: { email: string }) {
         <button
           type="button"
           onClick={resend}
-          disabled={isResending}
-          className="font-medium text-amber-600 hover:underline disabled:opacity-50"
+          disabled={!canResend}
+          className="font-medium text-amber-600 hover:underline disabled:cursor-not-allowed disabled:text-[#9CA3AF] disabled:no-underline"
         >
-          {resent ? "Sent!" : isResending ? "Sending…" : "Resend code"}
+          {resent
+            ? "Sent!"
+            : isResending
+              ? "Sending…"
+              : cooldown > 0
+                ? `Resend in ${cooldown}s`
+                : "Resend code"}
         </button>
       </p>
     </form>

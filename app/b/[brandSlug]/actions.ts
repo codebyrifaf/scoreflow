@@ -10,6 +10,7 @@
  * So a brand owner can only ever manage their own brand's branches.
  */
 
+import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
 import { requireBrandAccess } from "@/lib/auth-guard";
@@ -22,10 +23,45 @@ import {
 } from "@/lib/restaurants";
 import { getOwnerByEmail, updateOwnerPassword } from "@/lib/owners";
 import { getOperatorByEmail } from "@/lib/operators";
-import { isValidGoogleReviewUrl, GOOGLE_REVIEW_URL_ERROR } from "@/lib/review-url";
 import { validateNewPassword } from "@/lib/passwords";
+import { issueCode } from "@/lib/verification";
+import { sendEmail } from "@/lib/email";
+import { appUrl } from "@/lib/app-url";
 
 const SALT_ROUNDS = 10;
+
+/** How long a branch-manager invite link stays valid (M36). Generous — the manager
+ *  may not check their email for a day or two; if it lapses, "Forgot password" works. */
+const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+/**
+ * Email a new branch manager an INVITE to set their own password (Milestone 36).
+ *
+ * ⚠️ We NEVER email a password. The brand owner no longer sets one at all — instead we
+ * create the account with a random, unusable password, then send the manager a one-time
+ * link to choose their own. Nobody but the manager ever knows it, and nothing sensitive
+ * sits in an inbox. The link reuses the /reset page (same "code + new password" flow),
+ * with the code pre-filled in the URL so the manager just picks a password.
+ */
+async function sendManagerInvite(
+  managerEmail: string,
+  brandName: string,
+  branchName: string,
+  code: string
+): Promise<void> {
+  const link = `${appUrl()}/reset?email=${encodeURIComponent(managerEmail)}&code=${code}`;
+  await sendEmail({
+    to: managerEmail,
+    subject: `You've been added as a manager for ${branchName}`,
+    body:
+      `You've been set up as the manager for ${branchName} (part of ${brandName}) on ` +
+      `ScoreFlow.\n\n` +
+      `Set your password to get started:\n${link}\n\n` +
+      `This link is valid for 7 days. If it expires, go to the sign-in page and use ` +
+      `"Forgot password" — your account is already set up.\n\n` +
+      `Your login email is: ${managerEmail}`,
+  });
+}
 
 export type BranchState =
   | { ok: true }
@@ -34,13 +70,18 @@ export type BranchState =
 export type ResetState = { error: string } | { ok: true } | undefined;
 export type DeleteBranchState = { error: string } | { ok: true } | undefined;
 
-/** Validate the shared branch fields (name / slug / Google URL / threshold). */
+/**
+ * Validate the shared branch fields (name / slug / threshold).
+ *
+ * ⚠️ Review links are NOT read here (M35). All four platforms (Google, Tripadvisor,
+ * Yelp, Zomato) are set in the branch's own Settings by whoever runs it — exactly like
+ * a solo restaurant — so the quick add/edit-branch form doesn't ask for any of them.
+ */
 function readBranchFields(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   const slug = String(formData.get("slug") ?? "")
     .trim()
     .toLowerCase();
-  const googleReviewUrl = String(formData.get("googleReviewUrl") ?? "").trim();
   const positiveThresholdRaw = String(formData.get("positiveThreshold") ?? "").trim();
   const positiveThreshold = Number(positiveThresholdRaw);
 
@@ -49,8 +90,6 @@ function readBranchFields(formData: FormData) {
   if (!slug) errors.slug = "Slug is required.";
   else if (!/^[a-z0-9-]+$/.test(slug))
     errors.slug = "Slug can only contain lowercase letters, numbers, and hyphens.";
-  if (googleReviewUrl && !isValidGoogleReviewUrl(googleReviewUrl))
-    errors.googleReviewUrl = GOOGLE_REVIEW_URL_ERROR;
   if (
     !positiveThresholdRaw ||
     !Number.isInteger(positiveThreshold) ||
@@ -59,10 +98,18 @@ function readBranchFields(formData: FormData) {
   )
     errors.positiveThreshold = "Review threshold must be a whole number from 1 to 10.";
 
-  return { name, slug, googleReviewUrl, positiveThreshold, errors };
+  return { name, slug, positiveThreshold, errors };
 }
 
-/** Add a branch to this brand (+ its branch-manager login). */
+/**
+ * Add a branch to this brand, and INVITE its manager to set their own password (M36).
+ *
+ * The owner supplies only the manager's EMAIL — no password. We create the account
+ * with a random, unusable password, then email the manager a one-time link to choose
+ * their own. This means: the owner never handles a password, nothing sensitive lands
+ * in an inbox, only the manager ever knows their password, and the email is implicitly
+ * VERIFIED (they can't activate without receiving the link).
+ */
 export async function addBranch(
   brandSlug: string,
   _prev: BranchState,
@@ -73,18 +120,14 @@ export async function addBranch(
   const brand = await getBrandBySlug(brandSlug);
   if (!brand) return { errors: { form: "Brand not found." } };
 
-  const { name, slug, googleReviewUrl, positiveThreshold, errors } =
-    readBranchFields(formData);
+  const { name, slug, positiveThreshold, errors } = readBranchFields(formData);
   const managerEmail = String(formData.get("managerEmail") ?? "")
     .trim()
     .toLowerCase();
-  const managerPassword = String(formData.get("managerPassword") ?? "");
 
   if (!managerEmail) errors.managerEmail = "Manager email is required.";
   else if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(managerEmail))
     errors.managerEmail = "Enter a valid email address.";
-  const weakManagerPassword = validateNewPassword(managerPassword);
-  if (weakManagerPassword) errors.managerPassword = weakManagerPassword;
 
   if (!errors.slug && (await getRestaurantBySlug(slug)))
     errors.slug = "That slug is already taken.";
@@ -97,19 +140,35 @@ export async function addBranch(
 
   if (Object.keys(errors).length > 0) return { errors };
 
-  const ownerPasswordHash = await bcrypt.hash(managerPassword, SALT_ROUNDS);
+  // A random, unusable password — the account can't be logged into until the manager
+  // sets their own via the invite link. Nobody ever knows this value.
+  const placeholderHash = await bcrypt.hash(
+    randomBytes(32).toString("hex"),
+    SALT_ROUNDS
+  );
   try {
     await createRestaurantWithOwner({
       name,
       slug,
-      googleReviewUrl: googleReviewUrl || null,
+      // No review links at creation (M35) — the manager sets all four in Settings.
+      googleReviewUrl: null,
       positiveThreshold,
       ownerEmail: managerEmail,
-      ownerPasswordHash,
+      ownerPasswordHash: placeholderHash,
       brandId: brand.id, // ← this makes it a branch of THIS brand
     });
   } catch {
     return { errors: { form: "Could not add the branch — slug or email may exist." } };
+  }
+
+  // Invite the manager to set their password. Reuses the "reset" code flow, with a
+  // long TTL. Best-effort: the branch IS created even if the email hiccups — the
+  // manager can always use "Forgot password" (their account exists). We just log it.
+  try {
+    const code = await issueCode(managerEmail, "reset", INVITE_TTL_MS);
+    await sendManagerInvite(managerEmail, brand.name, name, code);
+  } catch (err) {
+    console.error("[addBranch] failed to send manager invite:", err);
   }
 
   revalidatePath(`/b/${brandSlug}`);
@@ -133,8 +192,7 @@ export async function editBranch(
   if (!branch || branch.brandId !== brand.id)
     return { errors: { form: "That branch isn't part of your brand." } };
 
-  const { name, slug, googleReviewUrl, positiveThreshold, errors } =
-    readBranchFields(formData);
+  const { name, slug, positiveThreshold, errors } = readBranchFields(formData);
   // Slug uniqueness, excluding this branch itself.
   if (!errors.slug) {
     const existing = await getRestaurantBySlug(slug);
@@ -144,12 +202,8 @@ export async function editBranch(
   if (Object.keys(errors).length > 0) return { errors };
 
   try {
-    await updateRestaurant(branch.id, {
-      name,
-      slug,
-      googleReviewUrl: googleReviewUrl || null,
-      positiveThreshold,
-    });
+    // Review links are NOT touched here (M35) — they live in the branch's Settings.
+    await updateRestaurant(branch.id, { name, slug, positiveThreshold });
   } catch {
     return { errors: { form: "Could not save changes." } };
   }

@@ -1,26 +1,41 @@
 /**
- * Landing page (M15; rewritten as a real marketing page in M23) — served at `/`.
+ * Landing page (M15; rewritten as a real marketing page in M23; re-pitched in M40)
+ * — served at `/`.
  *
  * Design brief unchanged: premium, restrained, Apple in spirit. The wordmark IS the
  * logo. No icons, no emoji. Amber appears ONLY inside the product screens, so the
  * product is the single splash of colour on a black-and-white page. And **no fake
  * testimonials, logos or invented stats** — there are no customers yet, and
- * fabricated proof would destroy the trust the page is trying to build.
+ * fabricated proof would destroy the trust the page is trying to build. (The example
+ * numbers inside the product mocks are plainly a screenshot of an example, and are
+ * internally consistent; they are not a claim about anyone's results.)
  *
- * ── What was wrong before (M23 fixed it) ─────────────────────────────────────
- *   • The hero promised "sends happy guests to Google and routes complaints quietly
- *     to you" — i.e. it ADVERTISED review gating, the exact behaviour we removed
- *     because it breaches Google's policy and UK review rules.
- *   • "More five-star reviews" clashed with the product's 1–10 scale.
- *   • The scroll story showed an unhappy guest getting NO review button.
- *   • The instant ALERT — the thing an owner actually buys — appeared nowhere.
- *   • There was no PRICING, which for an SMB buyer is a reason to leave.
+ * ── What M40 fixed ───────────────────────────────────────────────────────────
+ * The product grew enormously between M24 and M39; the page didn't. It was still
+ * selling the M23 product, and in two places it argued AGAINST our own features:
  *
- * ── The pitch now ────────────────────────────────────────────────────────────
+ *   • The story said "no QR to squint at" — while M30 had made the printable QR kit
+ *     the flagship way to go live with no hardware. The page was rubbishing its own
+ *     best answer to "is this a hassle to set up?".
+ *   • The hero sold NFC chips ("tapping a chip on the table"), i.e. a purchase, as
+ *     the way in.
+ *   • The product invites guests to FOUR platforms (M29); every word on the page
+ *     said "Google". Tripadvisor, Yelp and Zomato were invisible.
+ *   • The two things that actually close and RETAIN a sale — the review-click ROI
+ *     ("12 of the 47 guests we invited tapped through") and the win-back contact
+ *     capture — appeared nowhere at all.
+ *
+ * The fix deliberately did NOT add four more sections: a longer page is the exact
+ * failure mode here. Two short sections were added (SetupStrip, PlatformRow), one was
+ * rebuilt to carry the missing proof (ProofCards), and the wordiest one was cut down
+ * to a single picture (GatingCompare). More proof, less prose, same length.
+ *
+ * ── The pitch ────────────────────────────────────────────────────────────────
  * One idea, repeated: **you find out while they're still at the table.** Everything
- * else (compliance, the dashboard, the trial) is support for that.
+ * else (setup, platforms, compliance, the trial) is support for that.
  *
- * Shape: hero → pinned scroll story → what you get → compliance (the differentiator)
+ * Shape: hero → pinned scroll story → setting up (nothing to buy) → what you get
+ *        (the proof) → where the reviews land → compliance (the differentiator)
  *        → pricing → FAQ (objections) → close.
  */
 
@@ -29,15 +44,13 @@ import SiteNav from "./SiteNav";
 import Reveal from "./Reveal";
 import HeroPhone from "./HeroPhone";
 import ScrollStory from "./ScrollStory";
-
-const CONTAINER = "mx-auto w-full max-w-5xl px-6";
-const SECTION = "py-24 sm:py-32 lg:py-36";
-
-/** The near-black primary button: 1px lift on hover, gentle press. */
-const BTN_DARK =
-  "inline-flex items-center justify-center rounded-full bg-[#1D1D1F] px-7 py-3 text-[15px] font-medium text-white transition-all duration-150 hover:-translate-y-px hover:bg-black hover:shadow-[0_12px_30px_-12px_rgba(0,0,0,0.45)] active:scale-[0.98]";
-const BTN_LIGHT =
-  "inline-flex items-center justify-center rounded-full border border-[#D2D2D7] bg-white px-7 py-3 text-[15px] font-medium text-[#1D1D1F] transition-all duration-150 hover:-translate-y-px hover:border-[#1D1D1F] active:scale-[0.98]";
+import SetupStrip from "./landing/SetupStrip";
+import PlatformRow from "./landing/PlatformRow";
+import ProofCards from "./landing/ProofCards";
+import GatingCompare from "./landing/GatingCompare";
+import { CONTAINER, SECTION, BTN_DARK, BTN_LIGHT, TRIAL_DAYS } from "./landing/tokens";
+import { appUrl } from "@/lib/app-url";
+import { qrMatrix } from "@/lib/qr";
 
 /**
  * ⚠️ PLACEHOLDER PRICING. These are illustrative numbers for a UK market, not a
@@ -46,28 +59,6 @@ const BTN_LIGHT =
  */
 const PRICE_SINGLE = 29;
 const PRICE_PER_EXTRA_SITE = 25;
-const TRIAL_DAYS = 14;
-
-/** A feature: a hairline that draws itself in, then a title and one line. */
-function FeatureItem({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div>
-      <div className="hairline-draw h-px w-full bg-[#D2D2D7]" />
-      <h3 className="mt-5 text-[17px] font-semibold tracking-[-0.01em] text-[#1D1D1F]">
-        {title}
-      </h3>
-      <p className="mt-1.5 text-[15px] leading-relaxed text-[#6E6E73]">
-        {children}
-      </p>
-    </div>
-  );
-}
 
 /** One pricing card. */
 function PriceCard({
@@ -86,8 +77,14 @@ function PriceCard({
   featured?: boolean;
 }) {
   return (
+    // ⚠️ `h-full` is what keeps the two cards the SAME height. Each card carries a
+    // different number of feature lines (the single plan lists six, the group plan
+    // five), so left to itself each sizes to its own content and they end up
+    // mismatched (measured: 491px vs 455px). The grid row already stretches to the
+    // taller card; `h-full` makes the shorter card fill that row, and `mt-auto` on
+    // the button (below) pins both CTAs to a common baseline.
     <div
-      className={`flex flex-col rounded-3xl p-8 ${
+      className={`flex h-full flex-col rounded-3xl p-8 ${
         featured
           ? // The featured card stays SOLID near-black. Glass on the card you most
             // want read would be a strange thing to do — it needs to be the most
@@ -135,7 +132,9 @@ function PriceCard({
         ))}
       </ul>
 
-      <div className="mt-8 pt-2">
+      {/* `mt-auto` pushes the CTA to the bottom of the (now equal-height) card, so
+          both buttons align even when one card has fewer feature lines. */}
+      <div className="mt-auto pt-8">
         <Link
           href="/signup"
           className={
@@ -169,6 +168,20 @@ function Faq({ q, children }: { q: string; children: React.ReactNode }) {
 }
 
 export default function Home() {
+  /**
+   * The QR shown on the specimen table card in the setup strip.
+   *
+   * REAL, not decorative: it's the same `qrMatrix()` the print kit uses, and it
+   * genuinely resolves — a fake QR on the page of the company whose whole pitch is
+   * "we're the honest tool" would be a very cheap thing to be caught doing, and
+   * anyone with a camera can check in two seconds.
+   *
+   * It encodes /signup, so scanning it from a desktop hands the trial to your phone.
+   * The strip says so in plain words underneath. This is a server component and
+   * `qrMatrix` is synchronous, so the matrix is computed once at build.
+   */
+  const signupQr = qrMatrix(`${appUrl()}/signup`);
+
   return (
     <div className="font-system min-h-dvh w-full bg-white text-[#1D1D1F] antialiased">
       <SiteNav />
@@ -204,11 +217,15 @@ export default function Home() {
             Not on Google.
           </h1>
 
+          {/* ⚠️ This used to read "…by tapping a chip on the table" — which sold NFC
+              hardware (a purchase, and a chore to program) as the way in. Since M30 the
+              honest and far easier answer is a printed QR card, so that's what leads.
+              NFC is still offered; it's just no longer the price of entry. */}
           <p
             className="animate-rise mx-auto mt-6 max-w-xl text-[18px] leading-relaxed text-[#6E6E73] sm:text-[19px]"
             style={{ "--rise-delay": "180ms" } as React.CSSProperties}
           >
-            Guests rate their meal out of ten by tapping a chip on the table. If
+            Guests scan the card on the table and rate their meal out of ten. If
             someone&apos;s unhappy, you get an email in seconds — while they&apos;re
             still sitting there.
           </p>
@@ -231,12 +248,15 @@ export default function Home() {
             </Link>
           </div>
 
+          {/* Four honest, scannable facts — the closest thing to "social proof" this
+              page is entitled to. Every one of them is a property of the product, not
+              an invented statistic. They wrap gracefully on a phone. */}
           <p
             className="animate-rise mt-7 text-[13px] text-[#AEAEB2]"
             style={{ "--rise-delay": "360ms" } as React.CSSProperties}
           >
-            No card required &nbsp;·&nbsp; No app to download &nbsp;·&nbsp; Ten
-            seconds per guest
+            Live tonight &nbsp;·&nbsp; Nothing to buy &nbsp;·&nbsp; Ten seconds per
+            guest &nbsp;·&nbsp; {TRIAL_DAYS} days free, no card
           </p>
 
           <div className="mt-16 sm:mt-20">
@@ -250,90 +270,27 @@ export default function Home() {
         <ScrollStory />
       </div>
 
-      {/* ── What you get ──────────────────────────────────────────────────── */}
-      <section className={SECTION}>
-        <div className={CONTAINER}>
-          <Reveal>
-            <h2 className="max-w-2xl text-[30px] font-semibold leading-[1.1] tracking-[-0.02em] text-[#1D1D1F] sm:text-[44px]">
-              What you get
-            </h2>
-          </Reveal>
+      {/* ── Setting up: the objection that stops trials ───────────────────
+          "Is this a hassle?" is the first thing an owner thinks, and until M30 the
+          answer was genuinely yes (buy NFC chips, program them). Answer it in three
+          pictures, early, before they can leave. */}
+      <SetupStrip qr={signupQr} />
 
-          <div className="mt-14 grid gap-x-10 gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
-            {[
-              [
-                // The lead feature. It was missing from the old page entirely.
-                "An email the moment it happens",
-                "A poor score reaches you in seconds — with the table, the order and what went wrong.",
-              ],
-              [
-                "A list of what needs fixing",
-                "Unhappy guests sit in one place until you mark them resolved. Nothing quietly disappears.",
-              ],
-              [
-                "Ten seconds, no typing",
-                "A score out of ten and a couple of one-tap reasons. That's why guests actually finish it.",
-              ],
-              [
-                "QR codes or NFC — your choice",
-                "Print a QR card for every table in one click, or tap-to-rate with an NFC chip. No app, no sign-up, no hardware needed to start.",
-              ],
-              [
-                "Trends, not guesses",
-                "Today, this week, this month — and the reasons that keep coming up.",
-              ],
-              [
-                "Several venues, one view",
-                "Compare locations side by side. Each manager sees only their own.",
-              ],
-            ].map(([title, copy], i) => (
-              <Reveal key={title} delay={i * 90}>
-                <FeatureItem title={title}>{copy}</FeatureItem>
-              </Reveal>
-            ))}
-          </div>
-        </div>
-      </section>
+      {/* ── What you get: the proof ────────────────────────────────────────
+          Carries the two features that close and retain a sale — the review-click
+          ROI, and the win-back — which the page had never shown. */}
+      <ProofCards />
+
+      {/* ── Where the reviews land ─────────────────────────────────────────
+          Four platforms, not just Google. Hands off into the compliance section. */}
+      <PlatformRow />
 
       {/* ── Compliance: the differentiator ─────────────────────────────────
           Most tools in this category quietly gate reviews. Saying plainly that we
           don't is the strongest, most defensible thing we can claim — and it's the
-          objection a savvy owner will raise anyway. */}
-      <section className={`border-y border-[#D2D2D7] bg-[#F5F5F7] ${SECTION}`}>
-        <div className={CONTAINER}>
-          <div className="grid gap-12 lg:grid-cols-2 lg:gap-20">
-            <Reveal>
-              <p className="text-[14px] font-medium text-[#6E6E73]">
-                The bit nobody else says out loud
-              </p>
-              <h2 className="mt-4 text-[30px] font-semibold leading-[1.1] tracking-[-0.02em] text-[#1D1D1F] sm:text-[40px]">
-                We never hide your review link.
-              </h2>
-            </Reveal>
-
-            <Reveal delay={120}>
-              <div className="flex flex-col gap-5 text-[16px] leading-relaxed text-[#3A3A3C]">
-                <p>
-                  Plenty of feedback tools show the Google review button only to
-                  guests who rated you well, and quietly bury everyone else. It
-                  works — right up until it doesn&apos;t.
-                </p>
-                <p>
-                  That&apos;s <strong>review gating</strong>. It breaches
-                  Google&apos;s review policy, and in the UK it runs into the rules
-                  on misleading reviews. The listing at risk isn&apos;t ours.
-                  It&apos;s <strong>yours</strong>.
-                </p>
-                <p className="font-medium text-[#1D1D1F]">
-                  So every guest gets the same invitation, whatever they scored.
-                  Complaints still reach you first, privately, within seconds — and
-                  that&apos;s the part that actually protects your rating.
-                </p>
-              </div>
-            </Reveal>
-          </div>
-        </div>
-      </section>
+          objection a savvy owner will raise anyway. Shown, now, rather than argued:
+          the same 3/10 guest, on a gating tool and on us. */}
+      <GatingCompare />
 
       {/* ── Pricing ───────────────────────────────────────────────────────── */}
       <section id="pricing" className={`relative overflow-hidden ${SECTION}`}>
@@ -365,8 +322,11 @@ export default function Home() {
                   "Unlimited guest responses",
                   "Instant unhappy-guest alerts",
                   "Needs-attention worklist",
-                  "NFC links for every table",
-                  "Trends and one-tap reasons",
+                  // ⚠️ Was "NFC links for every table" — stale since M30, and it
+                  // implied hardware was required. QR leads; NFC is the option.
+                  "Printable QR kit — or NFC",
+                  "Google, Tripadvisor, Yelp & Zomato",
+                  "See how many guests clicked through",
                 ]}
               />
             </Reveal>
@@ -409,12 +369,20 @@ export default function Home() {
           <div className="mt-10 max-w-3xl">
             <Reveal>
               <Faq q="Does the guest need an app?">
-                No. They tap the chip and the form opens in their phone&apos;s
-                browser. Nothing to download, nothing to sign up for. It takes about
-                ten seconds.
+                No. They point their camera at the card and the form opens in their
+                phone&apos;s browser. Nothing to download, nothing to sign up for. It
+                takes about ten seconds.
               </Faq>
             </Reveal>
             <Reveal delay={60}>
+              <Faq q="Which review sites can you send guests to?">
+                Google, Tripadvisor, Yelp and Zomato. Add the links you actually use
+                in settings — leave one blank and it simply doesn&apos;t appear.
+                Guests pick the one they already have an account with, which is a
+                large part of why they follow through.
+              </Faq>
+            </Reveal>
+            <Reveal delay={120}>
               <Faq q="Will this get my Google listing in trouble?">
                 No — that&apos;s the point. We invite every guest to review you, and
                 we never hide the link from someone who scored you badly. Tools that
@@ -422,7 +390,7 @@ export default function Home() {
                 rules on misleading reviews.
               </Faq>
             </Reveal>
-            <Reveal delay={120}>
+            <Reveal delay={180}>
               <Faq q="Can ScoreFlow read my guests' feedback?">
                 No. Your feedback is visible to you and the managers you invite —
                 nobody else. The staff side of ScoreFlow can see whether your account
@@ -430,7 +398,7 @@ export default function Home() {
                 all. We built it that way on purpose.
               </Faq>
             </Reveal>
-            <Reveal delay={180}>
+            <Reveal delay={240}>
               <Faq q="How long does setup take?">
                 Minutes, with no hardware to buy. Sign up, add your tables, then print
                 the built-in QR kit and stand a card on each table — that&apos;s it.
@@ -438,10 +406,10 @@ export default function Home() {
                 instead. Add your review links once, in settings, and you&apos;re live.
               </Faq>
             </Reveal>
-            <Reveal delay={240}>
+            <Reveal delay={300}>
               <Faq q="What happens when the trial ends?">
                 Your dashboard pauses until you subscribe — but your guests&apos;
-                feedback form keeps working, so the chips on your tables never stop.
+                feedback form keeps working, so the cards on your tables never stop.
                 You can close your account and delete everything at any time.
               </Faq>
             </Reveal>

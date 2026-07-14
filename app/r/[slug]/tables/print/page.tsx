@@ -127,14 +127,20 @@ export default async function PrintKitPage({
   const logoUrl = restaurant.brand?.logoDataUrl ?? null;
 
   // Pre-compute every QR server-side (the encoder never touches the client).
-  const generalCard = {
-    tableLabel: null as string | null,
-    matrix: qrMatrix(feedbackUrl(slug)),
-  };
   const tableCards = tables.map((t) => ({
     tableLabel: t.label,
     matrix: qrMatrix(feedbackUrl(slug, t.label)),
   }));
+
+  // The general "counter" card (no ?table=) is a FALLBACK ONLY (M38): it prints just
+  // when there are NO tables, so a table-less cafe/takeaway still gets a QR. Once
+  // tables exist, the kit is exactly one card per table — the always-on counter card
+  // confused owners ("I added 3 tables, why 4 QRs?"). Anyone who genuinely wants a
+  // counter QR can add a table named "Counter".
+  const counterCard =
+    tables.length === 0
+      ? { matrix: qrMatrix(feedbackUrl(slug)) }
+      : null;
 
   return (
     <main className="font-system min-h-dvh w-full bg-white text-[#111827]">
@@ -185,14 +191,15 @@ export default async function PrintKitPage({
               tableLabel={card.tableLabel}
             />
           ))}
-          {/* The general / counter card always prints, so a takeaway or a poster is
-              covered even with zero tables. */}
-          <KitCard
-            matrix={generalCard.matrix}
-            name={restaurant.name}
-            logoUrl={logoUrl}
-            tableLabel={null}
-          />
+          {/* Only when there are no tables — the fallback (see above). */}
+          {counterCard && (
+            <KitCard
+              matrix={counterCard.matrix}
+              name={restaurant.name}
+              logoUrl={logoUrl}
+              tableLabel={null}
+            />
+          )}
         </div>
       </div>
     </main>

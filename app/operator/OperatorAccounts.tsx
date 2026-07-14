@@ -10,6 +10,7 @@
  * boundary is enforced in lib/operator-stats.ts and by the guards.
  */
 
+import Link from "next/link";
 import { useActionState, useEffect, useRef, useState } from "react";
 import {
   recordPaymentAction,
@@ -441,6 +442,14 @@ export default function OperatorAccounts({
                   ? ` · paid until ${shortDate(a.currentPeriodEnd)}`
                   : ""}
               </p>
+
+              {/* See every branch's review links + turn off a bad one (M39). */}
+              <Link
+                href={`/operator/customers/${a.id}/links`}
+                className="mt-2 inline-block text-xs font-medium text-amber-600 hover:underline"
+              >
+                Review links →
+              </Link>
 
               <SupportTools a={a} />
             </div>

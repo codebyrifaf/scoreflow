@@ -16,6 +16,8 @@ import { recordPayment } from "@/lib/payments";
 import { poundsToPence } from "@/lib/money";
 import { suspendBrand, compBrand, uncompBrand } from "@/lib/subscriptions";
 import { deleteBrandCascade } from "@/lib/brands";
+import { blockReviewLink, unblockReviewLink } from "@/lib/restaurants";
+import { isReviewPlatform } from "@/lib/review-platforms";
 import { getOwnerByEmail } from "@/lib/owners";
 import { getOperatorByEmail } from "@/lib/operators";
 import { sendEmail } from "@/lib/email";
@@ -132,6 +134,77 @@ export async function uncompAccountAction(brandId: number): Promise<void> {
   revalidatePath("/operator/customers");
 }
 
+// ── Review-link oversight (Milestone 39) ────────────────────────────────────
+//
+// The operator can SEE every customer's review links (they're the restaurant's own
+// PUBLIC page URLs — config, not diner feedback, so this doesn't breach the
+// "operator never sees content" boundary) and switch a bad one OFF. Disabling keeps
+// the URL but hides the tile from diners; the owner sees it flagged in Settings.
+// Reactive, not a gate — links go live by default, since the M29 host-allowlist
+// already blocks phishing; this only catches "real platform link, wrong page".
+
+export type ReviewLinkState = { error: string } | { ok: true } | undefined;
+
+/** Turn a customer's review-link platform OFF (M39). Audited. */
+export async function blockReviewLinkAction(
+  restaurantId: number,
+  platform: string,
+  formData: FormData
+): Promise<void> {
+  const access = await requireOperator();
+  if (!access.authorized) return;
+  if (!isReviewPlatform(platform)) return;
+
+  const restaurant = await prisma.restaurant.findUnique({
+    where: { id: restaurantId },
+    select: { name: true, brandId: true },
+  });
+  if (!restaurant) return;
+
+  const reason = String(formData.get("reason") ?? "").trim();
+  await blockReviewLink(restaurantId, platform);
+  await audit({
+    operatorEmail: access.operatorEmail,
+    action: "block_review_link",
+    targetBrandId: restaurant.brandId ?? 0,
+    targetLabel: `${restaurant.name} · ${platform}`,
+    detail: reason || "(no reason given)",
+  });
+
+  if (restaurant.brandId) {
+    revalidatePath(`/operator/customers/${restaurant.brandId}/links`);
+  }
+}
+
+/** Turn a customer's review-link platform back ON (M39). Audited. */
+export async function unblockReviewLinkAction(
+  restaurantId: number,
+  platform: string
+): Promise<void> {
+  const access = await requireOperator();
+  if (!access.authorized) return;
+  if (!isReviewPlatform(platform)) return;
+
+  const restaurant = await prisma.restaurant.findUnique({
+    where: { id: restaurantId },
+    select: { name: true, brandId: true },
+  });
+  if (!restaurant) return;
+
+  await unblockReviewLink(restaurantId, platform);
+  await audit({
+    operatorEmail: access.operatorEmail,
+    action: "unblock_review_link",
+    targetBrandId: restaurant.brandId ?? 0,
+    targetLabel: `${restaurant.name} · ${platform}`,
+    detail: "re-enabled",
+  });
+
+  if (restaurant.brandId) {
+    revalidatePath(`/operator/customers/${restaurant.brandId}/links`);
+  }
+}
+
 // ── The two emergency levers (Milestone 22) ─────────────────────────────────
 //
 // The operator no longer manages customer accounts. These two powers are the
@@ -149,7 +222,13 @@ export async function uncompAccountAction(brandId: number): Promise<void> {
 /** Write an immutable record of a privileged action. Never blocks the action. */
 async function audit(input: {
   operatorEmail: string;
-  action: "rescue_email" | "delete_account" | "comp_account" | "uncomp_account";
+  action:
+    | "rescue_email"
+    | "delete_account"
+    | "comp_account"
+    | "uncomp_account"
+    | "block_review_link"
+    | "unblock_review_link";
   targetBrandId: number;
   targetLabel: string;
   detail: string;

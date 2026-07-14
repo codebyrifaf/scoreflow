@@ -95,6 +95,7 @@ export default async function SettingsPage({
           tripadvisorUrl={restaurant.tripadvisorUrl ?? ""}
           yelpUrl={restaurant.yelpUrl ?? ""}
           zomatoUrl={restaurant.zomatoUrl ?? ""}
+          blockedPlatforms={restaurant.blockedReviewPlatforms}
           positiveThreshold={restaurant.positiveThreshold}
           alertThreshold={restaurant.alertThreshold}
           alertsEnabled={me?.alertsEnabled ?? true}

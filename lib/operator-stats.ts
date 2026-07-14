@@ -20,6 +20,7 @@
 import { prisma } from "./prisma";
 import { subscriptionState } from "./subscriptions";
 import { APP_TIMEZONE, lastLocalDays, localDayKey } from "./time";
+import { REVIEW_PLATFORMS, type ReviewPlatform } from "./review-platforms";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -225,6 +226,87 @@ export async function getAccountsForOperator(): Promise<OperatorAccountRow[]> {
       currentPeriodEnd: b.currentPeriodEnd?.toISOString() ?? null,
     };
   });
+}
+
+// ── Operator review-link oversight (Milestone 39) ───────────────────────────
+
+export interface OperatorReviewLink {
+  platform: ReviewPlatform;
+  name: string;
+  url: string;
+  blocked: boolean;
+}
+export interface OperatorBranchLinks {
+  restaurantId: number;
+  branchName: string;
+  slug: string;
+  links: OperatorReviewLink[];
+}
+export interface BrandReviewLinks {
+  brandId: number;
+  brandName: string;
+  brandSlug: string;
+  branches: OperatorBranchLinks[];
+}
+
+/**
+ * Every review link a brand's branches have set, with their operator-block status
+ * (Milestone 39) — the data behind the operator's per-customer "Review links" view.
+ *
+ * ⚠️ Boundary check: review links are the restaurant's OWN PUBLIC page URLs (config),
+ * NOT diner feedback — so surfacing them to the operator does not breach the "operator
+ * never sees content" rule (a branch's URL is not a diner's comment). `null` if the
+ * brand doesn't exist.
+ */
+export async function getBrandReviewLinks(
+  brandId: number
+): Promise<BrandReviewLinks | null> {
+  const brand = await prisma.brand.findUnique({
+    where: { id: brandId },
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      restaurants: {
+        orderBy: { createdAt: "asc" },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          googleReviewUrl: true,
+          tripadvisorUrl: true,
+          yelpUrl: true,
+          zomatoUrl: true,
+          blockedReviewPlatforms: true,
+        },
+      },
+    },
+  });
+  if (!brand) return null;
+
+  const branches: OperatorBranchLinks[] = brand.restaurants.map((r) => {
+    const blocked = new Set(r.blockedReviewPlatforms);
+    const links: OperatorReviewLink[] = [];
+    for (const p of REVIEW_PLATFORMS) {
+      const url = r[p.field];
+      if (url && url.trim() !== "") {
+        links.push({
+          platform: p.id,
+          name: p.name,
+          url,
+          blocked: blocked.has(p.id),
+        });
+      }
+    }
+    return { restaurantId: r.id, branchName: r.name, slug: r.slug, links };
+  });
+
+  return {
+    brandId: brand.id,
+    brandName: brand.name,
+    brandSlug: brand.slug,
+    branches,
+  };
 }
 
 /**

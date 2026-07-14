@@ -46,6 +46,13 @@ model Restaurant {
   tripadvisorUrl  String? // e.g. https://www.tripadvisor.co.uk/Restaurant_Review-…
   yelpUrl         String? // e.g. https://www.yelp.com/biz/…
   zomatoUrl       String? // e.g. https://www.zomato.com/london/…
+  // OPERATOR MODERATION (Milestone 39). Platform ids the OPERATOR has switched off —
+  // e.g. "yelp" if a customer pasted a valid-but-wrong Yelp page. A blocked platform's
+  // tile stops showing to diners (filtered in `activeReviewLinks`) even though the URL
+  // is kept, and the owner sees it flagged in Settings. The M29 allowlist already
+  // blocks phishing/off-domain links, so this only ever catches "real platform link,
+  // wrong page". Who/why/when is recorded in `OperatorAudit`.
+  blockedReviewPlatforms String[] @default([]) // e.g. ["yelp"]
   // POSITIVE-EXPERIENCE line (1–10). Milestone 23 renamed this from
   // `reviewThreshold` and stripped its old job.
   //

@@ -29,7 +29,18 @@ export interface RestaurantReviewLinks {
   tripadvisorUrl: string | null;
   yelpUrl: string | null;
   zomatoUrl: string | null;
+  /** Platform ids the operator has switched off (M39). Blocked platforms are hidden
+   *  from diners even though the URL is kept. Optional so older callers still type-check. */
+  blockedReviewPlatforms?: string[];
 }
+
+/** The `Restaurant` columns that hold a review URL (the string ones only — NOT the
+ *  `blockedReviewPlatforms` array). Keeps `platform.field` indexing to `string | null`. */
+export type ReviewUrlField =
+  | "googleReviewUrl"
+  | "tripadvisorUrl"
+  | "yelpUrl"
+  | "zomatoUrl";
 
 export interface ReviewPlatformDef {
   id: ReviewPlatform;
@@ -39,7 +50,7 @@ export interface ReviewPlatformDef {
    *  CDN-hosted logo would be silently blocked. See public/logos/README.md. */
   logo: string;
   /** The `Restaurant` column this platform's URL lives in. */
-  field: keyof RestaurantReviewLinks;
+  field: ReviewUrlField;
   /** Placeholder in the Settings field — shows the owner the shape of a real link. */
   example: string;
   /** One line telling the owner where to find their link. */
@@ -139,8 +150,12 @@ export interface ActiveReviewLink {
 export function activeReviewLinks(
   restaurant: RestaurantReviewLinks
 ): ActiveReviewLink[] {
+  const blocked = new Set(restaurant.blockedReviewPlatforms ?? []);
   const links: ActiveReviewLink[] = [];
   for (const p of REVIEW_PLATFORMS) {
+    // Operator-disabled (M39) — the URL is kept, but diners don't see the tile.
+    if (blocked.has(p.id)) continue;
+
     const url = restaurant[p.field]?.trim();
     if (!url) continue;
 

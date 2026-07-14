@@ -99,17 +99,21 @@ export async function createRestaurantWithOwner(input: {
  * UI + a re-check in the server action (see app/admin/actions.ts).
  */
 /**
- * Update a restaurant's editable fields (Milestone 12 — operator edit).
- * Only the restaurant's OWN config; owners/feedback/tables are untouched
- * (they're linked by `restaurantId`, so even changing the slug is data-safe —
- * it only changes the public URLs).
+ * Update a branch's editable IDENTITY fields, from the brand console (Milestone 12;
+ * M35 removed review links from here). Only the branch's own name / slug / threshold —
+ * owners, feedback and tables are untouched (linked by `restaurantId`, so even a slug
+ * change is data-safe; it only re-points the public URLs).
+ *
+ * ⚠️ It deliberately does NOT touch review links. Those are set in the branch's own
+ * Settings (via `updateRestaurantSettings`), by whoever runs the branch — exactly like
+ * a solo restaurant. Listing the fields explicitly here means a review link can never
+ * be blanked by a brand-console edit.
  */
 export async function updateRestaurant(
   id: number,
   data: {
     name: string;
     slug: string;
-    googleReviewUrl: string | null;
     positiveThreshold: number;
     alertThreshold?: number;
   }
@@ -157,6 +161,43 @@ export async function updateRestaurantSettings(
       zomatoUrl: data.zomatoUrl,
       positiveThreshold: data.positiveThreshold,
       alertThreshold: data.alertThreshold,
+    },
+  });
+}
+
+/**
+ * Operator switches a review-link platform OFF / back ON for one restaurant (M39).
+ *
+ * Blocking keeps the URL but hides that platform's tile from diners (see
+ * `activeReviewLinks`). Used by the operator's per-customer links view to kill a
+ * wrong/bad link (e.g. a valid Yelp URL that points at the wrong business). The M29
+ * allowlist already blocks phishing, so this only ever catches "real link, wrong page".
+ * Idempotent: blocking an already-blocked platform is a no-op.
+ */
+export async function blockReviewLink(restaurantId: number, platform: string) {
+  const r = await prisma.restaurant.findUnique({
+    where: { id: restaurantId },
+    select: { blockedReviewPlatforms: true },
+  });
+  if (!r || r.blockedReviewPlatforms.includes(platform)) return;
+  await prisma.restaurant.update({
+    where: { id: restaurantId },
+    data: { blockedReviewPlatforms: { set: [...r.blockedReviewPlatforms, platform] } },
+  });
+}
+
+export async function unblockReviewLink(restaurantId: number, platform: string) {
+  const r = await prisma.restaurant.findUnique({
+    where: { id: restaurantId },
+    select: { blockedReviewPlatforms: true },
+  });
+  if (!r) return;
+  await prisma.restaurant.update({
+    where: { id: restaurantId },
+    data: {
+      blockedReviewPlatforms: {
+        set: r.blockedReviewPlatforms.filter((p) => p !== platform),
+      },
     },
   });
 }

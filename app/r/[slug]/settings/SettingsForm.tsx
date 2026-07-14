@@ -21,6 +21,8 @@ interface SettingsFormProps {
   tripadvisorUrl: string;
   yelpUrl: string;
   zomatoUrl: string;
+  /** Platform ids the operator has switched off (M39) — shown as a flag, hidden from diners. */
+  blockedPlatforms: string[];
   positiveThreshold: number;
   alertThreshold: number;
   /** The signed-in person's own notification preferences. */
@@ -115,10 +117,13 @@ function ReviewLinkField({
   platform,
   initial,
   error,
+  blocked = false,
 }: {
   platform: ReviewPlatformDef;
   initial: string;
   error?: string;
+  /** Operator switched this platform off (M39) — flag it, it's hidden from diners. */
+  blocked?: boolean;
 }) {
   const [value, setValue] = useState(initial);
   const trimmed = value.trim();
@@ -183,6 +188,16 @@ function ReviewLinkField({
           it's escaped and inert. */}
       {trimmed !== "" && (
         <p className="break-all text-xs text-[#9CA3AF]">Goes to: {trimmed}</p>
+      )}
+
+      {/* Operator switched this off (M39) — the tile is hidden from diners until it's
+          reviewed. Tell the owner plainly so it's not a silent mystery. */}
+      {blocked && (
+        <p className="rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-700">
+          Turned off by ScoreFlow — this link isn&apos;t being shown to your guests
+          right now (it may not point to your own page). Please contact support to have
+          it reviewed.
+        </p>
       )}
 
       <FieldError message={error} />
@@ -277,6 +292,7 @@ export default function SettingsForm(props: SettingsFormProps) {
               platform={platform}
               initial={props[platform.field] ?? ""}
               error={errors[platform.field]}
+              blocked={props.blockedPlatforms.includes(platform.id)}
             />
           ))}
         </div>

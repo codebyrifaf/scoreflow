@@ -23,7 +23,6 @@ interface BranchData {
   id: number;
   name: string;
   slug: string;
-  googleReviewUrl: string;
   positiveThreshold: number;
   responses: number;
   tables: number;
@@ -101,25 +100,14 @@ function BranchForm({
         )}
         <FieldError message={errors.slug} />
       </div>
-      <div className="flex flex-col gap-1.5">
-        <label className="text-sm font-medium text-[#111827]">
-          Google review URL{" "}
-          <span className="font-normal text-[#9CA3AF]">(optional)</span>
-        </label>
-        <input
-          name="googleReviewUrl"
-          defaultValue={branch?.googleReviewUrl}
-          placeholder="https://search.google.com/local/writereview?placeid=…"
-          className={FIELD}
-        />
-        {/* Only Google is editable here — this is the quick-add path. Say where the
-            others live, so a brand owner doesn't think they're missing (M29). */}
-        <p className="text-xs text-[#9CA3AF]">
-          Tripadvisor, Yelp and Zomato links are set per branch, in that
-          branch&apos;s Settings.
-        </p>
-        <FieldError message={errors.googleReviewUrl} />
-      </div>
+      {/* Review links are NOT set here (M35). All four platforms live in the branch's
+          own Settings, set by whoever runs it — the same as a solo restaurant — so
+          they're never split between "creation" and "Settings". */}
+      <p className="rounded-xl bg-[#F9FAFB] px-3 py-2.5 text-xs text-[#6B7280]">
+        Review links (Google, Tripadvisor, Yelp, Zomato) are set in the branch&apos;s{" "}
+        <b className="text-[#111827]">Settings</b>, by whoever runs it — just like a
+        single restaurant.
+      </p>
       <div className="flex flex-col gap-1.5">
         <label className="text-sm font-medium text-[#111827]">
           Review threshold{" "}
@@ -139,9 +127,6 @@ function BranchForm({
       {!branch && (
         <>
           <hr className="border-[#E5E7EB]" />
-          <p className="text-sm text-[#6B7280]">
-            This also creates the branch&apos;s <b>manager login</b>.
-          </p>
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-medium text-[#111827]">
               Manager email
@@ -152,15 +137,13 @@ function BranchForm({
               placeholder="gulshan@kfc.test"
               className={FIELD}
             />
+            {/* No password field (M36). We email the manager a link to set their OWN
+                password — the owner never has to create or share one. */}
+            <p className="text-xs text-[#6B7280]">
+              We&apos;ll email them a link to set their own password and sign in. You
+              don&apos;t need to create or share a password.
+            </p>
             <FieldError message={errors.managerEmail} />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-[#111827]">
-              Manager initial password{" "}
-              <span className="font-normal text-[#9CA3AF]">(12+ chars)</span>
-            </label>
-            <input name="managerPassword" type="text" className={FIELD} />
-            <FieldError message={errors.managerPassword} />
           </div>
         </>
       )}

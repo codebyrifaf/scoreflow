@@ -10,9 +10,11 @@ import ResetForm from "./ResetForm";
 export default async function ResetPage({
   searchParams,
 }: {
-  searchParams: Promise<{ email?: string }>;
+  // `code` is pre-filled from a branch-manager INVITE link (M36); absent for the
+  // normal forgot-password flow, where the user types the code from their email.
+  searchParams: Promise<{ email?: string; code?: string }>;
 }) {
-  const { email } = await searchParams;
+  const { email, code } = await searchParams;
   if (!email) {
     redirect("/forgot");
   }
@@ -42,7 +44,7 @@ export default async function ResetPage({
           </p>
         </header>
 
-        <ResetForm email={email} />
+        <ResetForm email={email} code={code} />
       </div>
     </main>
   );

@@ -43,14 +43,20 @@ export const metadata: Metadata = {
     default: "ScoreFlow — hear it at the table, not on Google",
     template: "%s · ScoreFlow",
   },
+  // ⚠️ Kept in step with the hero (M40). It used to say guests rate "by tapping a
+  // chip on the table" — which sold NFC hardware as the price of entry, months after
+  // the printable QR kit (M30) made that untrue. This is the sentence Google shows in
+  // its results and WhatsApp shows on a shared link; it has to be the current pitch.
   description:
-    "Guests rate their meal out of ten by tapping a chip on the table. If someone's unhappy, you get an email in seconds — while they're still sitting there. Every guest is invited to review you; we never hide the link.",
+    "Guests scan the card on the table and rate their meal out of ten. If someone's unhappy, you get an email in seconds — while they're still sitting there. Every guest is invited to review you on Google, Tripadvisor, Yelp or Zomato; we never hide the link.",
   applicationName: "ScoreFlow",
   keywords: [
     "restaurant feedback",
     "guest feedback",
+    "QR table feedback",
     "NFC table feedback",
     "Google reviews for restaurants",
+    "Tripadvisor reviews for restaurants",
     "restaurant review management",
   ],
   openGraph: {

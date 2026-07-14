@@ -103,7 +103,8 @@ export async function getBranchesForBrand(brandId: number) {
     id: b.id,
     name: b.name,
     slug: b.slug,
-    googleReviewUrl: b.googleReviewUrl ?? "",
+    // Review links aren't shown in the brand console (M35) — they live in each
+    // branch's Settings — so they're not fetched here.
     positiveThreshold: b.positiveThreshold,
     responses: b._count.feedback,
     tables: b._count.tables,
