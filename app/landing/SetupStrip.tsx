@@ -61,13 +61,18 @@ function Panel({
           actually scan off a screen (see TableCard). */}
       <div className="flex h-[224px] items-center justify-center">{visual}</div>
 
-      <div className="mt-6 flex items-center gap-2.5">
+      {/* ⚠️ MOBILE ALIGNMENT: on a phone each panel is full-width, and the visual
+          above is centred — so left-aligning the title + copy made every card mix
+          centre and left, which reads as untidy (and clashed with the NFC band below,
+          which is centred on mobile). So the text is CENTRED on mobile and restored to
+          LEFT at `sm:` — the desktop three-column layout is unchanged. */}
+      <div className="mt-6 flex items-center justify-center gap-2.5 sm:justify-start">
         <StepNumber n={n} />
         <h3 className="text-[16px] font-semibold tracking-[-0.01em] text-[#1D1D1F]">
           {title}
         </h3>
       </div>
-      <p className="mt-1.5 text-[14px] leading-relaxed text-[#6E6E73]">
+      <p className="mt-1.5 text-center text-[14px] leading-relaxed text-[#6E6E73] sm:text-left">
         {children}
       </p>
     </div>

@@ -250,13 +250,30 @@ export default function Home() {
 
           {/* Four honest, scannable facts — the closest thing to "social proof" this
               page is entitled to. Every one of them is a property of the product, not
-              an invented statistic. They wrap gracefully on a phone. */}
+              an invented statistic.
+
+              ⚠️ MOBILE: as one long line it wrapped mid-phrase ("Ten seconds per /
+              guest") with a middot stranded at the break — cramped and untidy. So each
+              fact is a `whitespace-nowrap` span, and the run is split into two pairs by
+              a break that ONLY exists on mobile (`<br className="sm:hidden" />`), with
+              the middot between the pairs shown on desktop only. Result: two clean
+              centred lines on a phone, and the exact same single line on `sm:` up. */}
           <p
             className="animate-rise mt-7 text-[13px] text-[#AEAEB2]"
             style={{ "--rise-delay": "360ms" } as React.CSSProperties}
           >
-            Live tonight &nbsp;·&nbsp; Nothing to buy &nbsp;·&nbsp; Ten seconds per
-            guest &nbsp;·&nbsp; {TRIAL_DAYS} days free, no card
+            <span className="whitespace-nowrap">Live tonight</span>
+            <span aria-hidden="true">&nbsp;·&nbsp;</span>
+            <span className="whitespace-nowrap">Nothing to buy</span>
+            <span className="hidden sm:inline" aria-hidden="true">
+              &nbsp;·&nbsp;
+            </span>
+            <br className="sm:hidden" />
+            <span className="whitespace-nowrap">Ten seconds per guest</span>
+            <span aria-hidden="true">&nbsp;·&nbsp;</span>
+            <span className="whitespace-nowrap">
+              {TRIAL_DAYS} days free, no card
+            </span>
           </p>
 
           <div className="mt-16 sm:mt-20">
