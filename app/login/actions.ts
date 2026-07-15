@@ -22,9 +22,10 @@ export type LoginState = { error: string } | undefined;
  * Handle a login form submission.
  *
  * `useActionState` calls this with the previous state and the submitted form.
- * On success we redirect based on the account's role — operators to /admin,
- * owners to THEIR OWN restaurant's dashboard. On bad credentials we return an
- * error message for the form to display.
+ * On success we redirect an OWNER to their own dashboard. OPERATORS are refused
+ * here: the public page is for restaurant owners only, so an operator who signs
+ * in is voided and shown the generic error, and must use /operator/login instead.
+ * On bad credentials we return one generic message for the form to display.
  */
 export async function login(
   _prevState: LoginState,
@@ -56,18 +57,34 @@ export async function login(
     throw error;
   }
 
-  // Signed in successfully. Decide where to send them based on their role.
+  // Signed in successfully. Decide what to do based on the account's role.
   // We look the account up by email rather than calling auth() here, because the
   // session cookie we just set isn't readable within this same request yet.
   // (redirect() must be OUTSIDE the try/catch: it works by throwing a special
   // signal that Next.js catches, so we don't want our catch block to swallow it.)
-  // An operator CAN still sign in here (deliberately kept as a fallback so the
-  // operator can never lock themselves out if the operator door has a problem) —
-  // but they're sent to their own sales dashboard, and nothing on this page
-  // advertises that an operator console exists. Their real door is /operator/login.
+
+  // ── OPERATORS ARE NOT ALLOWED THROUGH THE PUBLIC DOOR ──────────────────────
+  // The customer /login page is for restaurant OWNERS only. If a valid operator
+  // signs in here, tear the freshly-minted session back down and return the SAME
+  // generic error — never hint that an operator console exists. This is the exact
+  // mirror of /operator/login, which already turns OWNERS away the same way.
+  //
+  // ⚠️ This removes the old "backup door" that used to let an operator sign in
+  // here as an anti-lockout fallback (a deliberate choice, confirmed with the
+  // owner). If the operator door ever breaks, recover the operator with
+  //   npm run operator:set-password <email> "<new password>"
+  // (see scripts/set-operator-password.ts) or directly in the database.
+  // requireOperator() on every /operator page is still the real access wall —
+  // this only changes which DOOR the operator uses, not what protects the console.
   const operator = await getOperatorByEmail(email);
   if (operator) {
-    redirect("/operator");
+    try {
+      await signOut({ redirect: false });
+    } catch {
+      // Best-effort: even if the sign-out hiccups, /operator pages still enforce
+      // requireOperator(); the operator simply wasn't handed the console here.
+    }
+    return { error: "Invalid email or password." };
   }
   const owner = await getOwnerByEmail(email);
   // Brand owner → their account home: a single-venue account goes straight to that
