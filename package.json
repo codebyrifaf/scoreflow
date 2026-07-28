@@ -14,7 +14,8 @@
     "seed": "tsx prisma/seed.ts",
     "db:where": "tsx scripts/db-where.ts",
     "email:test": "tsx scripts/email-test.ts",
-    "operator:set-password": "tsx scripts/set-operator-password.ts"
+    "operator:set-password": "tsx scripts/set-operator-password.ts",
+    "operator:set-login": "tsx scripts/set-operator-login.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.8.0",
