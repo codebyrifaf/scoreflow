@@ -50,6 +50,36 @@ export async function getOwnerById(id: number) {
 }
 
 /**
+ * Create a BRANCH MANAGER login for one location.
+ *
+ * Used when a manager is attached to a branch that already exists — i.e. an owner who
+ * chose "I'll run it myself" when adding the location has now decided to hand it to
+ * someone. (When the manager is named at creation time, `createBranch` writes both
+ * rows in one transaction instead.)
+ *
+ * The password arrives ALREADY HASHED, and the caller passes a random, UNUSABLE hash:
+ * the account can't be signed into until the manager follows an emailed invite and
+ * sets their own password. We never mail anybody a password (M36).
+ *
+ * ⚠️ This does NOT affect the account owner's access. A brand owner is authorised on
+ * `brandId`, independently of who manages a branch — adding a manager adds a person,
+ * it never removes the owner. See lib/auth-guard.ts.
+ */
+export async function createBranchManager(input: {
+  restaurantId: number;
+  email: string;
+  passwordHash: string;
+}) {
+  return prisma.owner.create({
+    data: {
+      email: input.email,
+      passwordHash: input.passwordHash,
+      restaurantId: input.restaurantId,
+    },
+  });
+}
+
+/**
  * Everyone who should be told when a diner is unhappy at this restaurant
  * (Milestone 18).
  *

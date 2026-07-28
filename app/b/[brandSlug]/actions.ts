@@ -17,11 +17,17 @@ import { requireBrandAccess } from "@/lib/auth-guard";
 import { getBrandBySlug } from "@/lib/brands";
 import {
   getRestaurantBySlug,
-  createRestaurantWithOwner,
+  createBranch,
+  branchHasManager,
+  uniqueRestaurantSlug,
   updateRestaurant,
   deleteRestaurantCascade,
 } from "@/lib/restaurants";
-import { getOwnerByEmail, updateOwnerPassword } from "@/lib/owners";
+import {
+  getOwnerByEmail,
+  updateOwnerPassword,
+  createBranchManager,
+} from "@/lib/owners";
 import { getOperatorByEmail } from "@/lib/operators";
 import { validateNewPassword } from "@/lib/passwords";
 import { issueCode } from "@/lib/verification";
@@ -33,6 +39,8 @@ const SALT_ROUNDS = 10;
 /** How long a branch-manager invite link stays valid (M36). Generous — the manager
  *  may not check their email for a day or two; if it lapses, "Forgot password" works. */
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 /**
  * Email a new branch manager an INVITE to set their own password (Milestone 36).
@@ -63,19 +71,76 @@ async function sendManagerInvite(
   });
 }
 
+/**
+ * A random, UNUSABLE password hash.
+ *
+ * A manager account is created locked: nobody — not even the owner who invited them —
+ * knows this value, and it cannot be guessed. The account only becomes usable when the
+ * manager follows their invite link and sets a password of their own.
+ */
+async function lockedPasswordHash(): Promise<string> {
+  return bcrypt.hash(randomBytes(32).toString("hex"), SALT_ROUNDS);
+}
+
+/**
+ * Issue the one-time invite code and email the link.
+ *
+ * BEST-EFFORT on purpose: the manager's account already exists by the time we get
+ * here, so a mail hiccup must not undo the owner's action. If the email never lands,
+ * "Forgot password" issues a fresh code against the same account. We log and move on.
+ *
+ * Shared by BOTH entry points — naming a manager when the location is created, and
+ * attaching one later — so an invite can never drift between the two.
+ */
+async function inviteManager(
+  managerEmail: string,
+  brandName: string,
+  branchName: string
+): Promise<void> {
+  try {
+    const code = await issueCode(managerEmail, "reset", INVITE_TTL_MS);
+    await sendManagerInvite(managerEmail, brandName, branchName, code);
+  } catch (err) {
+    console.error("[branch] failed to send manager invite:", err);
+  }
+}
+
+/**
+ * Validate a would-be manager's email. Returns an error message, or null.
+ *
+ * The "already in use" check spans BOTH tables: an address that belongs to any owner
+ * (brand or branch) or to an operator can't become a second account, because `email`
+ * is globally unique — the database would reject it anyway, and a friendly message
+ * beats a caught exception.
+ */
+async function managerEmailError(email: string): Promise<string | null> {
+  if (!email) return "Manager email is required.";
+  if (!EMAIL_RE.test(email)) return "Enter a valid email address.";
+  if ((await getOwnerByEmail(email)) || (await getOperatorByEmail(email))) {
+    return "That email is already in use.";
+  }
+  return null;
+}
+
 export type BranchState =
   | { ok: true }
   | { errors: Record<string, string> }
   | undefined;
 export type ResetState = { error: string } | { ok: true } | undefined;
 export type DeleteBranchState = { error: string } | { ok: true } | undefined;
+export type InviteManagerState = { error: string } | { ok: true } | undefined;
 
 /**
- * Validate the shared branch fields (name / slug / threshold).
+ * Validate the EDIT form's fields (name / slug / threshold).
+ *
+ * ⚠️ Edit-only. Adding a location no longer asks for a slug (it's derived from the
+ * name — see `addBranch`) or a threshold (it defaults to 8 and is tuned in the
+ * branch's own Settings). Editing keeps both: an owner may want to tidy a URL before
+ * printing QR codes, and the slug field carries its own NFC warning.
  *
  * ⚠️ Review links are NOT read here (M35). All four platforms (Google, Tripadvisor,
  * Yelp, Zomato) are set in the branch's own Settings by whoever runs it — exactly like
- * a solo restaurant — so the quick add/edit-branch form doesn't ask for any of them.
+ * a solo restaurant — so the branch form doesn't ask for any of them.
  */
 function readBranchFields(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
@@ -102,13 +167,33 @@ function readBranchFields(formData: FormData) {
 }
 
 /**
- * Add a branch to this brand, and INVITE its manager to set their own password (M36).
+ * Add a LOCATION to this account — the one and only way a restaurant is created.
  *
- * The owner supplies only the manager's EMAIL — no password. We create the account
- * with a random, unusable password, then email the manager a one-time link to choose
- * their own. This means: the owner never handles a password, nothing sensitive lands
- * in an inbox, only the manager ever knows their password, and the email is implicitly
- * VERIFIED (they can't activate without receiving the link).
+ * ╔═══════════════════════════════════════════════════════════════════════════╗
+ * ║ This is the door for the FIRST location as well as the tenth.              ║
+ * ╚═══════════════════════════════════════════════════════════════════════════╝
+ *
+ * Signup used to create location #1 itself, silently, with no manager — so the first
+ * restaurant was structurally unlike every later one and came from different code.
+ * Signup now creates the ACCOUNT only, and every location comes through here.
+ *
+ * ── "Who runs this branch?" ──────────────────────────────────────────────────
+ * The form asks, and both answers are first-class:
+ *   • `self`   → no manager account at all. The ACCOUNT OWNER runs this location
+ *                directly, which the M16 guard already allows. This is the normal
+ *                case for someone with one restaurant, and forcing them to invent a
+ *                second email address for themselves would have been absurd.
+ *   • `invite` → a manager account, created LOCKED, plus an emailed link to set their
+ *                own password (M36). ⚠️ We never email a password.
+ *
+ * Choosing `self` is not a one-way door: `inviteBranchManager` attaches a manager
+ * later without disturbing the branch's feedback, tables or QR codes.
+ *
+ * ── The slug is DERIVED, not typed ───────────────────────────────────────────
+ * `uniqueRestaurantSlug(name)` — the same helper signup used. The slug is burned into
+ * printed QR codes and NFC chips, so asking a non-technical owner to invent one was
+ * a typo waiting to become a reprint. It stays editable on the EDIT form, which warns
+ * about exactly that consequence.
  */
 export async function addBranch(
   brandSlug: string,
@@ -120,56 +205,101 @@ export async function addBranch(
   const brand = await getBrandBySlug(brandSlug);
   if (!brand) return { errors: { form: "Brand not found." } };
 
-  const { name, slug, positiveThreshold, errors } = readBranchFields(formData);
+  const name = String(formData.get("name") ?? "").trim();
+  // Anything that isn't an explicit "invite" means the owner runs it — fail towards
+  // NOT creating a login, which is the reversible outcome.
+  const invite = String(formData.get("managerMode") ?? "self") === "invite";
   const managerEmail = String(formData.get("managerEmail") ?? "")
     .trim()
     .toLowerCase();
 
-  if (!managerEmail) errors.managerEmail = "Manager email is required.";
-  else if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(managerEmail))
-    errors.managerEmail = "Enter a valid email address.";
-
-  if (!errors.slug && (await getRestaurantBySlug(slug)))
-    errors.slug = "That slug is already taken.";
-  if (
-    !errors.managerEmail &&
-    ((await getOwnerByEmail(managerEmail)) ||
-      (await getOperatorByEmail(managerEmail)))
-  )
-    errors.managerEmail = "That email is already in use.";
-
+  const errors: Record<string, string> = {};
+  if (!name) errors.name = "Please give this location a name.";
+  if (invite) {
+    const emailError = await managerEmailError(managerEmail);
+    if (emailError) errors.managerEmail = emailError;
+  }
   if (Object.keys(errors).length > 0) return { errors };
 
-  // A random, unusable password — the account can't be logged into until the manager
-  // sets their own via the invite link. Nobody ever knows this value.
-  const placeholderHash = await bcrypt.hash(
-    randomBytes(32).toString("hex"),
-    SALT_ROUNDS
-  );
+  // Derived from the name, and guaranteed free (the DB unique index is still the real
+  // backstop). Resolved before the write so a collision becomes "-2", not an error.
+  const slug = await uniqueRestaurantSlug(name);
+
   try {
-    await createRestaurantWithOwner({
+    await createBranch({
+      brandId: brand.id, // ← this is what makes it a location of THIS account
       name,
       slug,
-      // No review links at creation (M35) — the manager sets all four in Settings.
-      googleReviewUrl: null,
-      positiveThreshold,
-      ownerEmail: managerEmail,
-      ownerPasswordHash: placeholderHash,
-      brandId: brand.id, // ← this makes it a branch of THIS brand
+      manager: invite
+        ? { email: managerEmail, passwordHash: await lockedPasswordHash() }
+        : null,
     });
   } catch {
-    return { errors: { form: "Could not add the branch — slug or email may exist." } };
+    return { errors: { form: "Could not add the location. Please try again." } };
   }
 
-  // Invite the manager to set their password. Reuses the "reset" code flow, with a
-  // long TTL. Best-effort: the branch IS created even if the email hiccups — the
-  // manager can always use "Forgot password" (their account exists). We just log it.
-  try {
-    const code = await issueCode(managerEmail, "reset", INVITE_TTL_MS);
-    await sendManagerInvite(managerEmail, brand.name, name, code);
-  } catch (err) {
-    console.error("[addBranch] failed to send manager invite:", err);
+  if (invite) await inviteManager(managerEmail, brand.name, name);
+
+  revalidatePath(`/b/${brandSlug}`);
+  return { ok: true };
+}
+
+/**
+ * Attach a manager to a location that ALREADY exists.
+ *
+ * The other half of "I'll run it myself": an owner who has been running a location
+ * personally can hand it to someone at any point, without deleting and recreating the
+ * branch — which would destroy its feedback, its tables, and every QR code already
+ * printed and stood on a table.
+ *
+ * ⚠️ The OWNER LOSES NOTHING. `requireDashboardAccess` authorises a brand owner by
+ * `restaurant.brandId === owner.brandId`, with no reference to whether a manager
+ * exists. This adds a second person with access to one branch; it does not touch the
+ * owner's own. That falls out of the existing guard — no code here defends it.
+ *
+ * Security: the same two checks every action in this file makes — you own this brand,
+ * and this branch belongs to it.
+ */
+export async function inviteBranchManager(
+  brandSlug: string,
+  branchSlug: string,
+  _prev: InviteManagerState,
+  formData: FormData
+): Promise<InviteManagerState> {
+  const access = await requireBrandAccess(brandSlug);
+  if (!access.authorized) return { error: "Not authorized." };
+  const brand = await getBrandBySlug(brandSlug);
+  if (!brand) return { error: "Brand not found." };
+
+  const branch = await getRestaurantBySlug(branchSlug);
+  if (!branch || branch.brandId !== brand.id) {
+    return { error: "That location isn't part of your account." };
   }
+
+  // One manager per location. Replacing a manager is a different, more dangerous
+  // operation than adding one, so it isn't quietly folded in here — the card offers
+  // "Reset password" for a branch that already has someone.
+  if (await branchHasManager(branch.id)) {
+    return { error: "This location already has a manager." };
+  }
+
+  const managerEmail = String(formData.get("managerEmail") ?? "")
+    .trim()
+    .toLowerCase();
+  const emailError = await managerEmailError(managerEmail);
+  if (emailError) return { error: emailError };
+
+  try {
+    await createBranchManager({
+      restaurantId: branch.id,
+      email: managerEmail,
+      passwordHash: await lockedPasswordHash(),
+    });
+  } catch {
+    return { error: "Could not add the manager. Please try again." };
+  }
+
+  await inviteManager(managerEmail, brand.name, branch.name);
 
   revalidatePath(`/b/${brandSlug}`);
   return { ok: true };

@@ -283,16 +283,24 @@ model VerificationCode {
 
 /// A signup that hasn't verified its email yet (Milestone 20).
 ///
-/// We deliberately DON'T create the real Brand/Owner/Restaurant until the emailed
-/// code is confirmed — so an unverified (or bot) signup never becomes a real tenant
-/// and never squats a slug or an email. Once verified, this row is promoted into a
+/// We deliberately DON'T create the real Brand/Owner until the emailed code is
+/// confirmed — so an unverified (or bot) signup never becomes a real tenant and
+/// never squats a slug or an email. Once verified, this row is promoted into a
 /// real account and deleted. `email` is unique so re-submitting just refreshes it.
 model PendingSignup {
-  id             Int      @id @default(autoincrement())
-  email          String   @unique // normalised
-  passwordHash   String // bcrypt hash — never the raw password
-  restaurantName String
-  createdAt      DateTime @default(now())
+  id           Int      @id @default(autoincrement())
+  email        String   @unique // normalised
+  passwordHash String // bcrypt hash — never the raw password
+  // The ACCOUNT's name — the company/restaurant business, e.g. "Uncle Bobo's".
+  //
+  // ⚠️ Renamed from `restaurantName`, and the rename is the whole point of this
+  // milestone. Signup used to create a `Restaurant` from this value, which made the
+  // first location structurally different from every later one (no manager, created
+  // by a different code path). Signup now creates the ACCOUNT only; locations are
+  // added afterwards, all through the same door. The old name described a thing this
+  // column no longer produces.
+  businessName String
+  createdAt    DateTime @default(now())
 }
 
 /// A platform OPERATOR's login account (Milestone 6 — admin dashboard).

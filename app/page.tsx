@@ -417,10 +417,11 @@ export default function Home() {
             </Reveal>
             <Reveal delay={240}>
               <Faq q="How long does setup take?">
-                Minutes, with no hardware to buy. Sign up, add your tables, then print
-                the built-in QR kit and stand a card on each table — that&apos;s it.
-                Prefer tap-to-rate? Write each table&apos;s link onto an NFC chip
-                instead. Add your review links once, in settings, and you&apos;re live.
+                Minutes, with no hardware to buy. Sign up, add your restaurant, add its
+                tables, then print the built-in QR kit and stand a card on each table —
+                that&apos;s it. Prefer tap-to-rate? Write each table&apos;s link onto an
+                NFC chip instead. Add your review links once, in settings, and
+                you&apos;re live. Running several sites? Add each one the same way.
               </Faq>
             </Reveal>
             <Reveal delay={300}>

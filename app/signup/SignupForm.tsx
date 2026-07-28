@@ -2,8 +2,14 @@
 
 /**
  * Step 1 of self-serve signup (Milestone 20) — CLIENT component.
- * Collects email + password + restaurant name; the server action validates it,
+ * Collects email + password + the BUSINESS name; the server action validates it,
  * emails a code, and moves to the verify screen.
+ *
+ * ⚠️ The name asked for here is the ACCOUNT's (the company), not a venue's. Signup
+ * no longer creates a restaurant — the customer adds their location(s) straight
+ * afterwards. The hint under the field says so, because a one-restaurant owner who
+ * types their restaurant name and then lands on "add your first location" needs to
+ * know that's the flow working, not a mistake they made.
  */
 
 import { useActionState } from "react";
@@ -31,16 +37,19 @@ export default function SignupForm() {
   return (
     <form action={action} className="flex flex-col gap-4">
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="restaurantName" className={LABEL}>
-          Restaurant name
+        <label htmlFor="businessName" className={LABEL}>
+          Your restaurant or business name
         </label>
         <input
-          id="restaurantName"
-          name="restaurantName"
-          placeholder="e.g. Rifaf's Kitchen"
+          id="businessName"
+          name="businessName"
+          placeholder="e.g. Uncle Bobo's"
           className={FIELD}
         />
-        <FieldError message={errors.restaurantName} />
+        <p className="text-sm text-[#6B7280]">
+          You&apos;ll add your location next — one, or as many as you run.
+        </p>
+        <FieldError message={errors.businessName} />
       </div>
 
       <div className="flex flex-col gap-1.5">

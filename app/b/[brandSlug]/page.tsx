@@ -86,7 +86,12 @@ export default async function BrandPage({
             <h1 className="text-2xl font-bold tracking-tight text-[#111827]">
               {brand.name}
             </h1>
-            <p className="text-sm text-[#6B7280]">Brand overview</p>
+            <p className="text-sm text-[#6B7280]">
+              {/* A brand-new account has no locations yet — signup creates the account
+                  and stops. Calling that an "overview" over three zeroes would be an
+                  odd first impression. */}
+              {branches.length === 0 ? "Your account" : "Account overview"}
+            </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <ChangePassword />
@@ -99,15 +104,22 @@ export default async function BrandPage({
           </div>
         </header>
 
-        {/* Brand-wide overview */}
-        <section className="mb-8 grid grid-cols-3 gap-3">
-          <StatCard label="Branches" value={stats.branchCount} />
-          <StatCard label="Responses" value={stats.responseCount} />
-          <StatCard
-            label="Avg rating"
-            value={stats.avgRating === null ? "—" : stats.avgRating.toFixed(1)}
-          />
-        </section>
+        {/* Account-wide overview.
+            HIDDEN until there's at least one location: a customer who has just
+            finished signing up would otherwise be met by "Branches 0 / Responses 0 /
+            Avg —", three pieces of nothing sitting above the one thing they actually
+            need to do. BrandBranches renders the "add your first location" onboarding
+            in that case. */}
+        {branches.length > 0 && (
+          <section className="mb-8 grid grid-cols-3 gap-3">
+            <StatCard label="Locations" value={stats.branchCount} />
+            <StatCard label="Responses" value={stats.responseCount} />
+            <StatCard
+              label="Avg rating"
+              value={stats.avgRating === null ? "—" : stats.avgRating.toFixed(1)}
+            />
+          </section>
+        )}
 
         {/* Branch comparison cards + add/edit/delete/reset */}
         <BrandBranches brandSlug={brandSlug} branches={branches} />

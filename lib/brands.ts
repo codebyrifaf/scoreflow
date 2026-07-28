@@ -8,7 +8,7 @@
 
 import { prisma } from "./prisma";
 import { newTrialEndsAt } from "./subscriptions";
-import { uniqueRestaurantSlug } from "./slug";
+import { slugify } from "./slug";
 
 /** Look up a brand by its URL slug (e.g. "kfc"), or null. */
 export async function getBrandBySlug(slug: string) {
@@ -37,6 +37,9 @@ export async function updateBrandLogo(
  * The account model reuses `Brand` for everyone, but a customer with ONE location
  * shouldn't be dropped into a "chain" console — they should just land on their
  * restaurant's dashboard and never see brand/branch language. So:
+ *   • ZERO restaurants     → the console, which shows "add your first location".
+ *     This is where a customer lands the moment they finish signing up, now that
+ *     signup creates the account only (see `createAccountFromSignup`).
  *   • exactly 1 restaurant → that restaurant's dashboard;
  *   • 2 or more            → the multi-location console.
  */
@@ -122,40 +125,57 @@ export async function getBranchesForBrand(brandId: number) {
 /**
  * Create a brand-new self-serve ACCOUNT from a verified signup (Milestone 20).
  *
- * One transaction creates three linked rows:
+ * One transaction creates the two rows that ARE the account:
  *   • a `Brand` — the paying account, started on a 14-day free TRIAL;
  *   • the owner `Owner` — brand-scoped, already `emailVerified` (the OTP is how we
- *     got here). Given instant-alert defaults, because a fresh account has exactly
- *     ONE location so the owner IS effectively its manager and wants to hear about
- *     unhappy diners right away (they can switch to a digest later if they add
- *     locations);
- *   • one `Restaurant` under the brand — the customer's single venue. It has NO
- *     separate branch-manager; the account owner manages it directly (the M16
- *     brand-owner guard already allows that).
+ *     got here). Given instant-alert defaults: a brand-new account has one location
+ *     at most, so the owner is effectively its manager and wants to hear about an
+ *     unhappy diner right away (they can switch to a digest once they add locations).
  *
- * The brand slug and the restaurant slug are both derived from the name. The
- * caller has already checked the email is free and verified the code.
+ * ╔═══════════════════════════════════════════════════════════════════════════╗
+ * ║ ⚠️ NO RESTAURANT IS CREATED HERE, AND THAT IS THE POINT.                   ║
+ * ╚═══════════════════════════════════════════════════════════════════════════╝
+ *
+ * This used to also create ONE `Restaurant` from the same name, and that quietly
+ * broke the whole model:
+ *
+ *   • that first restaurant had NO branch manager, while every location added later
+ *     (via `addBranch`) got one — so location #1 was structurally unlike #2;
+ *   • it was born from a DIFFERENT code path, so the two drifted;
+ *   • the account and the venue shared one name, so an owner whose company and first
+ *     branch differ ("Uncle Bobo's" vs "Uncle Bobo's Dhanmondi") had to rename one
+ *     of them by hand — and in the real account, ended up with two identically-named
+ *     restaurants 24 minutes apart.
+ *
+ * An account is a COMPANY. A restaurant is a LOCATION under it. Signing up gives you
+ * the company; you then add locations — the first and the tenth through exactly the
+ * same door (`addBranch`), which asks who runs each one.
+ *
+ * A brand with ZERO restaurants is a legal, expected state: `brandOwnerHome` sends
+ * such an owner to the console, and every brand-wide aggregate already copes with an
+ * empty branch list.
+ *
+ * The caller has already checked the email is free and verified the code.
  */
 export async function createAccountFromSignup(input: {
   ownerEmail: string;
   ownerPasswordHash: string;
-  restaurantName: string;
+  businessName: string;
 }) {
-  // Resolve unique slugs BEFORE opening the transaction (these do their own reads).
-  const restaurantSlug = await uniqueRestaurantSlug(input.restaurantName);
-  // The brand slug shares the restaurant's namespace only loosely; reuse the same
-  // base but guarantee brand-uniqueness separately.
-  let brandSlug = restaurantSlug;
+  // Resolve a unique brand slug BEFORE opening the transaction (it does its own
+  // reads). Restaurant slugs are resolved separately, when a location is added.
+  const base = slugify(input.businessName);
+  let brandSlug = base;
   let n = 1;
   while (await prisma.brand.findUnique({ where: { slug: brandSlug } })) {
     n += 1;
-    brandSlug = `${restaurantSlug}-${n}`.slice(0, 40);
+    brandSlug = `${base}-${n}`.slice(0, 40);
   }
 
   return prisma.$transaction(async (tx) => {
     const brand = await tx.brand.create({
       data: {
-        name: input.restaurantName,
+        name: input.businessName,
         slug: brandSlug,
         subStatus: "trialing",
         trialEndsAt: newTrialEndsAt(),
@@ -168,21 +188,13 @@ export async function createAccountFromSignup(input: {
         passwordHash: input.ownerPasswordHash,
         brandId: brand.id,
         emailVerified: true,
-        // Single-venue owner → wants the instant alert, not a digest.
+        // One-location owner → wants the instant alert, not a digest.
         alertsEnabled: true,
         digestEnabled: false,
       },
     });
 
-    const restaurant = await tx.restaurant.create({
-      data: {
-        name: input.restaurantName,
-        slug: restaurantSlug,
-        brandId: brand.id,
-      },
-    });
-
-    return { brand, restaurant };
+    return { brand };
   });
 }
 

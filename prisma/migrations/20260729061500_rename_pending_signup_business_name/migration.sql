@@ -1,0 +1,13 @@
+-- Signup creates the ACCOUNT, not a restaurant.
+--
+-- `PendingSignup.restaurantName` held the name that signup used to stamp onto BOTH a
+-- Brand and an auto-created Restaurant. Signup no longer creates a restaurant at all,
+-- so the column now holds the ACCOUNT's (business) name and the old name lied.
+--
+-- ⚠️ HAND-WRITTEN, NOT GENERATED. Prisma emits a column rename as
+-- `DROP COLUMN` + `ADD COLUMN`, which DESTROYS the data in the column. That is the
+-- exact trap Milestone 23 caught on the GBP rename. `RENAME COLUMN` preserves every
+-- value. Rows here are short-lived (deleted the moment a signup is verified), but an
+-- in-flight signup would still have been silently broken by the destructive version —
+-- and shipping that pattern is how you eventually lose something that matters.
+ALTER TABLE "PendingSignup" RENAME COLUMN "restaurantName" TO "businessName";

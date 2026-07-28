@@ -8,6 +8,29 @@
  */
 
 import { prisma } from "./prisma";
+import { slugify } from "./slug";
+
+/**
+ * A slug derived from `name` and guaranteed not to collide with an existing
+ * restaurant. If "cafe" is taken it tries "cafe-2", "cafe-3", … The database's unique
+ * constraint is still the real backstop; this just avoids an ugly error in the common
+ * case.
+ *
+ * Lives here rather than in lib/slug.ts because it queries the Restaurant table —
+ * and because keeping lib/slug.ts free of Prisma is what lets the add-location form
+ * (a client component) import `slugify` to preview the URL as the owner types.
+ */
+export async function uniqueRestaurantSlug(name: string): Promise<string> {
+  const base = slugify(name);
+  let candidate = base;
+  let n = 1;
+  // Bounded loop — in practice resolves on the first or second try.
+  while (await prisma.restaurant.findUnique({ where: { slug: candidate } })) {
+    n += 1;
+    candidate = `${base}-${n}`.slice(0, 40);
+  }
+  return candidate;
+}
 
 /**
  * Look up a restaurant by its URL slug.
@@ -42,48 +65,75 @@ export async function getRestaurantForFeedback(slug: string) {
 // these functions had no callers left and were removed rather than left to rot.
 
 /**
- * Create a new restaurant AND its owner login in one atomic step (Milestone 6).
+ * Create one LOCATION under an account, optionally with its own manager login.
  *
- * We run both inserts inside a `$transaction`, so if either fails, NEITHER is
- * written — you can never end up with a restaurant that has no owner, or an
- * owner pointing at a half-created restaurant.
+ * This is now the ONLY way a restaurant comes into existence. Signup creates the
+ * account (Brand + Owner) and nothing else, so the first location and the tenth are
+ * born here, identically — which is the whole point of the change. It replaces the
+ * old `createRestaurantWithOwner`, whose name encoded the assumption this fixes:
+ * that a restaurant ALWAYS has its own owner row.
  *
- * The password is passed in ALREADY HASHED (the caller hashes it with bcrypt),
- * so this data-access module never handles raw passwords. Uniqueness of `slug`
- * and the owner `email` is enforced by the database's unique constraints; the
- * caller also pre-checks them to show friendly error messages.
+ * ── `manager` is optional, and that's the feature ────────────────────────────
+ *   • `manager` given → a branch-manager `Owner` scoped to this one restaurant.
+ *     The password arrives ALREADY HASHED, so this module never handles a raw one.
+ *     (The caller creates it as a random, unusable hash and emails an invite — we
+ *     never mail anybody a password. See `addBranch`.)
+ *   • `manager` omitted/null → NO owner row. The ACCOUNT OWNER runs this location
+ *     directly, which the M16 guard already permits (a brand owner is authorised on
+ *     any branch of their brand). A manager can be attached later without recreating
+ *     the branch — see `inviteBranchManager`.
+ *
+ * Both inserts share one `$transaction`, so a failure writes neither: you can never
+ * end up with a manager login pointing at a half-created restaurant.
+ *
+ * Uniqueness of `slug` and the manager `email` is enforced by the database's unique
+ * constraints; the caller pre-checks both to show a friendly error instead.
+ *
+ * ⚠️ Review links are deliberately NOT settable here (M35). All four platforms are
+ * configured in the branch's own Settings, by whoever runs it.
  */
-export async function createRestaurantWithOwner(input: {
+export async function createBranch(input: {
+  brandId: number;
   name: string;
   slug: string;
-  googleReviewUrl: string | null;
-  positiveThreshold: number;
-  ownerEmail: string;
-  ownerPasswordHash: string;
-  /** When set, this restaurant is a BRANCH of that brand (Milestone 16). */
-  brandId?: number | null;
+  /** Defaults to the schema's 8 — it's tuned later in the branch's Settings. */
+  positiveThreshold?: number;
+  manager?: { email: string; passwordHash: string } | null;
 }) {
   return prisma.$transaction(async (tx) => {
     const restaurant = await tx.restaurant.create({
       data: {
         name: input.name,
         slug: input.slug,
-        googleReviewUrl: input.googleReviewUrl,
-        positiveThreshold: input.positiveThreshold,
-        brandId: input.brandId ?? null,
+        brandId: input.brandId,
+        ...(input.positiveThreshold !== undefined
+          ? { positiveThreshold: input.positiveThreshold }
+          : {}),
       },
     });
 
-    await tx.owner.create({
-      data: {
-        email: input.ownerEmail,
-        passwordHash: input.ownerPasswordHash,
-        restaurantId: restaurant.id,
-      },
-    });
+    if (input.manager) {
+      await tx.owner.create({
+        data: {
+          email: input.manager.email,
+          passwordHash: input.manager.passwordHash,
+          restaurantId: restaurant.id,
+        },
+      });
+    }
 
     return restaurant;
   });
+}
+
+/**
+ * Does this branch already have a manager login of its own? (`false` = the account
+ * owner runs it directly.) Used to decide between "Invite manager" and "Reset
+ * password" on a branch card, and to refuse a second invite.
+ */
+export async function branchHasManager(restaurantId: number): Promise<boolean> {
+  const n = await prisma.owner.count({ where: { restaurantId } });
+  return n > 0;
 }
 
 /**

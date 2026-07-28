@@ -7,7 +7,12 @@
  *   1. `requestSignup` — validate, stash a PENDING signup (nothing real is created
  *      yet), and email a 6-digit code.
  *   2. `confirmSignup` — check the code, and only THEN create the real account
- *      (Brand + owner + one restaurant) on a 14-day trial.
+ *      (Brand + owner) on a 14-day trial.
+ *
+ * ⚠️ Signup creates the ACCOUNT, not a restaurant. It used to also spin up one
+ * `Restaurant` from the same name, which made the first location unlike every later
+ * one (no manager, different code path, name shared with the company). The customer
+ * now adds their location(s) afterwards — see `createAccountFromSignup`.
  *
  * Why not create the account immediately? Because signup is public and
  * unauthenticated. Creating an Owner/Brand/Restaurant before the email is proven
@@ -60,12 +65,13 @@ export async function requestSignup(
 ): Promise<SignupState> {
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
-  const restaurantName = String(formData.get("restaurantName") ?? "").trim();
+  // The ACCOUNT's name (the company), not a venue — locations are added later.
+  const businessName = String(formData.get("businessName") ?? "").trim();
 
   const errors: Record<string, string> = {};
   if (!email) errors.email = "Email is required.";
   else if (!EMAIL_RE.test(email)) errors.email = "Enter a valid email address.";
-  if (!restaurantName) errors.restaurantName = "Restaurant name is required.";
+  if (!businessName) errors.businessName = "Please enter your business name.";
   const weak = validateNewPassword(password);
   if (weak) errors.password = weak;
 
@@ -112,8 +118,8 @@ export async function requestSignup(
       // Upsert: re-submitting the same email just refreshes the pending row + code.
       await prisma.pendingSignup.upsert({
         where: { email },
-        update: { passwordHash, restaurantName },
-        create: { email, passwordHash, restaurantName },
+        update: { passwordHash, businessName },
+        create: { email, passwordHash, businessName },
       });
       await emailCode(email);
     }
@@ -178,7 +184,7 @@ export async function confirmSignup(
     await createAccountFromSignup({
       ownerEmail: normalized,
       ownerPasswordHash: pending.passwordHash,
-      restaurantName: pending.restaurantName,
+      businessName: pending.businessName,
     });
     await prisma.pendingSignup.delete({ where: { email: normalized } });
     await clearFailures(normalized);
