@@ -47,8 +47,13 @@ export const metadata: Metadata = {
   // chip on the table" — which sold NFC hardware as the price of entry, months after
   // the printable QR kit (M30) made that untrue. This is the sentence Google shows in
   // its results and WhatsApp shows on a shared link; it has to be the current pitch.
+  // ⚠️ Kept in step with the product — the third time this sentence has had to
+  // catch up (M23, M40, now). It gained "and which dish it was" because that is the
+  // strongest thing ScoreFlow does and it appeared nowhere in the marketing until
+  // now. This is the line Google prints in its results and WhatsApp renders on a
+  // shared link, so it has to name the best feature, not the oldest one.
   description:
-    "Guests scan the card on the table and rate their meal out of ten. If someone's unhappy, you get an email in seconds — while they're still sitting there. Every guest is invited to review you on Google, Tripadvisor, Yelp or Zomato; we never hide the link.",
+    "Guests scan the card on the table and rate their meal out of ten. If someone's unhappy, you get an email in seconds — while they're still sitting there, and it tells you which dish it was. Every guest is invited to review you on Google, Tripadvisor, Yelp or Zomato; we never hide the link.",
   applicationName: "ScoreFlow",
   keywords: [
     "restaurant feedback",

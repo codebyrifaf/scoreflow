@@ -86,6 +86,55 @@ function HeroCard({
  * the two platforms with clicks in this example are shown, which is exactly how the
  * real dashboard behaves (a platform with no link set has no row).
  */
+/**
+ * The By-dish card — the newest feature, and the strongest thing this product can
+ * claim.
+ *
+ * ⚠️ It was missing from this page entirely until now. The landing page still sold
+ * the "you get an alert" product while the app had moved on to "and it tells you
+ * which dish" — the same drift M23 and M40 each had to correct. An alert says
+ * something is wrong; this says what to fix on Monday, which is a different and much
+ * better sale.
+ *
+ * The numbers are an EXAMPLE and are labelled as one — internally consistent, never a
+ * claim about anyone's results (this page's rule since M40).
+ */
+function ByDish() {
+  const rows = [
+    { dish: "Chicken Burger", score: "4.2", tone: "text-red-600", chips: "Dry ×7 · Cold ×4" },
+    { dish: "Fish & Chips", score: "7.1", tone: "text-amber-600", chips: "Too oily ×3" },
+    { dish: "Fries", score: "8.8", tone: "text-green-600", chips: "Crispy ×9" },
+  ];
+
+  return (
+    <div className="rounded-2xl border border-[#E5E5EA] bg-[#FAFAFB] p-5">
+      <div className="flex items-baseline justify-between">
+        <p className="text-[11px] font-medium text-[#6E6E73]">By dish</p>
+        <p className="text-[11px] text-[#AEAEB2]">worst first</p>
+      </div>
+
+      <div className="mt-3 flex flex-col">
+        {rows.map((r) => (
+          <div
+            key={r.dish}
+            className="flex items-start justify-between gap-3 border-t border-[#E5E5EA] py-2.5 first:border-0 first:pt-0"
+          >
+            <div className="min-w-0">
+              <p className="truncate text-[13px] font-medium text-[#1D1D1F]">
+                {r.dish}
+              </p>
+              <p className="mt-0.5 text-[11px] text-[#6E6E73]">{r.chips}</p>
+            </div>
+            <span className={`flex-none text-[17px] font-bold ${r.tone}`}>
+              {r.score}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function ReviewClicks() {
   const clicks: Record<string, number> = { google: 9, tripadvisor: 3 };
   const shown = REVIEW_PLATFORMS.filter((p) => clicks[p.id]);
@@ -133,46 +182,12 @@ function ReviewClicks() {
   );
 }
 
-/** Hero visual 2 — the worklist entry, with the guest's number attached. */
-function WinBack() {
-  return (
-    <div className="rounded-2xl border border-[#E5E5EA] bg-[#FAFAFB] p-5">
-      <div className="flex items-center gap-2">
-        <p className="text-[11px] font-semibold text-[#1D1D1F]">Needs attention</p>
-        <span className="rounded-full bg-red-100 px-1.5 py-0.5 text-[9px] font-bold text-red-700">
-          1
-        </span>
-      </div>
-
-      <div className="mt-3 rounded-xl border border-red-200 bg-red-50/60 p-3">
-        <div className="flex gap-2.5">
-          <span className="flex h-8 w-8 flex-none items-center justify-center rounded-lg bg-red-100 text-[13px] font-bold text-red-700">
-            3
-          </span>
-          <div className="min-w-0">
-            <p className="truncate text-[12px] font-semibold text-[#1D1D1F]">
-              Order 1042 · Table 7
-            </p>
-            <p className="truncate text-[12px] text-[#6E6E73]">Food was cold</p>
-          </div>
-        </div>
-
-        {/* The bit that matters: they left a way to reach them. */}
-        <div className="mt-3 flex items-center gap-2 border-t border-red-200/70 pt-3">
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-[12px] font-semibold text-[#1D1D1F]">
-              Sarah
-            </p>
-            <p className="truncate text-[11px] text-[#6E6E73]">07700 900123</p>
-          </div>
-          <span className="flex-none rounded-full bg-[#1D1D1F] px-3 py-1.5 text-[11px] font-medium text-white">
-            Call back
-          </span>
-        </div>
-      </div>
-    </div>
-  );
-}
+// NOTE: a `WinBack` hero visual lived here — the Needs-attention card with the
+// guest's phone number on it. Win-back is still a real feature and still on this page,
+// but as a one-line item rather than a hero card: "which dish is the problem" is now
+// the stronger of the two claims, and adding a third hero card would have lengthened
+// the page, which is the exact failure mode when the brief is "understand it at a
+// glance" (M40). The visual went with it rather than being left unused.
 
 export default function ProofCards() {
   return (
@@ -198,14 +213,20 @@ export default function ProofCards() {
             </HeroCard>
           </Reveal>
 
+          {/* ⚠️ This slot used to hold the win-back card. It's been promoted to
+              "which dish" because that is now the claim that closes a sale: an alert
+              tells an owner something went wrong, this tells them what to fix. The
+              win-back moved down to a one-liner rather than being added alongside —
+              a longer page is the exact failure mode when the brief is "understand it
+              at a glance" (M40). */}
           <Reveal delay={120}>
             <HeroCard
-              eyebrow="Before it becomes a review"
-              title="Turn a bad night into a regular."
-              visual={<WinBack />}
+              eyebrow="Not just that something's wrong"
+              title="Know which dish is the problem."
+              visual={<ByDish />}
             >
-              An unhappy guest can leave their name and number. Ring them before they
-              ever reach for their phone.
+              Your till tells us what was on the order, so a poor score is tied to the
+              food it was actually about. Guests aren&apos;t asked anything extra.
             </HeroCard>
           </Reveal>
         </div>
@@ -226,8 +247,8 @@ export default function ProofCards() {
               "A score out of ten and a couple of one-tap reasons — so guests finish it.",
             ],
             [
-              "Trends, not guesses",
-              "Today, this week, this month — and the reasons that keep coming up.",
+              "Turn a bad night into a regular",
+              "An unhappy guest can leave a number. Ring them before they reach for their phone.",
             ],
             [
               "Several venues, one view",

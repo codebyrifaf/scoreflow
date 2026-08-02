@@ -16,9 +16,15 @@ import { requireDashboardAccess } from "@/lib/auth-guard";
 import { getRestaurantBySlug } from "@/lib/restaurants";
 import { getOwnerByEmail } from "@/lib/owners";
 import { emailIsConfigured } from "@/lib/email";
+import { aiIsConfigured } from "@/lib/ai";
+import { getMenu } from "@/lib/menu";
+import { lastOrderReceivedAt } from "@/lib/pos-orders";
+import { appUrl } from "@/lib/app-url";
+import { formatInAppTz } from "@/lib/time";
 import SubscriptionLocked from "@/app/SubscriptionLocked";
 import SettingsForm from "./SettingsForm";
 import LogoUploader from "./LogoUploader";
+import MenuManager from "./MenuManager";
 
 // Always fresh — settings change and must show their new values immediately.
 export const dynamic = "force-dynamic";
@@ -70,6 +76,14 @@ export default async function SettingsPage({
   // each manager controls their own inbox).
   const me = await getOwnerByEmail(access.ownerEmail);
 
+  // The MENU and the POS connection. Both are ACCOUNT-level, so they're only
+  // loaded — and only rendered — for the account owner, exactly like the logo.
+  const isAccountOwner = !!me?.brandId;
+  const [menu, lastOrder] = await Promise.all([
+    isAccountOwner && me?.brandId ? getMenu(me.brandId) : Promise.resolve([]),
+    isAccountOwner ? lastOrderReceivedAt(restaurant.id) : Promise.resolve(null),
+  ]);
+
   return (
     <main className="font-system min-h-dvh w-full bg-white text-[#111827]">
       <div className="mx-auto w-full max-w-2xl px-5 py-8">
@@ -113,6 +127,30 @@ export default async function SettingsPage({
               slug={slug}
               currentLogo={me.brand?.logoDataUrl ?? null}
               fallbackInitial={restaurant.name.charAt(0).toUpperCase()}
+            />
+          </div>
+        )}
+
+        {/* Menu + till connection — ACCOUNT OWNER only. The menu is shared by every
+            location (like the logo, M26), so a single branch manager doesn't own
+            that call. Both server actions re-check this. */}
+        {isAccountOwner && (
+          <div className="mt-6">
+            <MenuManager
+              slug={slug}
+              dishes={menu.map((d) => ({
+                id: d.id,
+                name: d.name,
+                category: d.category,
+                positiveChips: d.positiveChips,
+                negativeChips: d.negativeChips,
+                chipsSource: d.chipsSource,
+              }))}
+              aiConfigured={aiIsConfigured()}
+              posConnected={!!restaurant.posKeyHash}
+              posKeyPrefix={restaurant.posKeyPrefix}
+              lastOrderAt={lastOrder ? formatInAppTz(lastOrder.toISOString()) : null}
+              posUrl={`${appUrl()}/api/pos/orders`}
             />
           </div>
         )}

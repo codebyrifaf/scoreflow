@@ -18,7 +18,7 @@
  * review gating — against Google's policy, and a regulatory risk in the UK).
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { FeedbackPayload } from "@/lib/types";
 import { chipsForRating } from "@/lib/feedback-chips";
 import type { ActiveReviewLink } from "@/lib/review-platforms";
@@ -134,19 +134,66 @@ export default function FeedbackForm({
   // Whether this diner is unhappy — drives the win-back contact prompt below.
   const isUnhappy = rating > 0 && rating < positiveThreshold;
 
-  // The quick-tap chips for the currently selected rating: "what did you love?" for
-  // a good score, "what could be better?" for a poor one; empty until a rating is
-  // picked. Uses THIS restaurant's positiveThreshold, so the question we ask always
-  // matches the tone of the thank-you they'll land on.
-  const chips = chipsForRating(rating, positiveThreshold);
+  // ── The quick-tap chips ─────────────────────────────────────────────────────
+  //
+  // These used to be six hardcoded strings, identical for every restaurant on the
+  // platform. Now they come from the server, which knows two things this component
+  // can't: what this restaurant serves, and — if their till is connected — what was
+  // actually in the order number this diner just typed. So an unhappy diner who
+  // ordered a burger is offered "Burger was dry" rather than "Food was cold".
+  //
+  // ⚠️ THE DINER IS ASKED NOTHING EXTRA for this. No dish picker, no second
+  // question. The order number they were already typing is the whole input.
+  //
+  // The generic chips are DERIVED, not stored — they're a pure function of the
+  // rating, so there is always something tappable the instant a rating is picked.
+  // Only the server's answer lives in state, tagged with the request it belongs
+  // to. That tag is what makes this safe: when the diner changes their rating or
+  // edits the order number, the stored answer no longer matches and we fall back
+  // to the generic set automatically, with no effect needed to reset it — and a
+  // slow response for a rating they've since changed can never overwrite the
+  // current one.
+  const genericChips = chipsForRating(rating, positiveThreshold);
+  const chipKey = `${rating}|${orderNumber.trim()}`;
+  const [fetched, setFetched] = useState<{ key: string; chips: string[] } | null>(
+    null
+  );
+  const chips =
+    rating === 0 ? [] : fetched?.key === chipKey ? fetched.chips : genericChips;
 
-  /** Pick a rating, and drop any selected chips that don't belong to the new
-   *  rating's set (e.g. switching from a low to a high score clears "Slow service"). */
+  useEffect(() => {
+    if (rating === 0) return;
+
+    const controller = new AbortController();
+    const params = new URLSearchParams({
+      slug,
+      rating: String(rating),
+      order: orderNumber.trim(),
+    });
+
+    fetch(`/api/feedback/chips?${params}`, { signal: controller.signal })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { chips?: string[] } | null) => {
+        if (!data?.chips?.length) return;
+        setFetched({ key: chipKey, chips: data.chips });
+        // Drop a selected tag that's no longer on offer, so the UI never shows a
+        // chip as selected that isn't there. The API re-applies this rule
+        // server-side regardless — this is presentation, not enforcement.
+        setSelectedTags((prev) => prev.filter((t) => data.chips!.includes(t)));
+      })
+      .catch(() => {
+        // Swallowed on purpose: the generic chips are already on screen. A diner
+        // must never see a broken form because a lookup failed.
+      });
+
+    return () => controller.abort();
+    // Re-fetch when the rating changes (a different band) or the order number does
+    // (a different order means different dishes).
+  }, [rating, orderNumber, slug, chipKey]);
+
+  /** Pick a rating. The effect above refreshes the chips for the new band. */
   function selectRating(value: number) {
     setRating(value);
-    setSelectedTags((prev) =>
-      prev.filter((t) => chipsForRating(value, positiveThreshold).includes(t))
-    );
   }
 
   /** Toggle a chip on/off. */

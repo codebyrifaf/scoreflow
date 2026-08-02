@@ -278,6 +278,93 @@ export async function getReviewClicksByPlatform(
     .sort((a, b) => b.count - a.count);
 }
 
+/** One dish's report card on the owner's dashboard. */
+export interface DishInsight {
+  dish: string;
+  responses: number;
+  average: number;
+  /** The complaints diners actually tapped about this dish, commonest first. */
+  topChips: { chip: string; count: number }[];
+}
+
+/**
+ * MENU INSIGHTS — which dish is the problem?
+ *
+ * This is the payoff for the whole order-aware chip system. Until now the
+ * dashboard could say "someone rated you 3" and, via Top mentions, "somebody said
+ * 'Food was cold'". It could never say WHICH DISH — because nothing in the
+ * product knew what an order contained.
+ *
+ * Now that a connected till stamps `Feedback.dishNames`, this rolls that up into
+ * the sentence an owner can actually act on: *"Chicken Cheese Burger — 4.2 over 18
+ * responses — Dry ×7, Cold ×4."* That's a Monday-morning instruction, not a
+ * dashboard decoration.
+ *
+ * ⚠️ Bounded like every other dashboard query (M24/M27): we read a capped sample
+ * of recent rows and aggregate in memory rather than scanning the whole history.
+ * A restaurant's dish mix changes over time anyway, so the recent window is also
+ * the more truthful answer.
+ *
+ * Rows with no `dishNames` (no till connected, or an unmatched order number) are
+ * simply absent — they still count everywhere else on the dashboard.
+ */
+export async function getDishInsights(
+  restaurantId: number,
+  since?: Date,
+  sample = 500
+): Promise<DishInsight[]> {
+  const rows = await prisma.feedback.findMany({
+    where: {
+      restaurantId,
+      // `isEmpty: false` keeps the scan to rows that can actually contribute.
+      dishNames: { isEmpty: false },
+      ...(since ? { createdAt: { gte: since } } : {}),
+    },
+    select: { rating: true, tags: true, dishNames: true },
+    orderBy: { createdAt: "desc" },
+    take: sample,
+  });
+
+  const byDish = new Map<
+    string,
+    { sum: number; count: number; chips: Map<string, number> }
+  >();
+
+  for (const row of rows) {
+    for (const dish of row.dishNames) {
+      const entry = byDish.get(dish) ?? {
+        sum: 0,
+        count: 0,
+        chips: new Map<string, number>(),
+      };
+      entry.sum += row.rating;
+      entry.count += 1;
+      for (const tag of row.tags) {
+        // A multi-dish order prefixes chips with the dish ("Burger — Dry"); strip
+        // it so the dish's own card doesn't repeat its name on every chip.
+        const chip = tag.startsWith(`${dish} — `)
+          ? tag.slice(dish.length + 3)
+          : tag;
+        entry.chips.set(chip, (entry.chips.get(chip) ?? 0) + 1);
+      }
+      byDish.set(dish, entry);
+    }
+  }
+
+  return [...byDish.entries()]
+    .map(([dish, e]) => ({
+      dish,
+      responses: e.count,
+      average: e.sum / e.count,
+      topChips: [...e.chips.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 4)
+        .map(([chip, count]) => ({ chip, count })),
+    }))
+    // Worst first: the dish that needs attention should be the one you read first.
+    .sort((a, b) => a.average - b.average);
+}
+
 /**
  * The "Needs attention" worklist (Milestone 18): this restaurant's STILL-OPEN
  * complaints — a rating at or below `alertThreshold` that nobody has dealt with —
@@ -371,7 +458,10 @@ export async function reopenFeedback(
 export async function createFeedback(
   restaurantId: number,
   input: FeedbackPayload,
-  ipHash?: string | null
+  ipHash?: string | null,
+  /** The dishes this order contained, if the restaurant's till told us. Empty is
+   *  the normal state for a restaurant with no POS connected. */
+  dishNames: string[] = []
 ): Promise<number> {
   const row = await prisma.feedback.create({
     data: {
@@ -384,6 +474,7 @@ export async function createFeedback(
       contactName: input.contactName || null,
       contactPhone: input.contactPhone || null,
       ipHash: ipHash ?? null,
+      dishNames,
     },
     select: { id: true },
   });

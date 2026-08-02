@@ -431,4 +431,31 @@ html {
   .qr-sheet {
     padding: 0 !important;
   }
+
+  /* ── The sales deck (/pitch) ────────────────────────────────────────────────
+     Reuses `.qr-card` above for break-inside, but wants a different page layout:
+     ONE SLIDE PER PAGE, so "Save as PDF" produces a hand-out you can flick through
+     rather than a contact sheet. The grid has to collapse to a single column or the
+     browser lays two slides side by side and shrinks both. */
+  .pitch-deck {
+    display: block !important;
+    gap: 0 !important;
+  }
+  .pitch-deck > * {
+    /* Each slide starts a fresh page. `:first-child` is exempt so the PDF doesn't
+       open on a blank sheet. */
+    break-before: page;
+    page-break-before: always;
+    margin: 0 auto;
+  }
+  .pitch-deck > *:first-child {
+    break-before: auto;
+    page-break-before: auto;
+  }
+  /* Keep the dark slides dark on paper — the whole deck loses its rhythm if the
+     three anchor slides print as white boxes with invisible text. */
+  .pitch-deck * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
 }

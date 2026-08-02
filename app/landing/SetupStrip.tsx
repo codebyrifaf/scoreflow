@@ -192,8 +192,12 @@ function AlertCard() {
  * The universal "contactless / tap" symbol — three radiating arcs. It's the mark
  * everyone already knows from tapping a card to pay, so it reads as "tap here"
  * instantly, without a label.
+ *
+ * Exported because the sales deck (`/pitch`) shows the NFC option too. One glyph, used
+ * in both places — a second hand-drawn version would drift from this one the first time
+ * either was touched.
  */
-function TapWaves({ className = "" }: { className?: string }) {
+export function TapWaves({ className = "" }: { className?: string }) {
   return (
     <svg
       viewBox="0 0 32 32"

@@ -399,6 +399,16 @@ export default function Home() {
                 large part of why they follow through.
               </Faq>
             </Reveal>
+            <Reveal delay={110}>
+              <Faq q="Can it tell me which dish people are unhappy about?">
+                Yes — that&apos;s the part owners find most useful. If your till can
+                send us each order, a poor score is tied to the food it was actually
+                about, so your dashboard says &ldquo;the burger is the problem&rdquo;
+                rather than just &ldquo;someone was unhappy&rdquo;. Your guests
+                aren&apos;t asked anything extra. No till? You still get suggestions
+                based on your menu.
+              </Faq>
+            </Reveal>
             <Reveal delay={120}>
               <Faq q="Will this get my Google listing in trouble?">
                 No — that&apos;s the point. We invite every guest to review you, and

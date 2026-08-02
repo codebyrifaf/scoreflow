@@ -35,7 +35,7 @@ import {
   hasRecentDuplicate,
 } from "@/lib/feedback";
 import { clientIpHash } from "@/lib/request-ip";
-import { isKnownChip } from "@/lib/feedback-chips";
+import { acceptableChips } from "@/lib/chips-for-order";
 import { notifyComplaint } from "@/lib/notifications";
 import type { FeedbackPayload } from "@/lib/types";
 
@@ -152,10 +152,34 @@ export async function POST(request: Request) {
   }
 
   // 4. Build a clean payload (the timestamp is added by the database default).
-  //    Tags come from the quick-tap chips (M9). They're a CLOSED set, so we accept
-  //    ONLY strings that match a real chip (M17) — anything else is silently
-  //    dropped, which stops a hostile client planting its own text in the owner's
-  //    "Top mentions" panel.
+  //
+  //    ╔═══════════════════════════════════════════════════════════════════════╗
+  //    ║ THE TAG WHITELIST — still a CLOSED SET, now derived per restaurant.   ║
+  //    ╚═══════════════════════════════════════════════════════════════════════╝
+  //
+  //    Tags come from the quick-tap chips. Before M17 this endpoint accepted ANY
+  //    string, which let an attacker post arbitrary text and have it appear in the
+  //    owner's "Top mentions" panel — not an XSS (React escapes it) but a
+  //    defacement of the widget the owner reads most.
+  //
+  //    M17 fixed that with a global constant. Chips are now per-dish, so the list
+  //    is built on the SERVER from the same ladder that decided what this diner was
+  //    shown (lib/chips-for-order.ts) — never from anything the client sent. A tag
+  //    that isn't on it is silently dropped, exactly as before.
+  //
+  //    ⚠️ It must never be relaxed to "accept what the client sends". The whole
+  //    point is that the set is ours, not theirs.
+  //
+  //    The same call also tells us WHICH DISHES this order was, which we snapshot
+  //    onto the row — that's what lets the dashboard say "the burger is the
+  //    problem" rather than just "someone was unhappy".
+  const { allowed: allowedChips, dishNames } = await acceptableChips({
+    restaurantId: restaurant.id,
+    brandId: restaurant.brandId,
+    orderNumber,
+    positiveThreshold: restaurant.positiveThreshold,
+  });
+
   const payload: FeedbackPayload = {
     table: table || null,
     orderNumber,
@@ -168,7 +192,7 @@ export async function POST(request: Request) {
           new Set(
             (body.tags as unknown[])
               .filter((t): t is string => typeof t === "string")
-              .filter(isKnownChip)
+              .filter((t) => allowedChips.has(t))
           )
         ).slice(0, MAX_TAGS)
       : [],
@@ -225,7 +249,7 @@ export async function POST(request: Request) {
   //    attribute a click back to (M24).
   let feedbackId: number;
   try {
-    feedbackId = await createFeedback(restaurant.id, payload, ipHash);
+    feedbackId = await createFeedback(restaurant.id, payload, ipHash, dishNames);
   } catch (err) {
     console.error("Failed to save feedback:", err);
     return Response.json(

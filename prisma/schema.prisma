@@ -74,10 +74,99 @@ model Restaurant {
   // 7/10 — a perfectly good meal — would email the owner, they'd drown in noise and
   // mute alerts within a week. Two different jobs, two different numbers.
   alertThreshold  Int        @default(5)
+  // ── POS CONNECTION (this milestone) ────────────────────────────────────────
+  // The key a restaurant's till presents when it pushes an order to
+  // `POST /api/pos/orders`. This is what turns "order 102" from a meaningless
+  // string the diner typed into "a chicken cheese burger" — see PosOrder.
+  //
+  // ⚠️ Stored HASHED (sha256), never in plaintext — the same habit as
+  // `VerificationCode.codeHash`. An incoming request is authenticated by hashing
+  // the presented token and looking it up here, which is why this is @unique:
+  // one indexed lookup, no scan. A database leak therefore can't be used to inject
+  // fake orders into a customer's account.
+  //
+  // The full key is shown to the owner ONCE, at generation. After that Settings
+  // shows only `posKeyPrefix` (e.g. "sk_pos_7f3a…") so they can tell which key is
+  // live, and "Regenerate" mints a new one — the same shape as a Stripe or GitHub
+  // token. Null = this restaurant has never connected a till (the normal state).
+  posKeyHash      String?    @unique
+  posKeyPrefix    String? // first few characters, for display only — never secret
   createdAt       DateTime   @default(now())
   feedback        Feedback[] // back-relation: all feedback for this restaurant
   owners          Owner[] // back-relation: the login accounts that own this restaurant (Milestone 5)
   tables          Table[] // back-relation: the restaurant's tables + their NFC links (Milestone 8)
+  posOrders       PosOrder[] // back-relation: orders pushed by this restaurant's till
+}
+
+/// One order, as pushed by a restaurant's POS (this milestone).
+///
+/// ── Why this table exists ────────────────────────────────────────────────────
+/// `Feedback.orderNumber` is a string the DINER types. Nothing in ScoreFlow has
+/// ever known what was in it, so the quick-tap chips could only ever be generic
+/// ("Food was cold"). This is the missing half: the till tells us that order 102
+/// was a chicken cheese burger, so a diner who rates it 3/10 is offered
+/// "Burger was dry" instead — without being asked a single extra question.
+///
+/// ⚠️ `orderNumber` is THE RECEIPT NUMBER, not the POS's internal id. We match on
+/// what the guest types, and a guest types what is printed in front of them. An
+/// integration that sends an internal UUID here will never match anything — which
+/// is why docs/POS_INTEGRATION.md leads with that warning.
+///
+/// ⚠️ DELIBERATELY SHORT-LIVED. We only ever read the last few hours (a diner
+/// submits feedback minutes after ordering), so rows are pruned after 24h. Holding
+/// a restaurant's entire order history would be needless retention of their
+/// commercial data for no product benefit.
+model PosOrder {
+  id           Int        @id @default(autoincrement())
+  restaurantId Int
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id])
+  orderNumber  String // as printed on the guest's receipt, e.g. "102"
+  items        String[] // dish names as the till sent them, e.g. ["Chicken Cheese Burger"]
+  placedAt     DateTime   @default(now()) // when the till says it was rung up
+  createdAt    DateTime   @default(now()) // when we received it (drives pruning)
+
+  // A till that retries, or sends an updated order, must not create a duplicate.
+  @@unique([restaurantId, orderNumber, placedAt])
+  // THE hot lookup: "this restaurant's order 102, placed recently".
+  @@index([restaurantId, orderNumber, createdAt])
+  // The pruning sweep.
+  @@index([createdAt])
+}
+
+/// A dish on an account's menu (this milestone).
+///
+/// Hangs off `Brand`, not `Restaurant` — the menu is ACCOUNT-WIDE, exactly like the
+/// logo (M26). A group enters its menu once and every location uses it, which also
+/// lets the dashboard compare the same dish across branches ("the burger is fine in
+/// Dhanmondi, bad in Gulshan").
+///
+/// `positiveChips` / `negativeChips` are the quick-tap options a diner sees for this
+/// dish, split by whether they rated at or above the restaurant's `positiveThreshold`.
+/// They're generated ONCE when the menu is saved (see lib/ai.ts) and the owner can
+/// reword or delete any of them — they know their food, and it guarantees nothing
+/// odd reaches a diner.
+///
+/// ⚠️ SOFT DELETE via `active`. A dish that is taken off the menu must not be hard
+/// deleted while feedback still refers to it — see the note on `Feedback.dishNames`.
+model MenuItem {
+  id            Int      @id @default(autoincrement())
+  brandId       Int
+  brand         Brand    @relation(fields: [brandId], references: [id])
+  name          String // e.g. "Chicken Cheese Burger"
+  category      String? // e.g. "burger" — drives the no-AI template chips
+  active        Boolean  @default(true) // false = off the menu, but history is intact
+  positiveChips String[] @default([]) // shown at/above positiveThreshold
+  negativeChips String[] @default([]) // shown below it
+  // Where the chips came from: "template" (no AI configured), "ai" (generated), or
+  // "owner" (edited by hand). Lets the UI show provenance and lets a regenerate skip
+  // anything the owner has deliberately reworded.
+  chipsSource   String   @default("template")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // One dish of a given name per account.
+  @@unique([brandId, name])
+  @@index([brandId, active])
 }
 
 /// A physical TABLE in a restaurant (Milestone 8 — NFC links).
@@ -208,6 +297,10 @@ model Brand {
   // on-a-disc placeholder. Hard-capped + MIME-validated at the save action, since
   // it's client-supplied. The CSP already permits `img-src data:`.
   logoDataUrl      String? // e.g. "data:image/webp;base64,..."
+
+  // The account's MENU (this milestone). Account-wide for the same reason the logo
+  // is: a group enters it once and every location uses it.
+  menuItems        MenuItem[]
 }
 
 /// An OPERATOR's use of a privileged lever (Milestone 22).
@@ -405,6 +498,21 @@ model Feedback {
   // one actually earns its keep — the dashboard could only report that *something*
   // was clicked. Null for older rows and for anyone who never tapped through.
   reviewClickedPlatform String?
+  // WHAT THEY ACTUALLY ATE (this milestone) — a snapshot of the dish names from the
+  // matching `PosOrder`, taken at submit time. Empty when the till isn't connected or
+  // the order number didn't match, which is a normal, expected state.
+  //
+  // This is what turns "somebody was unhappy" into "the burger is the problem" on the
+  // owner's dashboard.
+  //
+  // ⚠️ DELIBERATELY A PLAIN ARRAY OF NAMES, NOT A RELATION TO MenuItem. Two reasons,
+  // both learned the hard way:
+  //   1. every FK in this schema is ON DELETE RESTRICT, so a real relation would make
+  //      removing a dish fail the moment it had feedback — precisely the trap M21 hit
+  //      with `Payment` and `deleteBrandCascade`;
+  //   2. a name snapshot is HISTORICALLY HONEST. If the owner later renames the dish,
+  //      this feedback still records what it was called when the diner ate it.
+  dishNames    String[]   @default([])
   createdAt    DateTime   @default(now())
 
   // Speeds up the "how many recent submissions from this IP?" rate-limit query.

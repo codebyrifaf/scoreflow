@@ -23,7 +23,9 @@ import {
   getReviewClicksByPlatform,
   getOpenComplaints,
   countOpenComplaints,
+  getDishInsights,
 } from "@/lib/feedback";
+import { getMenu } from "@/lib/menu";
 import {
   hasAnyReviewLink,
   REVIEW_PLATFORMS,
@@ -40,6 +42,7 @@ import { requireDashboardAccess } from "@/lib/auth-guard";
 import { logout } from "@/app/login/actions";
 import ChangePassword from "./ChangePassword";
 import NeedsAttention from "./NeedsAttention";
+import MenuInsights from "./MenuInsights";
 import FeedbackItem from "../FeedbackItem";
 import SubscriptionLocked from "@/app/SubscriptionLocked";
 
@@ -147,6 +150,14 @@ export default async function DashboardPage({
       // Which platform diners actually chose (M29).
       getReviewClicksByPlatform(restaurant.id, since),
     ]);
+
+  // Per-dish report cards. Both are cheap and only meaningful for an account with
+  // a menu, so they're loaded together and the section renders itself away when
+  // there's nothing to say.
+  const [dishInsights, menu] = await Promise.all([
+    getDishInsights(restaurant.id, since),
+    restaurant.brandId ? getMenu(restaurant.brandId) : Promise.resolve([]),
+  ]);
 
   // Has this restaurant set a review link on ANY platform? Drives both the
   // "nobody is being invited anywhere" warning and whether the ROI card renders.
@@ -330,6 +341,15 @@ export default async function DashboardPage({
             </div>
           )}
         </section>
+
+        {/* Which dish is the problem? Only appears once a connected till has told
+            us what orders contained — see MenuInsights. */}
+        <MenuInsights
+          insights={dishInsights}
+          slug={slug}
+          hasMenu={menu.length > 0}
+          posConnected={!!restaurant.posKeyHash}
+        />
 
         {/* Trend — last 7 days daily average */}
         <section className={`mb-4 ${CARD_CLASS}`}>

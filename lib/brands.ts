@@ -222,6 +222,10 @@ export async function deleteBrandCascade(brandId: number) {
     // 1) Children of every branch (empty `in: []` simply matches nothing).
     await tx.feedback.deleteMany({ where: { restaurantId: { in: branchIds } } });
     await tx.table.deleteMany({ where: { restaurantId: { in: branchIds } } });
+    // Orders pushed by each branch's till. Same ON DELETE RESTRICT trap as
+    // `Payment` below — miss this and any account whose POS ever sent an order
+    // becomes undeletable.
+    await tx.posOrder.deleteMany({ where: { restaurantId: { in: branchIds } } });
     await tx.owner.deleteMany({ where: { restaurantId: { in: branchIds } } }); // branch managers
 
     // 2) The branches themselves, then the brand-owner login(s).
@@ -233,7 +237,11 @@ export async function deleteBrandCascade(brandId: number) {
     //    account that ever paid us fail outright.
     await tx.payment.deleteMany({ where: { brandId } });
 
-    // 4) Finally the brand itself.
+    // 4) The account's MENU. Account-wide (it hangs off Brand, like the logo), so
+    //    it's deleted here rather than per-branch.
+    await tx.menuItem.deleteMany({ where: { brandId } });
+
+    // 5) Finally the brand itself.
     await tx.brand.delete({ where: { id: brandId } });
   });
 }

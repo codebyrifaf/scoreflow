@@ -256,6 +256,12 @@ export async function deleteRestaurantCascade(id: number) {
   return prisma.$transaction([
     prisma.feedback.deleteMany({ where: { restaurantId: id } }),
     prisma.table.deleteMany({ where: { restaurantId: id } }),
+    // Orders this location's till pushed. Its FK is ON DELETE RESTRICT like every
+    // other one here, so omitting it would make deleting any connected location
+    // fail — the same trap `Payment` sprang on `deleteBrandCascade` in M21.
+    // (The MENU is NOT deleted here: it belongs to the account, not the location,
+    // and the account's other locations are still using it.)
+    prisma.posOrder.deleteMany({ where: { restaurantId: id } }),
     prisma.owner.deleteMany({ where: { restaurantId: id } }),
     prisma.restaurant.delete({ where: { id } }),
   ]);
