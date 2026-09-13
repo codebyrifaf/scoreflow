@@ -424,7 +424,7 @@ function PosConnection({
 
       {/* Square first: one click, no keys, and the most common till for small UK
           venues. */}
-      <SquareConnect slug={slug} square={square} notice={squareNotice} />
+      <SquareConnect slug={slug} square={square} notice={squareNotice} lastOrderAt={lastOrderAt} />
 
       {/* Every other till: the key-and-address route, which needs whoever runs
           the till to add one web request. Folded away when Square is on offer, so

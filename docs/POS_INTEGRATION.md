@@ -10,6 +10,18 @@ Your till already knows. This guide connects the two.
 
 ## Part 1 — For the restaurant owner
 
+### If your till is Square — you don't need any of this
+
+Open **Settings → Connect your till → Connect Square**, sign in on Square's own page
+and approve. That's all: no key, no web address, no developer. ScoreFlow can **read**
+your orders and your item list — it can never change them or touch payments.
+
+Guests then type the **4-character code at the bottom of their Square receipt**
+(capital letters or not — it doesn't matter). Settings shows **"● Last order
+received …"** once orders are flowing, so you can tell it's working.
+
+Everything below is for **other tills**, which connect with a key.
+
 ### What this gives you
 
 Without it, a guest who had a bad burger taps *"Food was cold"* and you learn almost

@@ -108,6 +108,32 @@ export async function restaurantForPosKey(
 // ── Orders ───────────────────────────────────────────────────────────────────
 
 /**
+ * An order reference as a guest might type it, folded into ONE canonical form, so
+ * the guest and the till never have to agree on details they can't see.
+ *
+ *   • capitals ignored          — "lubc" = "LUBC". Square's own dashboard search
+ *                                 ignores case too (checked in its Sandbox).
+ *   • look-alikes folded        — I, L → 1 and O → 0. A Square receipt code like
+ *                                 "lUBc" is unreadable in most fonts: lowercase L,
+ *                                 capital I and the digit 1 look identical, and
+ *                                 even Square's dashboard rendered it ambiguously.
+ *   • spaces, "#" and "-" gone  — "# 102", "A-17", "a17" all mean the same order.
+ *
+ * Applied to BOTH sides — what the till stores and what the guest types — so any
+ * two spellings of one code always meet. Folding costs almost nothing in accuracy:
+ * a 4-character code still has over a million possible values, against the few
+ * hundred orders a branch sees in the matching window.
+ */
+export function normaliseOrderRef(raw: string): string {
+  return raw
+    .trim()
+    .toUpperCase()
+    .replace(/[\s#-]/g, "")
+    .replace(/O/g, "0")
+    .replace(/[IL]/g, "1");
+}
+
+/**
  * A till that retries WITHOUT a `placedAt` is recognised as re-sending the same
  * order when the same number arrives again within this window.
  *
@@ -135,14 +161,17 @@ export async function recordPosOrder(input: {
   placedAt: Date | null;
 }): Promise<void> {
   const { restaurantId, orderNumber, items, placedAt } = input;
+  // The one reference a key-till order has — stored normalised, like Square's, so
+  // the guest-matching lookup can treat every order the same way.
+  const matchKeys = [normaliseOrderRef(orderNumber)];
 
   if (placedAt) {
     await prisma.posOrder.upsert({
       where: {
         restaurantId_orderNumber_placedAt: { restaurantId, orderNumber, placedAt },
       },
-      update: { items },
-      create: { restaurantId, orderNumber, items, placedAt },
+      update: { items, matchKeys },
+      create: { restaurantId, orderNumber, items, placedAt, matchKeys },
     });
     return;
   }
@@ -157,10 +186,10 @@ export async function recordPosOrder(input: {
     select: { id: true },
   });
   if (recent) {
-    await prisma.posOrder.update({ where: { id: recent.id }, data: { items } });
+    await prisma.posOrder.update({ where: { id: recent.id }, data: { items, matchKeys } });
   } else {
     await prisma.posOrder.create({
-      data: { restaurantId, orderNumber, items, placedAt: new Date() },
+      data: { restaurantId, orderNumber, items, placedAt: new Date(), matchKeys },
     });
   }
 }

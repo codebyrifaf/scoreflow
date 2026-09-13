@@ -31,6 +31,7 @@ const BTN_QUIET =
 export interface SquareProps {
   configured: boolean;
   sandbox: boolean;
+  webhooksConfigured: boolean;
   connected: boolean;
   merchantName: string | null;
   locations: { id: string; name: string; linkedTo: string | null }[] | null;
@@ -56,10 +57,13 @@ export default function SquareConnect({
   slug,
   square,
   notice,
+  lastOrderAt,
 }: {
   slug: string;
   square: SquareProps;
   notice: string | null;
+  /** When this branch last received any order — the owner's "is it working?" signal. */
+  lastOrderAt: string | null;
 }) {
   const [linkState, linkAction, linking] = useActionState<SquareState, FormData>(
     setSquareLocation.bind(null, slug),
@@ -114,6 +118,25 @@ export default function SquareConnect({
           <p className="mt-2 text-sm font-medium text-green-700">
             ● Connected to {square.merchantName ?? "your Square business"}
           </p>
+
+          {/* Is it WORKING? An owner can't read a webhook log — this line is the
+              only way they can tell a live connection from a silently dead one. */}
+          {!square.webhooksConfigured ? (
+            <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-900">
+              Order sync isn&apos;t switched on on this server yet, so orders from Square
+              won&apos;t arrive until it is.
+            </p>
+          ) : square.thisLocationId ? (
+            <p className="mt-2 text-sm">
+              {lastOrderAt ? (
+                <span className="font-medium text-green-700">● Last order received {lastOrderAt}</span>
+              ) : (
+                <span className="text-[#6B7280]">
+                  ○ Waiting for the first order from this Square location.
+                </span>
+              )}
+            </p>
+          ) : null}
 
           {square.locations === null ? (
             <p role="alert" className="mt-3 text-sm text-red-600">

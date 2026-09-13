@@ -63,6 +63,13 @@ export function squareIsConfigured(): boolean {
   );
 }
 
+/** Can this server check Square's webhook signatures (step 2)? Without the key,
+ *  every order Square sends is refused — so Settings says order sync is off rather
+ *  than showing a connection that silently receives nothing (the M18 rule). */
+export function squareWebhooksConfigured(): boolean {
+  return !!process.env.SQUARE_WEBHOOK_SIGNATURE_KEY;
+}
+
 /** Must match, character for character, the Redirect URL registered in Square's
  *  Developer Console — locally `http://localhost:3000/api/square/oauth/callback`. */
 export function squareRedirectUri(): string {
@@ -206,6 +213,34 @@ export async function fetchSquareLocations(accessToken: string): Promise<SquareL
     .map((l) => ({ id: l.id, name: l.name?.trim() || l.id }));
 }
 
+/** The parts of a Square order that ScoreFlow reads — nothing about money or the
+ *  customer. (Step 0 established that each tender's id IS the payment id, and a
+ *  payment's receipt number is the first 4 characters of it.) */
+export type SquareOrder = {
+  id: string;
+  location_id: string;
+  created_at: string;
+  state?: string;
+  ticket_name?: string;
+  line_items?: { name?: string }[];
+  tenders?: { id?: string }[];
+};
+
+/**
+ * One full order. Square's order webhooks are deliberately THIN — they name the
+ * order but carry no dishes — so every event is followed by this fetch. A useful
+ * side effect: we always act on the order as it is NOW, so events arriving late or
+ * out of order can never leave a stale version behind.
+ */
+export async function fetchSquareOrder(accessToken: string, orderId: string): Promise<SquareOrder> {
+  const { order } = await squareGet<{ order?: SquareOrder }>(
+    accessToken,
+    `/orders/${encodeURIComponent(orderId)}`
+  );
+  if (!order) throw new Error(`[square] order ${orderId} came back empty`);
+  return order;
+}
+
 async function fetchMerchantName(accessToken: string, merchantId: string): Promise<string | null> {
   const { merchant } = await squareGet<{ merchant?: { business_name?: string } }>(
     accessToken,
@@ -314,10 +349,19 @@ export async function linkSquareLocation(
 
   const taken = await prisma.restaurant.findUnique({
     where: { squareLocationId: locationId },
-    select: { id: true, name: true },
+    select: { id: true, name: true, brandId: true },
   });
   if (taken && taken.id !== restaurantId) {
-    return { error: `That Square location is already linked to ${taken.name}.` };
+    // Only ever name a branch of the SAME account. Another account holding this
+    // location "can't happen" (one Square business ↔ one account) — but if it ever
+    // did, its branch name is somebody else's data and must not leak into this
+    // owner's screen. Found while re-running the QA suite against a live connection.
+    return {
+      error:
+        taken.brandId === brandId
+          ? `That Square location is already linked to ${taken.name}.`
+          : "That Square location is already linked to another ScoreFlow account.",
+    };
   }
 
   await prisma.restaurant.update({ where: { id: restaurantId }, data: { squareLocationId: locationId } });
@@ -349,6 +393,8 @@ export async function disconnectSquare(brandId: number): Promise<void> {
 export type SquareSettings = {
   configured: boolean;
   sandbox: boolean;
+  /** Can orders actually arrive? (A webhook signature key is set.) */
+  webhooksConfigured: boolean;
   connected: boolean;
   merchantName: string | null;
   /** `null` = connected, but Square couldn't be reached just now. */
@@ -364,6 +410,7 @@ export async function squareSettingsFor(
   const base = {
     configured: squareIsConfigured(),
     sandbox: squareEnvironment() === "sandbox",
+    webhooksConfigured: squareWebhooksConfigured(),
   };
   const conn = await prisma.squareConnection.findUnique({
     where: { brandId },

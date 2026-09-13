@@ -132,8 +132,25 @@ model PosOrder {
   placedAt     DateTime   @default(now()) // when the till says it was rung up
   createdAt    DateTime   @default(now()) // when we received it (drives pruning)
 
+  // ── Square integration, step 2 ──────────────────────────────────────────────
+  // Where the order came from: "key" (a till posting to /api/pos/orders with its
+  // key) or "square" (fetched from Square after a webhook).
+  source       String     @default("key")
+  // The TILL's own id for the order (Square's order id). Square announces an order
+  // when it's created and again when it's paid; this is what lands both on ONE
+  // row. Null for key-till orders, which have no such id.
+  externalId   String?
+  // Every reference a guest might type for this order, already NORMALISED (see
+  // `normaliseOrderRef` in lib/pos-orders.ts — capitals and look-alike characters
+  // folded, so "lUBc", "IUBC" and "1ubc" are one key). For Square: each payment's
+  // 4-character receipt code, plus the kitchen ticket number when there is one.
+  matchKeys    String[]   @default([])
+
   // A till that retries, or sends an updated order, must not create a duplicate.
   @@unique([restaurantId, orderNumber, placedAt])
+  // One row per Square order per branch, however many times Square mentions it.
+  // (NULLs never collide in Postgres, so key-till orders are unaffected.)
+  @@unique([restaurantId, externalId])
   // THE hot lookup: "this restaurant's order 102, placed recently".
   @@index([restaurantId, orderNumber, createdAt])
   // The pruning sweep.
