@@ -23,7 +23,11 @@
  * ⚠️ QR-code correctness depends on this being right in production: a QR encodes an
  * ABSOLUTE URL (a diner's camera has no "current origin" to resolve a relative path
  * against), so if `APP_URL` were wrong, every printed code would point somewhere wrong.
- * It's set correctly in prod today.
+ *
+ * ⚠️ Re-check `APP_URL` in Vercel whenever the project or domain changes. When the
+ * Vercel project was recreated, the old `scoreflow-six.vercel.app` address stopped
+ * existing — and anything still carrying it (a stale APP_URL, printed cards, the
+ * sales deck) quietly started pointing at "deployment not found".
  */
 export function appUrl(): string {
   const raw =

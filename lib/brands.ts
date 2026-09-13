@@ -241,6 +241,13 @@ export async function deleteBrandCascade(brandId: number) {
     //    it's deleted here rather than per-branch.
     await tx.menuItem.deleteMany({ where: { brandId } });
 
+    // 4b) The account's SQUARE connection (encrypted tokens). Same ON DELETE
+    //    RESTRICT trap — without this, closing any Square-connected account fails.
+    //    Deleting the row is what matters for data: without the tokens nothing can
+    //    read that business's orders any more. (Telling Square to revoke them too is
+    //    the caller's job — it's a network call, and this is a pure DB transaction.)
+    await tx.squareConnection.deleteMany({ where: { brandId } });
+
     // 5) Finally the brand itself.
     await tx.brand.delete({ where: { id: brandId } });
   });

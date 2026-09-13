@@ -19,6 +19,7 @@ import { emailIsConfigured } from "@/lib/email";
 import { aiIsConfigured } from "@/lib/ai";
 import { getMenu } from "@/lib/menu";
 import { lastOrderReceivedAt } from "@/lib/pos-orders";
+import { squareSettingsFor } from "@/lib/square";
 import { appUrl } from "@/lib/app-url";
 import { formatInAppTz } from "@/lib/time";
 import SubscriptionLocked from "@/app/SubscriptionLocked";
@@ -50,12 +51,21 @@ function NotAuthorized({ homeHref }: { homeHref: string }) {
   );
 }
 
+/** The outcomes /api/square/oauth/callback can send back. Anything else is ignored,
+ *  so a hand-edited URL can't put arbitrary text on the page. */
+const SQUARE_NOTICES = ["connected", "denied", "in-use", "forbidden", "not-configured", "error"];
+
 export default async function SettingsPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const { slug } = await params;
+  const { square: squareParam } = await searchParams;
+  const squareNotice =
+    typeof squareParam === "string" && SQUARE_NOTICES.includes(squareParam) ? squareParam : null;
 
   // ── SECURITY GATE — runs before any of this restaurant's data is loaded ─────
   const access = await requireDashboardAccess(slug);
@@ -79,9 +89,14 @@ export default async function SettingsPage({
   // The MENU and the POS connection. Both are ACCOUNT-level, so they're only
   // loaded — and only rendered — for the account owner, exactly like the logo.
   const isAccountOwner = !!me?.brandId;
-  const [menu, lastOrder] = await Promise.all([
+  const [menu, lastOrder, square] = await Promise.all([
     isAccountOwner && me?.brandId ? getMenu(me.brandId) : Promise.resolve([]),
     isAccountOwner ? lastOrderReceivedAt(restaurant.id) : Promise.resolve(null),
+    // Square is account-level too. This asks Square for the business's locations,
+    // so it's only done for the one person who can act on them.
+    isAccountOwner && me?.brandId
+      ? squareSettingsFor(me.brandId, restaurant.id)
+      : Promise.resolve(null),
   ]);
 
   return (
@@ -134,7 +149,7 @@ export default async function SettingsPage({
         {/* Menu + till connection — ACCOUNT OWNER only. The menu is shared by every
             location (like the logo, M26), so a single branch manager doesn't own
             that call. Both server actions re-check this. */}
-        {isAccountOwner && (
+        {isAccountOwner && square && (
           <div className="mt-6">
             <MenuManager
               slug={slug}
@@ -151,6 +166,8 @@ export default async function SettingsPage({
               posKeyPrefix={restaurant.posKeyPrefix}
               lastOrderAt={lastOrder ? formatInAppTz(lastOrder.toISOString()) : null}
               posUrl={`${appUrl()}/api/pos/orders`}
+              square={square}
+              squareNotice={squareNotice}
             />
           </div>
         )}

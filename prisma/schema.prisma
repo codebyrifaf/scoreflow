@@ -91,6 +91,13 @@ model Restaurant {
   // token. Null = this restaurant has never connected a till (the normal state).
   posKeyHash      String?    @unique
   posKeyPrefix    String? // first few characters, for display only — never secret
+
+  // Which SQUARE location's orders feed this branch (Square integration, step 1).
+  // The account connects its whole Square business once (see SquareConnection);
+  // each branch then says which of that business's locations it is. @unique: one
+  // Square location can't feed two branches, or its orders would be matched twice.
+  // Null = this branch isn't linked to Square (the normal state).
+  squareLocationId String?   @unique
   createdAt       DateTime   @default(now())
   feedback        Feedback[] // back-relation: all feedback for this restaurant
   owners          Owner[] // back-relation: the login accounts that own this restaurant (Milestone 5)
@@ -301,6 +308,40 @@ model Brand {
   // The account's MENU (this milestone). Account-wide for the same reason the logo
   // is: a group enters it once and every location uses it.
   menuItems        MenuItem[]
+
+  // The account's connection to SQUARE, if any (Square integration, step 1).
+  squareConnection SquareConnection?
+}
+
+/// An account's connection to its Square business, made with "Connect Square"
+/// (Square integration, step 1).
+///
+/// ── Why ACCOUNT-level, not per branch ───────────────────────────────────────
+/// Square authorises a whole BUSINESS — every location it has — in one approval.
+/// That maps onto ScoreFlow's account (Brand), exactly like the menu; each branch
+/// then picks which Square location it is (`Restaurant.squareLocationId`).
+///
+/// ⚠️ THE TOKENS ARE ENCRYPTED. They let ScoreFlow read this restaurant's orders and
+/// menu, so they're stored AES-256-GCM encrypted (lib/token-crypto.ts) — a leaked
+/// database backup is useless without the key, which lives only in the server's
+/// environment. They can't be HASHED like the till keys, because unlike those we
+/// must send them back to Square. Never logged, never shown, never sent to a browser.
+///
+/// `merchantId` is @unique: one Square business can feed exactly one ScoreFlow
+/// account, so its orders can never be delivered into somebody else's dashboard.
+model SquareConnection {
+  id              Int      @id @default(autoincrement())
+  brandId         Int      @unique
+  brand           Brand    @relation(fields: [brandId], references: [id])
+  merchantId      String   @unique // Square's id for the connected business
+  merchantName    String? // shown in Settings: "Connected to Rifaf Kitchen"
+  accessTokenEnc  String // encrypted — see lib/token-crypto.ts
+  refreshTokenEnc String // encrypted
+  expiresAt       DateTime // when the access token expires (~30 days after issue)
+  scopes          String // what the owner approved, space-separated
+  environment     String // "sandbox" | "production" — tokens only work in one
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
 
 /// An OPERATOR's use of a privileged lever (Milestone 22).

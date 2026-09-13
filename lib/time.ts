@@ -151,6 +151,17 @@ export function formatInAppTz(iso: string, tz: string = APP_TIMEZONE): string {
   }).format(d);
 }
 
+/** A short date in the app timezone, no time — e.g. "12 Jul". */
+export function formatDateInAppTz(iso: string, tz: string = APP_TIMEZONE): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone: tz,
+    day: "numeric",
+    month: "short",
+  }).format(d);
+}
+
 /** A short weekday label for a day, in the app timezone (e.g. "M", "T"). */
 export function weekdayNarrow(date: Date, tz: string = APP_TIMEZONE): string {
   return new Intl.DateTimeFormat("en-GB", {

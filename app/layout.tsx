@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
+import { appUrl } from "@/lib/app-url";
 import "./globals.css";
 
 /**
@@ -18,12 +19,15 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-/** The public origin. Used to make OG/canonical URLs absolute. */
-const SITE_URL =
-  process.env.APP_URL ??
-  (process.env.VERCEL_URL
-    ? `https://${process.env.VERCEL_URL}`
-    : "https://scoreflow-six.vercel.app");
+/**
+ * The public origin. Used to make OG/canonical URLs absolute.
+ *
+ * ⚠️ From `appUrl()`, the ONE place the app decides its own address. This file kept a
+ * private copy that fell back to a hard-coded `scoreflow-six.vercel.app` — which
+ * stopped existing when the Vercel project was recreated, while lib/app-url.ts's
+ * header went on claiming every copy had been folded into it. One rule, one place.
+ */
+const SITE_URL = appUrl();
 
 /**
  * Site metadata (rewritten in M23).

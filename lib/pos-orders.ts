@@ -108,26 +108,61 @@ export async function restaurantForPosKey(
 // ── Orders ───────────────────────────────────────────────────────────────────
 
 /**
- * Record one order from a till.
+ * A till that retries WITHOUT a `placedAt` is recognised as re-sending the same
+ * order when the same number arrives again within this window.
  *
- * Upserts on (restaurant, order number, placedAt) so a POS that retries — or
- * re-sends an order after items were added — updates the existing row rather than
- * creating a duplicate. Integrations retry; the endpoint has to be safe when they do.
+ * Order numbers roll over (daily, usually), but not within minutes — so ten minutes
+ * catches retries and "items added after the first send" without ever merging two
+ * genuinely different orders.
+ */
+export const RETRY_WINDOW_MS = 10 * 60 * 1000;
+
+/**
+ * Record one order from a till. Safe to call again for the same order — integrations
+ * retry, and the endpoint has to cope when they do.
+ *
+ *   • WITH `placedAt`: upserts on (restaurant, order number, placedAt), so a retry or a
+ *     re-send after items were added updates the existing row.
+ *   • WITHOUT it (`null`): there's no timestamp to match on — the route used to
+ *     substitute "now", which is different on every retry, so each one created a new
+ *     row (three sends of order 102 → three rows; caught in QA). Now the same number
+ *     within RETRY_WINDOW_MS updates that order instead.
  */
 export async function recordPosOrder(input: {
   restaurantId: number;
   orderNumber: string;
   items: string[];
-  placedAt: Date;
+  placedAt: Date | null;
 }): Promise<void> {
   const { restaurantId, orderNumber, items, placedAt } = input;
-  await prisma.posOrder.upsert({
+
+  if (placedAt) {
+    await prisma.posOrder.upsert({
+      where: {
+        restaurantId_orderNumber_placedAt: { restaurantId, orderNumber, placedAt },
+      },
+      update: { items },
+      create: { restaurantId, orderNumber, items, placedAt },
+    });
+    return;
+  }
+
+  const recent = await prisma.posOrder.findFirst({
     where: {
-      restaurantId_orderNumber_placedAt: { restaurantId, orderNumber, placedAt },
+      restaurantId,
+      orderNumber,
+      createdAt: { gte: new Date(Date.now() - RETRY_WINDOW_MS) },
     },
-    update: { items },
-    create: { restaurantId, orderNumber, items, placedAt },
+    orderBy: { createdAt: "desc" },
+    select: { id: true },
   });
+  if (recent) {
+    await prisma.posOrder.update({ where: { id: recent.id }, data: { items } });
+  } else {
+    await prisma.posOrder.create({
+      data: { restaurantId, orderNumber, items, placedAt: new Date() },
+    });
+  }
 }
 
 /**

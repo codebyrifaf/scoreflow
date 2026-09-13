@@ -145,14 +145,52 @@ export async function extractMenu(
     const dishes = await geminiExtractMenu(dataUrl);
     return { data: dishes, source: "ai" };
   } catch (err) {
-    console.error("[ai] menu extraction failed:", err);
+    const failure = describeAiFailure(err);
+    console.error(`[ai] menu extraction failed (${failure.kind}, model ${GEMINI_MODEL}):`, err);
+    return { data: [], source: "template", warning: failure.ownerMessage };
+  }
+}
+
+/**
+ * Turn a provider error into the right message for the owner.
+ *
+ * ⚠️ WHY THIS EXISTS. Every failure used to say "We couldn't read that photo. Try a
+ * clearer picture" — including when the model had been retired, or the key was
+ * wrong. An owner would keep retaking perfectly good photos of a menu that was never
+ * the problem. Three different situations, three different honest answers:
+ *
+ *   • busy   (429) — the free tier allows ~10 requests a minute. Waiting fixes it.
+ *   • setup  (401/403/404, or a rejected key) — nothing the owner can do; say so.
+ *   • photo  (anything else) — the one case where "try a clearer picture" is right.
+ *
+ * The SDK's `ApiError` carries the HTTP `status`. Read by shape rather than
+ * `instanceof`, because the SDK is dynamically imported.
+ */
+function describeAiFailure(err: unknown): {
+  kind: "busy" | "setup" | "photo";
+  ownerMessage: string;
+} {
+  const status = typeof (err as { status?: unknown })?.status === "number"
+    ? (err as { status: number }).status
+    : null;
+  const message = err instanceof Error ? err.message : String(err);
+
+  if (status === 429) {
     return {
-      data: [],
-      source: "template",
-      warning:
-        "We couldn't read that photo. Try a clearer picture, or type your menu below.",
+      kind: "busy",
+      ownerMessage: "Photo reading is busy right now — wait a minute and try again, or type your menu below.",
     };
   }
+  if (status === 401 || status === 403 || status === 404 || /api key/i.test(message)) {
+    return {
+      kind: "setup",
+      ownerMessage: "Photo reading isn't working right now (a setup problem on our side) — please type or paste your menu below.",
+    };
+  }
+  return {
+    kind: "photo",
+    ownerMessage: "We couldn't read that photo. Try a clearer picture, or type your menu below.",
+  };
 }
 
 /**
@@ -204,8 +242,18 @@ export async function generateChips(
 // `responseMimeType` on `GenerateContentConfig`. Re-check both on upgrade —
 // AGENTS.md's rule about Next and Prisma applies at least as hard to an AI SDK.
 
-/** Free-tier friendly and handles images. Override per environment if needed. */
-const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+/**
+ * Free-tier friendly and handles images. Override per environment with GEMINI_MODEL.
+ *
+ * ⚠️ PINNED MODELS GET RETIRED. This was `gemini-2.5-flash` until Google stopped
+ * serving it to new keys: it still appears in `models.list()`, but calling it returns
+ * 404 "no longer available to new users" — so photo reading failed for a brand-new,
+ * perfectly valid key. `gemini-3.6-flash` is the replacement Google's own error
+ * message named, verified working on the free tier (2026-09-13). When this one is
+ * retired too, the error message says what to move to — see `describeAiFailure`,
+ * which makes sure that message reaches the log instead of a generic "try again".
+ */
+const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-3.6-flash";
 
 /** One client, created lazily so importing this module opens nothing. */
 let geminiClient: import("@google/genai").GoogleGenAI | null = null;

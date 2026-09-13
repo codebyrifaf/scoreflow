@@ -24,6 +24,7 @@ import {
   type MenuState,
   type PosKeyState,
 } from "./menu-actions";
+import SquareConnect, { type SquareProps } from "./SquareConnect";
 
 interface Dish {
   id: number;
@@ -42,6 +43,10 @@ interface Props {
   posKeyPrefix: string | null;
   lastOrderAt: string | null;
   posUrl: string;
+  /** The account's Square connection, as Settings shows it. */
+  square: SquareProps;
+  /** The `?square=` outcome after returning from Square, if any. */
+  squareNotice: string | null;
 }
 
 const CARD = "rounded-2xl border border-[#E5E7EB] bg-white p-5";
@@ -83,8 +88,17 @@ function resizeToDataUrl(file: File): Promise<string> {
 }
 
 export default function MenuManager(props: Props) {
-  const { slug, dishes, aiConfigured, posConnected, posKeyPrefix, lastOrderAt, posUrl } =
-    props;
+  const {
+    slug,
+    dishes,
+    aiConfigured,
+    posConnected,
+    posKeyPrefix,
+    lastOrderAt,
+    posUrl,
+    square,
+    squareNotice,
+  } = props;
 
   // The dish list as editable text — one per line, "Name, category". Both entry
   // paths (photo and paste) fill this same box, so what the owner reviews is
@@ -268,6 +282,8 @@ export default function MenuManager(props: Props) {
         keyPrefix={posKeyPrefix}
         lastOrderAt={lastOrderAt}
         posUrl={posUrl}
+        square={square}
+        squareNotice={squareNotice}
       />
     </div>
   );
@@ -354,22 +370,35 @@ function PosConnection({
   keyPrefix,
   lastOrderAt,
   posUrl,
+  square,
+  squareNotice,
 }: {
   slug: string;
+  /** Connected with a till KEY (the developer route) — not Square. */
   connected: boolean;
   keyPrefix: string | null;
   lastOrderAt: string | null;
   posUrl: string;
+  square: SquareProps;
+  squareNotice: string | null;
 }) {
   const [keyState, keyAction, generating] = useActionState<PosKeyState, FormData>(
     generateKey.bind(null, slug),
     undefined
   );
-  const [, disconnectAction, disconnecting] = useActionState<PosKeyState, FormData>(
-    disconnectPos.bind(null, slug),
-    undefined
-  );
+  // The result is READ, not discarded: an unreadable result meant a failed
+  // disconnect looked exactly like a click that did nothing (the M18 rule).
+  const [disconnectState, disconnectAction, disconnecting] = useActionState<
+    PosKeyState,
+    FormData
+  >(disconnectPos.bind(null, slug), undefined);
   const [copied, setCopied] = useState<string | null>(null);
+
+  // Whether the key section STARTS open — decided once, then left to the owner.
+  // Passing `connected` straight to <details open> made it snap shut the moment
+  // they clicked Disconnect inside it (the prop flipped to false and React closed
+  // it under their cursor). Caught by the regression suite.
+  const [keySectionOpen] = useState(connected || !square.configured);
 
   const freshKey = keyState && "ok" in keyState && "key" in keyState ? keyState.key : null;
 
@@ -392,6 +421,19 @@ function PosConnection({
         <b className="text-[#111827]">the exact dish they ordered</b> — and your
         dashboard can tell you which dish is losing you customers.
       </p>
+
+      {/* Square first: one click, no keys, and the most common till for small UK
+          venues. */}
+      <SquareConnect slug={slug} square={square} notice={squareNotice} />
+
+      {/* Every other till: the key-and-address route, which needs whoever runs
+          the till to add one web request. Folded away when Square is on offer, so
+          the common case isn't buried under developer instructions — but open if
+          this branch already uses a key, or if Square isn't available here. */}
+      <details className="mt-4 rounded-xl border border-[#E5E7EB] p-4" open={keySectionOpen}>
+        <summary className="cursor-pointer text-sm font-medium text-[#111827]">
+          Using a different till? Connect it with a key
+        </summary>
 
       {connected ? (
         <>
@@ -488,6 +530,12 @@ function PosConnection({
           {keyState.error}
         </p>
       )}
+      {disconnectState && "error" in disconnectState && (
+        <p role="alert" className="mt-3 text-sm font-medium text-red-600">
+          {disconnectState.error}
+        </p>
+      )}
+      </details>
     </section>
   );
 }

@@ -171,22 +171,31 @@ export default function FeedbackForm({
       order: orderNumber.trim(),
     });
 
-    fetch(`/api/feedback/chips?${params}`, { signal: controller.signal })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data: { chips?: string[] } | null) => {
-        if (!data?.chips?.length) return;
-        setFetched({ key: chipKey, chips: data.chips });
-        // Drop a selected tag that's no longer on offer, so the UI never shows a
-        // chip as selected that isn't there. The API re-applies this rule
-        // server-side regardless — this is presentation, not enforcement.
-        setSelectedTags((prev) => prev.filter((t) => data.chips!.includes(t)));
-      })
-      .catch(() => {
-        // Swallowed on purpose: the generic chips are already on screen. A diner
-        // must never see a broken form because a lookup failed.
-      });
+    // Wait for a pause before asking. This used to fire on every keystroke, so
+    // typing "1042" asked the server about orders 1, 10, 104 and 1042 — four
+    // lookups for one diner, three of them for orders that weren't theirs. The
+    // generic chips are on screen the whole time, so the pause costs nothing.
+    const timer = setTimeout(() => {
+      fetch(`/api/feedback/chips?${params}`, { signal: controller.signal })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data: { chips?: string[] } | null) => {
+          if (!data?.chips?.length) return;
+          setFetched({ key: chipKey, chips: data.chips });
+          // Drop a selected tag that's no longer on offer, so the UI never shows a
+          // chip as selected that isn't there. The API re-applies this rule
+          // server-side regardless — this is presentation, not enforcement.
+          setSelectedTags((prev) => prev.filter((t) => data.chips!.includes(t)));
+        })
+        .catch(() => {
+          // Swallowed on purpose: the generic chips are already on screen. A diner
+          // must never see a broken form because a lookup failed.
+        });
+    }, 350);
 
-    return () => controller.abort();
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
     // Re-fetch when the rating changes (a different band) or the order number does
     // (a different order means different dishes).
   }, [rating, orderNumber, slug, chipKey]);

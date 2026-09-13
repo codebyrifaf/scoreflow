@@ -21,6 +21,10 @@ browser. All via real PowerPoint click actions, so they work in Slide Show mode.
 IMAGES. Screenshots of the actual product, captured from /pitch. Nothing is redrawn.
 """
 
+import os
+import sys
+import urllib.error
+import urllib.request
 from pathlib import Path
 
 from PIL import Image
@@ -52,7 +56,32 @@ FONT = "Segoe UI"  # the Windows system face — the app deliberately uses the O
 W, H = Inches(13.333), Inches(7.5)  # 16:9 widescreen
 MARGIN = Inches(0.9)
 
-SIGNUP_URL = "https://scoreflow-six.vercel.app/signup"
+def live_signup_url() -> str:
+    """Your live signup address — passed in, checked, never hard-coded.
+
+    ⚠️ This used to be a constant: `https://scoreflow-six.vercel.app/signup`. That
+    address stopped existing when the Vercel project was recreated, and the deck went
+    on shipping a "Start 14 days free" button and a "this code is live" QR that led to
+    "deployment not found". The URL was checked for being WELL-FORMED, never for being
+    ALIVE. So now it's required, and it's fetched before it goes on a slide.
+    """
+    site = os.environ.get("SCOREFLOW_URL", "").strip().rstrip("/")
+    if not site.startswith("https://"):
+        sys.exit(
+            "\n  Set SCOREFLOW_URL to your live address first, e.g.\n"
+            "    PowerShell:  $env:SCOREFLOW_URL = 'https://your-app.vercel.app'\n"
+            "    bash:        SCOREFLOW_URL=https://your-app.vercel.app python marketing/build_pptx.py\n"
+        )
+    url = f"{site}/signup"
+    try:
+        with urllib.request.urlopen(url, timeout=20) as res:
+            if res.status != 200:
+                sys.exit(f"\n  {url} answered {res.status}, not 200 - is that the live address?\n")
+    except urllib.error.HTTPError as e:
+        sys.exit(f"\n  {url} answered {e.code} - is that the live address?\n")
+    except urllib.error.URLError as e:
+        sys.exit(f"\n  Couldn't reach {url} ({e.reason}) - is that the live address?\n")
+    return url
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -254,6 +283,9 @@ def notes(slide, s):
 # ═══════════════════════════════════════════════════════════════════════════
 
 def build():
+    # First, before any work: a deck pointing at a dead address is worse than no deck.
+    signup_url = live_signup_url()
+
     prs = Presentation()
     prs.slide_width, prs.slide_height = W, H
 
@@ -531,7 +563,7 @@ def build():
     cta = card(s13, MARGIN, Inches(4.9), Inches(3.4), Inches(0.75), fill=AMBER,
                line=None, radius=0.5)
     label(cta, "Start 14 days free", size=17, color=INK, bold=True)
-    cta.click_action.hyperlink.address = SIGNUP_URL
+    cta.click_action.hyperlink.address = signup_url
     # ⚠️ `qr-only`, not `qr-block`. The block asset carries the words "The next unhappy
     # guest tells you, not Google" inside it — the same sentence as this slide's
     # headline — so the deck printed it twice, which reads as a mistake rather than a

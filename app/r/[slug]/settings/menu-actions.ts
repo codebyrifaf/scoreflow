@@ -16,9 +16,10 @@
 import { revalidatePath } from "next/cache";
 import { requireDashboardAccess } from "@/lib/auth-guard";
 import { getRestaurantBySlug } from "@/lib/restaurants";
-import { getMenu, replaceMenu, setChips } from "@/lib/menu";
+import { getMenu, replaceMenu, setChips, setChipsForMany } from "@/lib/menu";
 import { extractMenu, generateChips, type ExtractedDish } from "@/lib/ai";
 import { rotatePosKey, clearPosKey } from "@/lib/pos-orders";
+import { disconnectSquare, linkSquareLocation } from "@/lib/square";
 
 /** Bounds on what an owner can submit. Generous, but not unbounded. */
 const MAX_DISHES = 200;
@@ -52,7 +53,8 @@ async function requireAccount(slug: string): Promise<AccountGuard> {
   // location — so a branch manager must not be able to rewrite the whole group's,
   // exactly as they can't change its logo (M26).
   if (!access.isAccountOwner) {
-    return { ok: false, error: "Only the account owner can change the menu." };
+    // Worded for all three things this guards — the menu, the till key and Square.
+    return { ok: false, error: "Only the account owner can change this." };
   }
   const restaurant = await getRestaurantBySlug(slug);
   if (!restaurant?.brandId) {
@@ -114,36 +116,42 @@ export async function saveMenu(
   if (!guard.ok) return { error: guard.error };
 
   const raw = String(formData.get("dishes") ?? "");
-  const dishes = parseDishes(raw);
+  const { dishes, dropped } = parseDishes(raw);
   if (dishes.length === 0) {
     return { error: "Add at least one dish, one per line." };
   }
 
   try {
     await replaceMenu(guard.brandId, dishes);
-  } catch {
+  } catch (err) {
+    // ⚠️ LOGGED, not just swallowed. This catch used to discard the error, so when
+    // large menus were failing (a transaction timeout — see replaceMenu) nothing
+    // at all appeared in the server logs. The owner still gets a friendly message;
+    // whoever is on call can now see why.
+    console.error("[menu] save failed:", err);
     return { error: "Could not save the menu. Please try again." };
   }
 
   // Chips are generated HERE, once, and stored on each dish — never on the
   // diner's path. This is the whole reason a diner's form stays instant.
-  let warning: string | undefined;
+  const warnings: string[] = [];
+  if (dropped > 0) {
+    // Said out loud: a menu cut short with only "Saved 200 dishes." to show for it
+    // would look like success while the last dishes quietly went missing.
+    warnings.push(
+      `Only the first ${MAX_DISHES} dishes were saved — ${dropped} more ${
+        dropped === 1 ? "was" : "were"
+      } left off. ScoreFlow keeps up to ${MAX_DISHES} dishes per menu.`
+    );
+  }
   try {
     const generated = await generateChips(dishes);
-    warning = generated.warning;
-    const saved = await getMenu(guard.brandId);
-    for (const item of saved) {
-      // Never overwrite wording the owner has edited by hand.
-      if (item.chipsSource === "owner") continue;
-      const chips = generated.data.get(item.name);
-      if (chips) {
-        await setChips(item.id, guard.brandId, chips, generated.source);
-      }
-    }
+    if (generated.warning) warnings.push(generated.warning);
+    await storeGeneratedChips(guard.brandId, generated);
   } catch (err) {
     // The menu itself is saved; chips can be regenerated. Never fail the save.
     console.error("[menu] chip generation failed after save:", err);
-    warning = "Your menu was saved, but we couldn't generate suggestions. Try Regenerate.";
+    warnings.push("Your menu was saved, but we couldn't generate suggestions. Try Regenerate.");
   }
 
   revalidatePath(`/r/${slug}/settings`);
@@ -151,8 +159,28 @@ export async function saveMenu(
   return {
     ok: true,
     message: `Saved ${dishes.length} dish${dishes.length === 1 ? "" : "es"}.`,
-    warning,
+    warning: warnings.length > 0 ? warnings.join(" ") : undefined,
   };
+}
+
+/**
+ * Write freshly generated chips onto the saved menu, in bulk.
+ *
+ * Shared by `saveMenu` and `regenerateChips` so the two can't drift. Dishes the owner
+ * has reworded by hand are skipped — they know their food better than any model.
+ */
+async function storeGeneratedChips(
+  brandId: number,
+  generated: Awaited<ReturnType<typeof generateChips>>
+): Promise<void> {
+  const menu = await getMenu(brandId);
+  const items = menu
+    .filter((item) => item.chipsSource !== "owner")
+    .flatMap((item) => {
+      const chips = generated.data.get(item.name);
+      return chips ? [{ id: item.id, chips }] : [];
+    });
+  await setChipsForMany(brandId, items, generated.source);
 }
 
 /**
@@ -170,13 +198,13 @@ export async function regenerateChips(slug: string): Promise<MenuState> {
   const menu = await getMenu(guard.brandId);
   if (menu.length === 0) return { error: "Add some dishes first." };
 
-  const generated = await generateChips(
-    menu.map((m) => ({ name: m.name, category: m.category }))
-  );
-  for (const item of menu) {
-    if (item.chipsSource === "owner") continue;
-    const chips = generated.data.get(item.name);
-    if (chips) await setChips(item.id, guard.brandId, chips, generated.source);
+  let generated: Awaited<ReturnType<typeof generateChips>>;
+  try {
+    generated = await generateChips(menu.map((m) => ({ name: m.name, category: m.category })));
+    await storeGeneratedChips(guard.brandId, generated);
+  } catch (err) {
+    console.error("[menu] regenerate failed:", err);
+    return { error: "Could not regenerate suggestions. Please try again." };
   }
 
   revalidatePath(`/r/${slug}/settings`);
@@ -259,9 +287,56 @@ export async function disconnectPos(slug: string): Promise<PosKeyState> {
   const guard = await requireAccount(slug);
   if (!guard.ok) return { error: guard.error };
 
-  await clearPosKey(guard.restaurantId);
+  try {
+    await clearPosKey(guard.restaurantId);
+  } catch (err) {
+    console.error("[pos] disconnect failed:", err);
+    return { error: "Could not disconnect the till. Please try again." };
+  }
   revalidatePath(`/r/${slug}/settings`);
   return { ok: true, cleared: true };
+}
+
+// ── Square ───────────────────────────────────────────────────────────────────
+//
+// Connecting happens in the /api/square/oauth routes (it's a trip to Square and
+// back, which a server action can't make). Once connected, these two manage it.
+
+export type SquareState = { ok: true; message: string } | { error: string } | undefined;
+
+/** Link THIS branch to one of the business's Square locations, or unlink it. */
+export async function setSquareLocation(
+  slug: string,
+  _prev: SquareState,
+  formData: FormData
+): Promise<SquareState> {
+  const guard = await requireAccount(slug);
+  if (!guard.ok) return { error: guard.error };
+
+  const locationId = String(formData.get("locationId") ?? "").trim() || null;
+  try {
+    const result = await linkSquareLocation(guard.brandId, guard.restaurantId, locationId);
+    if ("error" in result) return result;
+  } catch (err) {
+    console.error("[square] linking a location failed:", (err as Error).message);
+    return { error: "Couldn't reach Square just now. Please try again." };
+  }
+  revalidatePath(`/r/${slug}/settings`);
+  return { ok: true, message: locationId ? "Location linked." : "Location unlinked." };
+}
+
+/** Disconnect the whole account from Square (every branch's link goes with it). */
+export async function disconnectSquareAccount(slug: string): Promise<SquareState> {
+  const guard = await requireAccount(slug);
+  if (!guard.ok) return { error: guard.error };
+  try {
+    await disconnectSquare(guard.brandId);
+  } catch (err) {
+    console.error("[square] disconnect failed:", (err as Error).message);
+    return { error: "Could not disconnect Square. Please try again." };
+  }
+  revalidatePath(`/r/${slug}/settings`);
+  return { ok: true, message: "Square disconnected." };
 }
 
 // ── Parsing ──────────────────────────────────────────────────────────────────
@@ -271,10 +346,14 @@ export async function disconnectPos(slug: string): Promise<PosKeyState> {
  *
  * One dish per line; an optional category after a comma. Forgiving on purpose —
  * this is typed by a restaurant owner on a phone, not a data-entry operator.
+ *
+ * Returns how many dishes were `dropped` for being over MAX_DISHES, so the caller
+ * can tell the owner rather than letting the end of their menu vanish silently.
  */
-function parseDishes(raw: string): ExtractedDish[] {
+function parseDishes(raw: string): { dishes: ExtractedDish[]; dropped: number } {
   const out: ExtractedDish[] = [];
   const seen = new Set<string>();
+  let dropped = 0;
 
   for (const line of raw.split("\n")) {
     const trimmed = line.trim();
@@ -298,9 +377,13 @@ function parseDishes(raw: string): ExtractedDish[] {
     const key = name.toLowerCase();
     if (seen.has(key)) continue;
     seen.add(key);
+    // Keep counting past the cap (duplicates excluded) so the warning is exact.
+    if (out.length >= MAX_DISHES) {
+      dropped++;
+      continue;
+    }
     out.push({ name, category });
-    if (out.length >= MAX_DISHES) break;
   }
 
-  return out;
+  return { dishes: out, dropped };
 }

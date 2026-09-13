@@ -24,6 +24,7 @@ import {
   type DeleteAccountState,
 } from "./actions";
 import { formatGbp } from "@/lib/money";
+import { formatDateInAppTz } from "@/lib/time";
 
 export interface AccountRow {
   id: number;
@@ -44,12 +45,15 @@ export interface AccountRow {
 }
 
 
+/**
+ * ⚠️ Fixed language + timezone. This is a Client Component, so it renders on the
+ * server AND in the browser; `toLocaleDateString(undefined, …)` gave "Sep 11" on
+ * Vercel and "11 Sept" in a UK browser, a hydration mismatch on every load. Same
+ * bug, same fix as the dashboard's NeedsAttention card.
+ */
 function shortDate(iso: string | null) {
   if (!iso) return "—";
-  return new Date(iso).toLocaleDateString(undefined, {
-    day: "numeric",
-    month: "short",
-  });
+  return formatDateInAppTz(iso);
 }
 
 /** How long since the last diner submitted — the churn tell. */

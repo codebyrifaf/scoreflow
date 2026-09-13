@@ -29,18 +29,49 @@ import { getRestaurantBySlug } from "@/lib/restaurants";
 import { resolveChips } from "@/lib/chips-for-order";
 import { chipsForRating } from "@/lib/feedback-chips";
 import { clientIpHash } from "@/lib/request-ip";
-import { countRecentByIpHash } from "@/lib/feedback";
 
 /**
- * Lookups allowed per caller per minute. Generous — a diner legitimately triggers
- * one per rating change while making up their mind — but low enough that walking
- * every order number of a busy restaurant isn't practical.
+ * Lookups allowed per caller per minute.
  *
- * Reuses the feedback spam counter rather than adding a table: someone
- * enumerating orders is already bounded by how much feedback they can submit,
- * and a real diner is nowhere near either limit.
+ * A diner makes a handful (the form waits for them to stop typing, then asks once per
+ * rating they try). Sixty leaves room for a whole table sharing restaurant wifi — one
+ * public IP — while making it slow to walk through a restaurant's order numbers.
  */
-const MAX_LOOKUPS_PER_MINUTE = 30;
+const MAX_LOOKUPS_PER_MINUTE = 60;
+const WINDOW_MS = 60_000;
+
+/**
+ * ⚠️ THE OLD LIMIT NEVER FIRED. It counted this caller's FEEDBACK SUBMISSIONS in the
+ * last minute and called them "lookups". Someone reading order contents never
+ * submits anything, so their count stayed at zero: QA made 40 lookups in a row and
+ * every one was answered. The comment promised a protection the code didn't give.
+ *
+ * This counts the lookups themselves, in memory, per server instance.
+ *
+ * WHY MEMORY AND NOT THE DATABASE. A database counter would be airtight across every
+ * server, but it would add a write to every lookup — and this endpoint's design rule
+ * is "indexed reads only", because a diner is standing at a table waiting for it.
+ * The trade-off, stated honestly: a caller whose requests spread across several warm
+ * server instances gets up to this limit on EACH. That still turns "read every order,
+ * instantly" into slow work, for data that's low-sensitivity (the dishes on a recent
+ * order, deleted after 24h). If that ever stops being enough, the answer is a
+ * `ChipLookup` table in the style of `LoginAttempt` — not a bigger number here.
+ */
+const lookups = new Map<string, number[]>();
+
+function overLimit(ipHash: string, now = Date.now()): boolean {
+  const recent = (lookups.get(ipHash) ?? []).filter((t) => now - t < WINDOW_MS);
+  recent.push(now);
+  lookups.set(ipHash, recent);
+
+  // Forget callers who've gone quiet, so the map can't grow without bound.
+  if (lookups.size > 5_000) {
+    for (const [key, times] of lookups) {
+      if (now - times[times.length - 1] >= WINDOW_MS) lookups.delete(key);
+    }
+  }
+  return recent.length > MAX_LOOKUPS_PER_MINUTE;
+}
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -63,9 +94,7 @@ export async function GET(request: Request) {
 
     // Throttled callers get generic chips, not an error. A rate limit must never
     // be the reason a real diner sees a broken form.
-    const ipHash = clientIpHash(request.headers);
-    const recent = await countRecentByIpHash(ipHash, new Date(Date.now() - 60_000));
-    if (recent >= MAX_LOOKUPS_PER_MINUTE) {
+    if (overLimit(clientIpHash(request.headers))) {
       return Response.json({
         chips: chipsForRating(rating, restaurant.positiveThreshold),
         matched: false,

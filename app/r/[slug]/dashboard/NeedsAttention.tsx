@@ -16,6 +16,7 @@
 import { useActionState } from "react";
 import { markResolved, type ResolveState } from "./actions";
 import type { FeedbackRecord } from "@/lib/types";
+import { formatInAppTz } from "@/lib/time";
 
 /** One open complaint, with its resolve button. */
 function ComplaintCard({
@@ -125,15 +126,20 @@ export default function NeedsAttention({
   totalOpen: number;
   alertThreshold: number;
 }) {
-  // Formatting lives here (not passed from the server) so the timestamp renders in
-  // the OWNER's local timezone, not the server's UTC.
-  const formatTimestamp = (iso: string) =>
-    new Date(iso).toLocaleString(undefined, {
-      month: "short",
-      day: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-    });
+  // ⚠️ A FIXED language and timezone, never "whatever this computer uses".
+  //
+  // This used to call `toLocaleString(undefined, …)` to show the owner's own local
+  // time. But this is a Client Component, so it renders TWICE — once on the server,
+  // once in the browser — and "this computer" is a different computer each time. On
+  // Vercel the server is UTC with US formatting ("Sep 11, 9:21 PM"); a UK owner's
+  // browser is London time with UK formatting ("11 Sept, 21:21"). The two never
+  // matched, so React threw away the server's page and rebuilt it on every dashboard
+  // load that had a complaint on it. Caught in QA as a hydration error.
+  //
+  // `formatInAppTz` is the app's one timestamp format (Europe/London, en-GB — the
+  // M24 decision), so this card now agrees with the server AND with every other time
+  // on the dashboard.
+  const formatTimestamp = (iso: string) => formatInAppTz(iso);
 
   if (complaints.length === 0) {
     return (

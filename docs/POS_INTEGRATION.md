@@ -68,8 +68,13 @@ dish. Add your menu in **Settings → Your menu** and everything else works norm
 Send ScoreFlow one HTTP request per order, as soon as the order is created. That is
 the entire integration.
 
+> **The address.** `YOUR-SCOREFLOW-ADDRESS` below stands for the exact address shown
+> in the restaurant's **Settings → Connect your till** — copy it from there rather
+> than typing it. This guide deliberately doesn't hard-code one: an earlier version
+> did, and the address changed underneath it.
+
 ```
-POST https://scoreflow-six.vercel.app/api/pos/orders
+POST https://YOUR-SCOREFLOW-ADDRESS/api/pos/orders
 Authorization: Bearer <the restaurant's ScoreFlow POS key>
 Content-Type: application/json
 
@@ -129,7 +134,7 @@ it, so retries are safe.
 **cURL — use this to test before writing any code:**
 
 ```bash
-curl -X POST https://scoreflow-six.vercel.app/api/pos/orders \
+curl -X POST https://YOUR-SCOREFLOW-ADDRESS/api/pos/orders \
   -H "Authorization: Bearer sk_pos_YOUR_KEY_HERE" \
   -H "Content-Type: application/json" \
   -d '{"orderNumber":"102","items":["Chicken Cheese Burger","Fries"]}'
@@ -143,7 +148,7 @@ suggestions should be about the burger.
 ```js
 // After the order is committed — never before.
 try {
-  await fetch("https://scoreflow-six.vercel.app/api/pos/orders", {
+  await fetch("https://YOUR-SCOREFLOW-ADDRESS/api/pos/orders", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -169,7 +174,7 @@ import os, requests
 
 try:
     requests.post(
-        "https://scoreflow-six.vercel.app/api/pos/orders",
+        "https://YOUR-SCOREFLOW-ADDRESS/api/pos/orders",
         headers={"Authorization": f"Bearer {os.environ['SCOREFLOW_POS_KEY']}"},
         json={"orderNumber": order.receipt_number,
               "items": [line.name for line in order.lines]},

@@ -115,8 +115,10 @@ export async function POST(request: Request) {
     );
   }
 
-  // Optional. A till that doesn't send it simply means "now".
-  let placedAt = new Date();
+  // Optional. `null` when the till doesn't send one (or sends garbage) — and it's
+  // passed on as null rather than defaulted to "now", because "now" differs on every
+  // retry and turned each retry into a duplicate order. recordPosOrder handles it.
+  let placedAt: Date | null = null;
   if (typeof body.placedAt === "string") {
     const parsed = new Date(body.placedAt);
     if (!Number.isNaN(parsed.getTime())) placedAt = parsed;
@@ -133,7 +135,7 @@ export async function POST(request: Request) {
     );
   }
 
-  // 5. Store it. Upserts, so a till that retries doesn't duplicate the order.
+  // 5. Store it. Retry-safe with or without a placedAt — see recordPosOrder.
   try {
     await recordPosOrder({
       restaurantId: restaurant.id,

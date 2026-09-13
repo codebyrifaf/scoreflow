@@ -28,11 +28,16 @@ click actions do nothing while you're editing.
 
 The deck is generated, not hand-built — so it can't go stale when copy changes.
 
-```bash
+```powershell
+$env:SCOREFLOW_URL = "https://your-live-address.vercel.app"
 python marketing/build_pptx.py      # -> marketing/ScoreFlow.pptx
 ```
 
 Needs `python-pptx` once: `pip install python-pptx`.
+
+`SCOREFLOW_URL` is **required** — the closing slide's button links to its `/signup`
+page. The script fetches that page first and refuses to build if it doesn't answer, so
+a dead address can't end up on a slide again.
 
 Edit the copy in [`build_pptx.py`](build_pptx.py) and re-run. Transitions and
 animations are written as raw OOXML (python-pptx has no API for either) — see
@@ -45,15 +50,28 @@ the product changes, re-shoot them rather than editing the pictures.
 
 ⚠️ **The QR codes must be captured against the live URL.** `appUrl()` falls back to
 `localhost:3000`, so a deck built from a plain dev server ships a QR that goes nowhere
-for everyone you show it to. Start the server with `APP_URL` set first:
+for everyone you show it to.
 
-```bash
-APP_URL=https://scoreflow-six.vercel.app npx next dev
+```powershell
+npm install --no-save puppeteer-core jsqr pngjs          # capture tools, not saved
+
+# terminal 1 — the app, told its live address
+$env:APP_URL = "https://your-live-address.vercel.app"; npm run dev
+
+# terminal 2 — capture, then rebuild
+$env:SCOREFLOW_URL = "https://your-live-address.vercel.app"
+node marketing/capture_assets.mjs
+python marketing/build_pptx.py
 ```
 
-Then run the capture script and rebuild. Both QRs in the current deck decode to
-`https://scoreflow-six.vercel.app/signup` — **check that's still your domain** before
-presenting, since the Vercel project was recreated.
+[`capture_assets.mjs`](capture_assets.mjs) checks the address is live before it
+starts, then **decodes the QR it captured** and fails unless it leads to
+`SCOREFLOW_URL/signup`.
+
+> **The current `ScoreFlow.pptx` is out of date on this point.** Its QR codes and its
+> "Start 14 days free" button point at `scoreflow-six.vercel.app`, which stopped
+> existing when the Vercel project was recreated. Re-run the three steps above with
+> your current address before presenting it.
 
 ## The rule this deck follows
 
