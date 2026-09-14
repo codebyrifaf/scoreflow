@@ -49,6 +49,10 @@ export default async function FeedbackPage({
       // Smart review routing (M7): ratings at/above this go to the Google nudge.
       positiveThreshold={restaurant.positiveThreshold}
       table={table ?? null}
+      // Square branches' guests type the RECEIPT CODE printed on their receipt —
+      // letters and digits — so they get a full keyboard and a hint saying where
+      // to find it. (Only a yes/no reaches the browser, never the location id.)
+      receiptCodes={!!restaurant.squareLocationId}
     />
   );
 }

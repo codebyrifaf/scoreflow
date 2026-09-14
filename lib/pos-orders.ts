@@ -202,6 +202,16 @@ export async function recordPosOrder(input: {
  * Scoped by `restaurantId`, like every other read in this codebase: one restaurant
  * can never see another's orders. Newest first, because order numbers repeat once
  * the till's counter rolls over.
+ *
+ * ── Matching (Square integration, step 3) ────────────────────────────────────
+ * Searches `matchKeys` with the guest's input NORMALISED the same way the keys were
+ * (`normaliseOrderRef`), so a Square receipt printed "zfdZ" is found from "ZFDZ",
+ * "zfdz" or "zfd2". Every reference an order has — each payment's receipt code, a
+ * kitchen ticket number, a key-till's order number — lives in that one list.
+ *
+ * The exact `orderNumber` comparison is kept alongside it only for orders stored
+ * before match keys existed. They're pruned within 24 hours, after which that
+ * branch of the OR simply never matches anything new.
  */
 export async function findOrderItems(
   restaurantId: number,
@@ -209,13 +219,14 @@ export async function findOrderItems(
   now: Date = new Date()
 ): Promise<string[] | null> {
   const trimmed = orderNumber.trim();
-  if (!trimmed) return null;
+  const key = normaliseOrderRef(trimmed);
+  if (!key) return null; // nothing typed, or only "#"/spaces
 
   const order = await prisma.posOrder.findFirst({
     where: {
       restaurantId,
-      orderNumber: trimmed,
       createdAt: { gte: new Date(now.getTime() - ORDER_MATCH_WINDOW_MS) },
+      OR: [{ matchKeys: { has: key } }, { orderNumber: trimmed }],
     },
     orderBy: { createdAt: "desc" },
     select: { items: true },

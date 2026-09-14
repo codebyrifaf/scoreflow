@@ -61,6 +61,13 @@ interface FeedbackFormProps {
    * shows on every branch's feedback page so the form looks like the restaurant's.
    */
   logoUrl: string | null;
+  /**
+   * True when this branch's till is SQUARE (Square integration, step 3). Square
+   * receipts carry a 4-character code with letters in it ("zfdZ"), so the field
+   * opens a full keyboard rather than a numbers-only pad, and says where the code
+   * is. Other tills print plain order numbers, where the number pad is kinder.
+   */
+  receiptCodes: boolean;
 }
 
 // ── Shared style tokens (kept here so every field/screen stays consistent) ────
@@ -112,6 +119,7 @@ export default function FeedbackForm({
   positiveThreshold,
   table,
   logoUrl,
+  receiptCodes,
 }: FeedbackFormProps) {
   // ── Form state ────────────────────────────────────────────────────────────
   const [orderNumber, setOrderNumber] = useState("");
@@ -223,7 +231,11 @@ export default function FeedbackForm({
       return;
     }
     if (orderNumber.trim() === "") {
-      setErrorMessage("Please enter your order number.");
+      setErrorMessage(
+        receiptCodes
+          ? "Please enter the code from the bottom of your receipt."
+          : "Please enter your order number."
+      );
       return;
     }
 
@@ -435,17 +447,32 @@ export default function FeedbackForm({
               htmlFor="orderNumber"
               className="text-sm font-medium text-[#111827]"
             >
-              Order number
+              {receiptCodes ? "Receipt code" : "Order number"}
             </label>
             <input
               id="orderNumber"
               type="text"
-              inputMode="numeric"
+              // Square codes mix letters and digits ("zfdZ"): a numbers-only pad
+              // would make them impossible to type. Capitals and look-alikes
+              // (l / I / 1, O / 0) don't matter — the server ignores them — so the
+              // keyboard opening in capitals is harmless and easier to read back.
+              inputMode={receiptCodes ? "text" : "numeric"}
+              autoCapitalize={receiptCodes ? "characters" : undefined}
+              autoComplete="off"
+              autoCorrect="off"
+              spellCheck={false}
+              aria-describedby={receiptCodes ? "orderNumberHint" : undefined}
               value={orderNumber}
               onChange={(e) => setOrderNumber(e.target.value)}
-              placeholder="e.g. 1042"
+              placeholder={receiptCodes ? "e.g. 7GK2" : "e.g. 1042"}
               className={FIELD_CLASS}
             />
+            {receiptCodes && (
+              <p id="orderNumberHint" className="text-xs text-[#6B7280]">
+                The 4-character code at the bottom of your receipt. Capitals
+                don&apos;t matter.
+              </p>
+            )}
           </div>
 
           {/* Rating 1–10 ----------------------------------------------------- */}
