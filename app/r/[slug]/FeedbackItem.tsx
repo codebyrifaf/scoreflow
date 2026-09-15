@@ -27,7 +27,8 @@ export default function FeedbackItem({ record }: { record: FeedbackRecord }) {
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline justify-between gap-2">
           <span className="text-sm font-semibold text-[#111827]">
-            Order {record.orderNumber}
+            {/* The order number is optional (a guest may have had no receipt). */}
+            {record.orderNumber ? `Order ${record.orderNumber}` : "No order number"}
             <span className="font-normal text-[#6B7280]">
               {" · "}Table {record.table ?? "—"}
             </span>

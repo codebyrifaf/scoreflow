@@ -136,6 +136,50 @@ const DEFAULT_CATEGORY_CHIPS: ChipTemplate = {
 export const KNOWN_CATEGORIES: readonly string[] = Object.keys(CATEGORY_CHIPS);
 
 /**
+ * Words that identify each of our categories, MOST SPECIFIC FIRST.
+ *
+ * Order matters: "Chicken Cheese Burger" is a burger, not chicken; "Chicken Tikka
+ * Masala" is a curry; "Chicken Caesar Salad" is a salad — so dish TYPES are checked
+ * before INGREDIENTS (chicken, seafood, rice). Likewise "Iced Latte" is coffee
+ * before it's a drink.
+ */
+const CATEGORY_WORDS: [string, RegExp][] = [
+  ["burger", /\bburgers?\b/],
+  ["pizza", /\bpizzas?\b/],
+  ["pasta", /\b(pasta|spaghetti|penne|lasagne|lasagna|carbonara|linguine|tagliatelle|ravioli|macaroni|fettuccine)\b/],
+  ["curry", /\b(curry|curries|korma|masala|vindaloo|jalfrezi|madras|bhuna|dhal|dal|daal)\b/],
+  ["sandwich", /\b(sandwich(es)?|wraps?|paninis?|baguettes?|bagels?|toasties?|subs?)\b/],
+  ["salad", /\bsalads?\b/],
+  ["soup", /\bsoups?\b/],
+  ["breakfast", /\b(breakfast|brunch|pancakes?|full english)\b/],
+  ["dessert", /\b(desserts?|cakes?|brownies?|cheesecakes?|ice cream|puddings?|tarts?|sundaes?|crumble|gelato)\b/],
+  ["coffee", /\b(coffees?|lattes?|cappuccinos?|espressos?|americanos?|mochas?|macchiatos?|flat white)\b/],
+  ["drink", /\b(drinks?|juices?|sodas?|lemonades?|teas?|smoothies?|milkshakes?|shakes?|colas?|mocktails?)\b/],
+  ["starter", /\b(starters?|appeti[sz]ers?|small plates?)\b/],
+  ["chicken", /\b(chicken|wings)\b/],
+  ["seafood", /\b(fish|seafood|prawns?|shrimp|salmon|cod|haddock|calamari|crab|lobster|mussels)\b/],
+  ["rice", /\b(rice|biryani|pilau|risotto)\b/],
+];
+
+/**
+ * Best guess at one of our categories for a dish imported from a till, or `null`.
+ *
+ * The DISH NAME is tried first — it's specific ("Iced Latte") — and only then the
+ * till's own category names, which are whatever the owner typed ("Hot Drinks",
+ * "Mains"). A wrong guess is cheap: the category only picks the standard suggestions
+ * and hints the AI, and the owner sees it in the review box before saving.
+ */
+export function guessDishCategory(dishName: string, tillCategories: string[] = []): string | null {
+  for (const text of [dishName, ...tillCategories]) {
+    const t = text.toLowerCase();
+    for (const [category, words] of CATEGORY_WORDS) {
+      if (words.test(t)) return category;
+    }
+  }
+  return null;
+}
+
+/**
  * Template chips for a dish, prefixed with the dish itself so the diner sees
  * "Burger — Dry" rather than a bare "Dry" with no context.
  *

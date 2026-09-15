@@ -103,7 +103,8 @@ export async function notifyComplaint(restaurantId: number): Promise<void> {
 }
 
 /** The plain-text body of an instant alert. */
-function buildComplaintEmail(
+/** Exported only so the QA suite can check the wording without sending an email. */
+export function buildComplaintEmail(
   restaurantName: string,
   slug: string,
   complaints: {
@@ -124,7 +125,12 @@ function buildComplaintEmail(
   ];
 
   for (const c of complaints) {
-    lines.push(`  ${c.rating}/10 — order ${c.orderNumber}${c.table ? `, table ${c.table}` : ""}`);
+    // Order number and table are both optional — say only what we know, so a guest
+    // with no receipt reads "3/10 — table 4" rather than "3/10 — order , table 4".
+    const where = [c.orderNumber && `order ${c.orderNumber}`, c.table && `table ${c.table}`]
+      .filter(Boolean)
+      .join(", ");
+    lines.push(`  ${c.rating}/10${where ? ` — ${where}` : ""}`);
     if (c.tags.length) lines.push(`  Tagged: ${c.tags.join(", ")}`);
     if (c.comment) lines.push(`  "${c.comment}"`);
     // The win-back detail — if they left a number, put it right in the email so

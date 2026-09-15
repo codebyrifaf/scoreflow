@@ -16,9 +16,16 @@ Open **Settings → Connect your till → Connect Square**, sign in on Square's 
 and approve. That's all: no key, no web address, no developer. ScoreFlow can **read**
 your orders and your item list — it can never change them or touch payments.
 
+Then, under **Your menu**, press **Import from Square**: your Square items fill the
+dish list, spelled exactly as Square prints them on each order. Delete anything that
+isn't food or drink (a bag charge, say), then **Save menu**. Nothing is saved until
+you do.
+
 Guests then type the **4-character code at the bottom of their Square receipt**
-(capital letters or not — it doesn't matter). Settings shows **"● Last order
-received …"** once orders are flowing, so you can tell it's working.
+(capital letters or not — it doesn't matter). It's optional: a guest without a
+receipt just leaves it blank and still gets suggestions from your whole menu.
+Settings shows **"● Last order received …"** once orders are flowing, so you can
+tell it's working.
 
 Everything below is for **other tills**, which connect with a key.
 

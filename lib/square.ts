@@ -241,6 +241,122 @@ export async function fetchSquareOrder(accessToken: string, orderId: string): Pr
   return order;
 }
 
+// ── The menu (Square's "item library", read with ITEMS_READ) ─────────────────
+
+type CatalogObject = {
+  type: string;
+  id: string;
+  is_deleted?: boolean;
+  present_at_all_locations?: boolean;
+  present_at_location_ids?: string[];
+  absent_at_location_ids?: string[];
+  category_data?: { name?: string };
+  item_data?: {
+    name?: string;
+    product_type?: string;
+    is_archived?: boolean;
+    categories?: { id: string }[];
+    category_id?: string; // deprecated since 2023-12-13, still read for older items
+  };
+};
+
+/**
+ * Item types that are something a guest EATS OR DRINKS. An allow-list rather than a
+ * block-list: gift cards, appointments, events, donations and memberships are all
+ * "items" in Square, and a type Square adds tomorrow should be left out until we've
+ * decided it's food — not slipped onto a menu by default.
+ */
+const FOOD_PRODUCT_TYPES = new Set(["REGULAR", "FOOD_AND_BEV"]);
+
+/** Safety valve on pagination: 100 per page, so 3,000 objects — far past any menu. */
+const MAX_CATALOG_PAGES = 30;
+
+export type SquareMenuItem = { name: string; squareCategories: string[] };
+
+/**
+ * The business's menu, as it stands in Square — name and Square category names for
+ * every item that's food or drink, not archived, and sold at one of `locationIds`
+ * (or anywhere, when no branch is linked to a location yet).
+ *
+ * Only the NAMES are read — no prices, stock or costs. ScoreFlow needs to know what
+ * a dish is called (so it matches the name printed on each order), nothing more.
+ */
+export async function fetchSquareMenuItems(
+  accessToken: string,
+  locationIds: string[]
+): Promise<SquareMenuItem[]> {
+  const objects: CatalogObject[] = [];
+  let cursor: string | undefined;
+  for (let page = 0; page < MAX_CATALOG_PAGES; page++) {
+    const query = new URLSearchParams({ types: "ITEM,CATEGORY" });
+    if (cursor) query.set("cursor", cursor);
+    const res = await squareGet<{ objects?: CatalogObject[]; cursor?: string }>(
+      accessToken,
+      `/catalog/list?${query}`
+    );
+    objects.push(...(res.objects ?? []));
+    cursor = res.cursor;
+    if (!cursor) break;
+  }
+
+  const categoryName = new Map(
+    objects
+      .filter((o) => o.type === "CATEGORY" && !o.is_deleted && o.category_data?.name)
+      .map((o) => [o.id, o.category_data!.name!.trim()])
+  );
+
+  const soldHere = (o: CatalogObject) => {
+    // No branch linked yet: anything Square sells SOMEWHERE (an item switched off
+    // at every location isn't on anyone's menu).
+    if (locationIds.length === 0) {
+      return o.present_at_all_locations !== false || (o.present_at_location_ids ?? []).length > 0;
+    }
+    return locationIds.some((loc) =>
+      o.present_at_all_locations !== false
+        ? !(o.absent_at_location_ids ?? []).includes(loc)
+        : (o.present_at_location_ids ?? []).includes(loc)
+    );
+  };
+
+  const seen = new Set<string>();
+  const items: SquareMenuItem[] = [];
+  for (const o of objects) {
+    if (o.type !== "ITEM" || o.is_deleted || !o.item_data) continue;
+    const d = o.item_data;
+    const name = d.name?.trim().replace(/\s+/g, " ");
+    if (!name || d.is_archived) continue;
+    if (d.product_type && !FOOD_PRODUCT_TYPES.has(d.product_type)) continue;
+    if (!soldHere(o)) continue;
+    const key = name.toLowerCase();
+    if (seen.has(key)) continue; // the same dish listed twice in Square
+    seen.add(key);
+    const ids = [...(d.categories ?? []).map((c) => c.id), ...(d.category_id ? [d.category_id] : [])];
+    items.push({
+      name,
+      squareCategories: [...new Set(ids.map((id) => categoryName.get(id)).filter((n): n is string => !!n))],
+    });
+  }
+  return items.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/**
+ * One account's menu from Square, limited to the locations its branches are linked
+ * to (so a group that sells different things at different sites imports what ITS
+ * branches sell). `null` when the account isn't connected to Square.
+ */
+export async function readSquareMenuForBrand(brandId: number): Promise<SquareMenuItem[] | null> {
+  const token = await squareAccessToken(brandId);
+  if (!token) return null;
+  const linked = await prisma.restaurant.findMany({
+    where: { brandId, squareLocationId: { not: null } },
+    select: { squareLocationId: true },
+  });
+  return fetchSquareMenuItems(
+    token,
+    linked.map((r) => r.squareLocationId).filter((id): id is string => !!id)
+  );
+}
+
 async function fetchMerchantName(accessToken: string, merchantId: string): Promise<string | null> {
   const { merchant } = await squareGet<{ merchant?: { business_name?: string } }>(
     accessToken,

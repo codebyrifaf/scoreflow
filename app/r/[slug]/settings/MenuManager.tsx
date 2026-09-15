@@ -18,7 +18,9 @@ import {
   saveMenu,
   regenerateChips,
   saveDishChips,
+  resetDishChips,
   extractMenuPhoto,
+  importSquareMenu,
   generateKey,
   disconnectPos,
   type MenuState,
@@ -87,6 +89,37 @@ function resizeToDataUrl(file: File): Promise<string> {
   });
 }
 
+const normName = (s: string) => s.trim().replace(/\s+/g, " ").toLowerCase();
+
+/** The dish name on one line of the box — read exactly as the server's parser reads it. */
+function dishNameOnLine(line: string): string {
+  const t = line.trim();
+  const comma = t.lastIndexOf(",");
+  if (comma > 0) {
+    const tail = t.slice(comma + 1).trim();
+    if (tail && tail.length <= 20 && !tail.includes(" ")) return normName(t.slice(0, comma));
+  }
+  return normName(t);
+}
+
+/** Add imported dishes to the box, skipping any it already lists. */
+function appendNewDishes(
+  prev: string,
+  dishes: { name: string; category: string | null }[]
+): { text: string; added: number } {
+  const have = new Set(prev.split("\n").map(dishNameOnLine).filter(Boolean));
+  const lines: string[] = [];
+  for (const d of dishes) {
+    const key = normName(d.name);
+    if (have.has(key)) continue;
+    have.add(key);
+    lines.push(d.category ? `${d.name}, ${d.category}` : d.name);
+  }
+  if (lines.length === 0) return { text: prev, added: 0 };
+  const joined = lines.join("\n");
+  return { text: prev.trim() ? `${prev.trim()}\n${joined}` : joined, added: lines.length };
+}
+
 export default function MenuManager(props: Props) {
   const {
     slug,
@@ -109,6 +142,7 @@ export default function MenuManager(props: Props) {
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [photoNote, setPhotoNote] = useState<string | null>(null);
   const [extracting, startExtract] = useTransition();
+  const [importing, startImport] = useTransition();
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [saveState, saveAction, saving] = useActionState<MenuState, FormData>(
@@ -149,6 +183,44 @@ export default function MenuManager(props: Props) {
     });
   }
 
+  /**
+   * "Import from Square" — the owner's Square item list into the review box.
+   *
+   * Same path as a photo (fill the box, the owner reviews, the owner saves), with one
+   * difference: dishes already in the box are skipped, so pressing Import twice — or
+   * after typing a few dishes — never lists anything twice.
+   */
+  function onImportSquare() {
+    setPhotoError(null);
+    setPhotoNote(null);
+    startImport(async () => {
+      try {
+        const result = await importSquareMenu(slug);
+        if ("error" in result) {
+          setPhotoError(result.error);
+          return;
+        }
+        // Counted against the box as it was when Import was pressed; the update
+        // itself re-checks against the latest text, in case the owner kept typing.
+        const { added } = appendNewDishes(text, result.dishes);
+        setText((prev) => appendNewDishes(prev, result.dishes).text);
+        const skipped = result.dishes.length - added;
+        if (added === 0) {
+          setPhotoNote("Everything in your Square item list is already below.");
+        } else {
+          setPhotoNote(
+            result.note +
+              (skipped > 0
+                ? ` ${skipped} ${skipped === 1 ? "was" : "were"} already in your list, so ${skipped === 1 ? "it wasn't" : "they weren't"} added again.`
+                : "")
+          );
+        }
+      } catch {
+        setPhotoError("Couldn't reach Square just now. Please try again.");
+      }
+    });
+  }
+
   return (
     <div className="flex flex-col gap-6">
       {/* ── Menu ─────────────────────────────────────────────────────────── */}
@@ -160,18 +232,50 @@ export default function MenuManager(props: Props) {
           instead of &ldquo;Food was cold&rdquo;. Shared across all your locations.
         </p>
 
-        {/* Photo path. Only offered when a provider is actually configured —
-            showing a button that can't work would be a dead button, the exact
-            silent failure M18 exists to prevent. */}
-        {aiConfigured ? (
+        {/* How the dishes get in — each way shown ONLY when it can work (the M18
+            rule: never a dead button). Square import needs a Square connection; the
+            photo needs an AI provider.
+
+            With Square connected, Import is THE way and the photo shrinks to a small
+            link: Import's names are exactly the ones Square prints on every order,
+            while a printed menu's "Chicken Burger" may be Square's "Chicken Cheese
+            Burger" — a worse match. */}
+        {aiConfigured && (
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            className="hidden"
+            onChange={(e) => onPickPhoto(e.target.files?.[0])}
+          />
+        )}
+        {square.connected ? (
           <div className="mt-4">
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/png,image/jpeg,image/webp"
-              className="hidden"
-              onChange={(e) => onPickPhoto(e.target.files?.[0])}
-            />
+            <button
+              type="button"
+              disabled={importing || extracting}
+              onClick={onImportSquare}
+              className={BTN}
+            >
+              {importing ? "Reading Square…" : "Import from Square"}
+            </button>
+            <p className="mt-2 text-xs text-[#9CA3AF]">
+              Import reads your Square item list — the same names Square prints on each
+              order, so every order matches its dishes exactly.
+            </p>
+            {aiConfigured && (
+              <button
+                type="button"
+                disabled={importing || extracting}
+                onClick={() => fileRef.current?.click()}
+                className="mt-2 text-sm font-medium text-amber-700 underline-offset-2 hover:underline disabled:text-[#9CA3AF] disabled:no-underline"
+              >
+                {extracting ? "Reading your menu…" : "or photograph a menu"}
+              </button>
+            )}
+          </div>
+        ) : aiConfigured ? (
+          <div className="mt-4">
             <button
               type="button"
               disabled={extracting}
@@ -266,6 +370,13 @@ export default function MenuManager(props: Props) {
               {regenState.message}
             </p>
           )}
+          {/* Never shown before — a failed or empty regenerate looked exactly like
+              nothing happening (the M18 rule: never a silent failure). */}
+          {regenState && "error" in regenState && (
+            <p role="alert" className="mb-3 text-sm font-medium text-red-600">
+              {regenState.error}
+            </p>
+          )}
 
           <div className="flex flex-col gap-4">
             {dishes.map((d) => (
@@ -291,13 +402,38 @@ export default function MenuManager(props: Props) {
 
 /** One dish's two chip lists, editable. */
 function DishChipEditor({ slug, dish }: { slug: string; dish: Dish }) {
-  const [state, action, pending] = useActionState<MenuState, FormData>(
+  const [saveState, saveAction, saving] = useActionState<MenuState, FormData>(
     saveDishChips.bind(null, slug, dish.id),
     undefined
   );
+  const [resetState, resetAction, resetting] = useActionState<MenuState, FormData>(
+    resetDishChips.bind(null, slug, dish.id),
+    undefined
+  );
+  // "Replace with fresh suggestions" throws away the owner's own wording, so it takes
+  // two clicks: the first only asks.
+  const [confirmingReset, setConfirmingReset] = useState(false);
+  // Once a reset has answered, the question is over (React's "adjust state when a
+  // value changes" pattern — no effect needed).
+  const [answeredReset, setAnsweredReset] = useState(resetState);
+  if (resetState !== answeredReset) {
+    setAnsweredReset(resetState);
+    setConfirmingReset(false);
+  }
+
+  // Whichever button was pressed last speaks. A Save after a Reset (or the reverse)
+  // must not leave the older message on screen.
+  const [lastPressed, setLastPressed] = useState<"save" | "reset">("save");
+  const state = lastPressed === "save" ? saveState : resetState;
+  const pending = saving || resetting;
+
+  // Keyed by content: when the saved suggestions change (a reset, a regenerate, a
+  // save), the boxes are rebuilt to show them — even if the owner had typed in them.
+  const posKey = dish.positiveChips.join("\n");
+  const negKey = dish.negativeChips.join("\n");
 
   return (
-    <form action={action} className="rounded-xl border border-[#E5E7EB] p-4">
+    <form action={saveAction} className="rounded-xl border border-[#E5E7EB] p-4">
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
         <span className="font-semibold text-[#111827]">{dish.name}</span>
         <span className="text-xs text-[#9CA3AF]">
@@ -315,9 +451,10 @@ function DishChipEditor({ slug, dish }: { slug: string; dish: Dish }) {
             When they liked it
           </label>
           <textarea
+            key={posKey}
             name="positive"
             rows={4}
-            defaultValue={dish.positiveChips.join("\n")}
+            defaultValue={posKey}
             className={`${FIELD} text-sm`}
           />
         </div>
@@ -326,18 +463,61 @@ function DishChipEditor({ slug, dish }: { slug: string; dish: Dish }) {
             When they didn&apos;t
           </label>
           <textarea
+            key={negKey}
             name="negative"
             rows={4}
-            defaultValue={dish.negativeChips.join("\n")}
+            defaultValue={negKey}
             className={`${FIELD} text-sm`}
           />
         </div>
       </div>
 
-      <div className="mt-3 flex items-center gap-3">
-        <button type="submit" disabled={pending} className={BTN_QUIET}>
-          {pending ? "Saving…" : "Save"}
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        <button
+          type="submit"
+          disabled={pending}
+          onClick={() => {
+            setLastPressed("save");
+            setConfirmingReset(false);
+          }}
+          className={BTN_QUIET}
+        >
+          {saving ? "Saving…" : "Save"}
         </button>
+
+        {/* The way back from "edited by you" — Regenerate all never touches these. */}
+        {dish.chipsSource === "owner" &&
+          (confirmingReset ? (
+            <>
+              <button
+                type="submit"
+                formAction={resetAction}
+                disabled={pending}
+                onClick={() => setLastPressed("reset")}
+                className="rounded-xl bg-amber-500 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-amber-600 disabled:bg-[#E5E7EB] disabled:text-[#9CA3AF]"
+              >
+                {resetting ? "Replacing…" : "Yes, replace my wording"}
+              </button>
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() => setConfirmingReset(false)}
+                className="text-sm font-medium text-[#6B7280] hover:text-[#111827]"
+              >
+                Keep mine
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() => setConfirmingReset(true)}
+              className="text-sm font-medium text-amber-700 hover:text-amber-800"
+            >
+              Replace with fresh suggestions
+            </button>
+          ))}
+
         {state && "ok" in state && (
           <span role="status" className="text-sm font-medium text-green-600">
             {state.message}

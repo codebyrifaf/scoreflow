@@ -593,14 +593,23 @@ export async function complaintSummaryFor(
  * Spam guard (Milestone 13): has this exact order number already been submitted
  * for this restaurant since `since`? Blocks accidental double-submits and trivial
  * repeat-spam of the same order.
+ *
+ * Ignores capitals: a Square receipt code "zfdZ" typed again as "ZFDZ" is the same
+ * order, and matching elsewhere already treats it so. An EMPTY order number (the
+ * guest had none) is never a duplicate of anything — see the feedback route.
  */
 export async function hasRecentDuplicate(
   restaurantId: number,
   orderNumber: string,
   since: Date
 ): Promise<boolean> {
+  if (!orderNumber.trim()) return false;
   const n = await prisma.feedback.count({
-    where: { restaurantId, orderNumber, createdAt: { gte: since } },
+    where: {
+      restaurantId,
+      orderNumber: { equals: orderNumber, mode: "insensitive" },
+      createdAt: { gte: since },
+    },
   });
   return n > 0;
 }

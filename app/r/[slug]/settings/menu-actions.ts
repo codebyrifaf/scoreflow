@@ -16,10 +16,11 @@
 import { revalidatePath } from "next/cache";
 import { requireDashboardAccess } from "@/lib/auth-guard";
 import { getRestaurantBySlug } from "@/lib/restaurants";
-import { getMenu, replaceMenu, setChips, setChipsForMany } from "@/lib/menu";
-import { extractMenu, generateChips, type ExtractedDish } from "@/lib/ai";
+import { getDish, getMenu, replaceMenu, setChips, setChipsForMany } from "@/lib/menu";
+import { aiIsConfigured, extractMenu, generateChips, type ExtractedDish } from "@/lib/ai";
 import { rotatePosKey, clearPosKey } from "@/lib/pos-orders";
-import { disconnectSquare, linkSquareLocation } from "@/lib/square";
+import { disconnectSquare, linkSquareLocation, readSquareMenuForBrand } from "@/lib/square";
+import { guessDishCategory } from "@/lib/feedback-chips";
 
 /** Bounds on what an owner can submit. Generous, but not unbounded. */
 const MAX_DISHES = 200;
@@ -101,6 +102,60 @@ export async function extractMenuPhoto(
 }
 
 /**
+ * Read the menu from the owner's SQUARE item list into the review box.
+ *
+ * Like a menu photo, this deliberately does NOT save: Square lists often hold things
+ * that aren't dishes (bag charges, deposits, merchandise), so the owner reviews the
+ * list and saves it themselves — the same review-then-save path as the photo, so the
+ * two can't behave differently.
+ *
+ * The names come straight from Square, which is the point: they are the SAME names
+ * Square prints on each order, so every order matches its dishes exactly — no typos,
+ * no "Chicken Burger" vs "Chicken Cheese Burger".
+ */
+export async function importSquareMenu(
+  slug: string
+): Promise<{ dishes: ExtractedDish[]; note: string } | { error: string }> {
+  const guard = await requireAccount(slug);
+  if (!guard.ok) return { error: guard.error };
+
+  let items;
+  try {
+    items = await readSquareMenuForBrand(guard.brandId);
+  } catch (err) {
+    console.error("[square] reading the item list failed:", (err as Error).message);
+    return { error: "Couldn't read your Square item list just now. Please try again." };
+  }
+  if (items === null) {
+    return { error: "Connect Square first — it's below, under “Connect your till”." };
+  }
+  if (items.length === 0) {
+    return {
+      error:
+        "Your Square item list has no food or drink in it yet. Add your items in Square, or type your menu below.",
+    };
+  }
+
+  const dishes = items.slice(0, MAX_DISHES).map((i) => {
+    const name = i.name.replace(/\s+/g, " ").trim().slice(0, MAX_DISH_NAME);
+    let category = guessDishCategory(name, i.squareCategories);
+    // The review box reads "Name, category" — so a Square name like "Fish, chips"
+    // would come back from Save as the dish "Fish" in category "chips". Giving it a
+    // category keeps the LAST comma as the separator and the name whole.
+    if (!category && looksLikeCategoryTail(name)) category = "other";
+    return { name, category };
+  });
+  const more = items.length - dishes.length;
+  return {
+    dishes,
+    note:
+      `Found ${dishes.length} item${dishes.length === 1 ? "" : "s"} in Square` +
+      (more > 0 ? ` (the first ${MAX_DISHES} of ${items.length})` : "") +
+      ". Remove anything that isn't food — like bag charges — then save.",
+  };
+}
+
+/**
  * Save the menu, then generate chips for it.
  *
  * The dish list arrives as text — one per line, optionally `Name, category` —
@@ -146,8 +201,19 @@ export async function saveMenu(
   }
   try {
     const generated = await generateChips(dishes);
-    if (generated.warning) warnings.push(generated.warning);
-    await storeGeneratedChips(guard.brandId, generated);
+    // AI switched on but not answering: the standard suggestions are a stopgap for
+    // NEW dishes only (they must show guests something). Existing dishes keep what
+    // they have rather than being downgraded to generic ones by an unrelated save.
+    const aiDown = aiIsConfigured() && generated.source !== "ai";
+    if (aiDown) {
+      warnings.push(
+        "We couldn't reach the AI service, so any new dishes got standard suggestions for now — " +
+          "press Regenerate all in a minute to replace them. Your other dishes kept theirs."
+      );
+    } else if (generated.warning) {
+      warnings.push(generated.warning);
+    }
+    await storeGeneratedChips(guard.brandId, generated, { onlyNewDishes: aiDown });
   } catch (err) {
     // The menu itself is saved; chips can be regenerated. Never fail the save.
     console.error("[menu] chip generation failed after save:", err);
@@ -168,19 +234,28 @@ export async function saveMenu(
  *
  * Shared by `saveMenu` and `regenerateChips` so the two can't drift. Dishes the owner
  * has reworded by hand are skipped — they know their food better than any model.
+ * Returns how many dishes were `updated` and how many were `kept` as the owner wrote
+ * them, so "Regenerate all" can say what it actually did.
+ *
+ * `onlyNewDishes`: touch only dishes with no suggestions yet (used when the AI is down
+ * and `generated` is the standard fallback).
  */
 async function storeGeneratedChips(
   brandId: number,
-  generated: Awaited<ReturnType<typeof generateChips>>
-): Promise<void> {
+  generated: Awaited<ReturnType<typeof generateChips>>,
+  { onlyNewDishes = false }: { onlyNewDishes?: boolean } = {}
+): Promise<{ updated: number; kept: number }> {
   const menu = await getMenu(brandId);
+  const kept = menu.filter((item) => item.chipsSource === "owner").length;
   const items = menu
     .filter((item) => item.chipsSource !== "owner")
+    .filter((item) => !onlyNewDishes || (item.positiveChips.length === 0 && item.negativeChips.length === 0))
     .flatMap((item) => {
       const chips = generated.data.get(item.name);
       return chips ? [{ id: item.id, chips }] : [];
     });
   await setChipsForMany(brandId, items, generated.source);
+  return { updated: items.length, kept };
 }
 
 /**
@@ -198,31 +273,60 @@ export async function regenerateChips(slug: string): Promise<MenuState> {
   const menu = await getMenu(guard.brandId);
   if (menu.length === 0) return { error: "Add some dishes first." };
 
+  // ⚠️ This used to answer "Suggestions regenerated." even when it had skipped EVERY
+  // dish (all edited by the owner) — a success message for nothing done. It now says
+  // exactly what happened, and doesn't call the AI at all when there's nothing to do.
+  const editable = menu.filter((m) => m.chipsSource !== "owner");
+  if (editable.length === 0) {
+    return {
+      error:
+        `Nothing was regenerated: you've edited ${menu.length === 1 ? "this dish" : `all ${menu.length} dishes`} ` +
+        "yourself, and Regenerate never replaces your own wording. To start a dish afresh, " +
+        "press “Replace with fresh suggestions” under it.",
+    };
+  }
+
   let generated: Awaited<ReturnType<typeof generateChips>>;
+  let counts: { updated: number; kept: number };
   try {
-    generated = await generateChips(menu.map((m) => ({ name: m.name, category: m.category })));
-    await storeGeneratedChips(guard.brandId, generated);
+    generated = await generateChips(editable.map((m) => ({ name: m.name, category: m.category })));
+    // AI switched on but unreachable (Gemini's free tier does have demand spikes):
+    // generateChips falls back to the standard suggestions — right for a NEW dish,
+    // which must have some, but here it would swap the owner's good AI suggestions
+    // for generic ones. Keep what they have and say so.
+    if (aiIsConfigured() && generated.source !== "ai") return { error: AI_UNREACHABLE };
+    counts = await storeGeneratedChips(guard.brandId, generated);
   } catch (err) {
     console.error("[menu] regenerate failed:", err);
     return { error: "Could not regenerate suggestions. Please try again." };
   }
 
   revalidatePath(`/r/${slug}/settings`);
+  const done = generated.source === "ai" ? "Suggestions regenerated" : "Standard suggestions applied";
+  const n = counts.updated;
   return {
     ok: true,
     message:
-      generated.source === "ai"
-        ? "Suggestions regenerated."
-        : "Standard suggestions applied.",
-    warning: generated.warning,
+      counts.kept === 0
+        ? `${done}.`
+        : `${done} for ${n} dish${n === 1 ? "" : "es"}. ` +
+          `${counts.kept} you edited ${counts.kept === 1 ? "was" : "were"} left as you wrote ${counts.kept === 1 ? "it" : "them"}.`,
   };
 }
+
+/** Said when the AI is switched on but didn't answer — and so nothing was changed. */
+const AI_UNREACHABLE =
+  "Couldn't reach the AI just now, so nothing was changed. Please try again in a minute.";
 
 /**
  * Save one dish's chips after the owner has edited them.
  *
  * Marks the dish `"owner"`, which is what stops a later regenerate overwriting
  * wording they chose deliberately. They know their food better than any model.
+ *
+ * ⚠️ Only when something actually CHANGED. Pressing Save on an untouched dish used to
+ * mark it "edited by you" too — so an owner who tidily pressed every Save button had
+ * silently locked their whole menu out of "Regenerate all", with no way back.
  */
 export async function saveDishChips(
   slug: string,
@@ -239,19 +343,56 @@ export async function saveDishChips(
       .map((s) => s.trim().slice(0, 28))
       .filter(Boolean)
       .slice(0, 6);
+  const next = { positive: parse(formData.get("positive")), negative: parse(formData.get("negative")) };
 
-  // Scoped by brandId inside `setChips` — a forged id from another account
-  // matches zero rows.
-  const updated = await setChips(
-    menuItemId,
-    guard.brandId,
-    { positive: parse(formData.get("positive")), negative: parse(formData.get("negative")) },
-    "owner"
-  );
+  // Scoped by brandId — a forged id from another account finds nothing.
+  const dish = await getDish(guard.brandId, menuItemId);
+  if (!dish) return { error: "That dish isn't on your menu." };
+
+  const same = (a: string[], b: string[]) => a.length === b.length && a.every((x, i) => x === b[i]);
+  if (same(next.positive, dish.positiveChips) && same(next.negative, dish.negativeChips)) {
+    return { ok: true, message: "No changes to save." };
+  }
+
+  const updated = await setChips(menuItemId, guard.brandId, next, "owner");
   if (updated === 0) return { error: "That dish isn't on your menu." };
 
   revalidatePath(`/r/${slug}/settings`);
   return { ok: true, message: "Suggestions updated." };
+}
+
+/**
+ * Throw away the owner's wording for ONE dish and write fresh suggestions — the way
+ * back from "edited by you", which "Regenerate all" deliberately never touches.
+ * Fresh from the AI when it's switched on, the standard ones when it isn't.
+ */
+export async function resetDishChips(slug: string, menuItemId: number): Promise<MenuState> {
+  const guard = await requireAccount(slug);
+  if (!guard.ok) return { error: guard.error };
+
+  const dish = await getDish(guard.brandId, menuItemId);
+  if (!dish) return { error: "That dish isn't on your menu." };
+
+  let source: "template" | "ai";
+  try {
+    // Never throws for AI trouble — it falls back to the standard suggestions.
+    const generated = await generateChips([{ name: dish.name, category: dish.category }]);
+    // …but with the AI switched on and not answering, that fallback would swap the
+    // owner's own wording for generic suggestions they never asked for. Change nothing.
+    if (aiIsConfigured() && generated.source !== "ai") return { error: AI_UNREACHABLE };
+    const chips = generated.data.get(dish.name)!;
+    await setChips(dish.id, guard.brandId, chips, generated.source);
+    source = generated.source;
+  } catch (err) {
+    console.error("[menu] resetting one dish's suggestions failed:", err);
+    return { error: "Could not get fresh suggestions. Please try again." };
+  }
+
+  revalidatePath(`/r/${slug}/settings`);
+  return {
+    ok: true,
+    message: source === "ai" ? "Fresh suggestions added." : "Standard suggestions put back.",
+  };
 }
 
 // ── POS connection ───────────────────────────────────────────────────────────
@@ -341,6 +482,14 @@ export async function disconnectSquareAccount(slug: string): Promise<SquareState
 
 // ── Parsing ──────────────────────────────────────────────────────────────────
 
+/** Would the text after this line's last comma be read as a category? */
+function looksLikeCategoryTail(line: string): boolean {
+  const comma = line.lastIndexOf(",");
+  if (comma <= 0) return false;
+  const tail = line.slice(comma + 1).trim();
+  return tail.length > 0 && tail.length <= 20 && !tail.includes(" ");
+}
+
 /**
  * `"Chicken Cheese Burger, burger"` → `{ name, category }`.
  *
@@ -362,14 +511,11 @@ function parseDishes(raw: string): { dishes: ExtractedDish[]; dropped: number } 
     const comma = trimmed.lastIndexOf(",");
     let name = trimmed;
     let category: string | null = null;
-    if (comma > 0) {
-      const maybeCategory = trimmed.slice(comma + 1).trim().toLowerCase();
-      // Only treat it as a category if it looks like one — a dish legitimately
-      // containing a comma ("Rice, Dal and Salad") must not lose half its name.
-      if (maybeCategory && maybeCategory.length <= 20 && !maybeCategory.includes(" ")) {
-        name = trimmed.slice(0, comma).trim();
-        category = maybeCategory;
-      }
+    // Only treat it as a category if it looks like one — a dish legitimately
+    // containing a comma ("Rice, Dal and Salad") must not lose half its name.
+    if (looksLikeCategoryTail(trimmed)) {
+      name = trimmed.slice(0, comma).trim();
+      category = trimmed.slice(comma + 1).trim().toLowerCase();
     }
 
     name = name.replace(/\s+/g, " ").slice(0, MAX_DISH_NAME);

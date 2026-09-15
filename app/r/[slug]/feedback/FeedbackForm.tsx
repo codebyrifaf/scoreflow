@@ -230,14 +230,9 @@ export default function FeedbackForm({
       setErrorMessage("Please tap a rating from 1 to 10.");
       return;
     }
-    if (orderNumber.trim() === "") {
-      setErrorMessage(
-        receiptCodes
-          ? "Please enter the code from the bottom of your receipt."
-          : "Please enter your order number."
-      );
-      return;
-    }
+    // The order number / receipt code is OPTIONAL — deliberately no check here. A
+    // guest who tapped "no receipt" must still be able to tell the restaurant how
+    // it went; without a code they simply get menu-wide suggestions.
 
     setStatus("submitting");
     setErrorMessage("");
@@ -447,7 +442,8 @@ export default function FeedbackForm({
               htmlFor="orderNumber"
               className="text-sm font-medium text-[#111827]"
             >
-              {receiptCodes ? "Receipt code" : "Order number"}
+              {receiptCodes ? "Receipt code" : "Order number"}{" "}
+              <span className="font-normal text-[#9CA3AF]">(optional)</span>
             </label>
             <input
               id="orderNumber"
@@ -469,8 +465,8 @@ export default function FeedbackForm({
             />
             {receiptCodes && (
               <p id="orderNumberHint" className="text-xs text-[#6B7280]">
-                The 4-character code at the bottom of your receipt. Capitals
-                don&apos;t matter.
+                The 4-character code at the bottom of your receipt — it tells us
+                exactly what you had. No receipt? Just leave it blank.
               </p>
             )}
           </div>

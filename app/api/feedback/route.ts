@@ -117,10 +117,15 @@ export async function POST(request: Request) {
     );
   }
 
-  if (typeof body.orderNumber !== "string" || body.orderNumber.trim() === "") {
-    return Response.json({ error: "Order number is required." }, { status: 400 });
+  // OPTIONAL (Square integration). It used to be required, which locked out every
+  // guest without a receipt — common at Square cafés, where many tap "no receipt".
+  // Such a guest can still rate; they just get menu-wide suggestions instead of
+  // their exact dishes. Empty string = none given. A value that IS given is still
+  // type- and size-checked.
+  if (body.orderNumber != null && typeof body.orderNumber !== "string") {
+    return Response.json({ error: "Order number must be text." }, { status: 400 });
   }
-  const orderNumber = body.orderNumber.trim();
+  const orderNumber = typeof body.orderNumber === "string" ? body.orderNumber.trim() : "";
   if (orderNumber.length > MAX_ORDER_NUMBER_LENGTH) {
     return Response.json({ error: "That order number is too long." }, { status: 400 });
   }
@@ -204,9 +209,15 @@ export async function POST(request: Request) {
   const oneMinuteAgo = new Date(now - 60_000);
   const oneHourAgo = new Date(now - 3_600_000);
 
-  // 5a. Reject an exact duplicate order number within the dedupe window (stops
-  //     accidental double-submits and trivial repeat-spam of one order).
+  // 5a. Reject a duplicate order number within the dedupe window (stops accidental
+  //     double-submits and trivial repeat-spam of one order).
+  //
+  //     ⚠️ ONLY when an order number was given. Without one there is nothing to
+  //     compare — and comparing "" to "" would treat every code-less submission as
+  //     a copy of the last, rejecting the second guest who had no receipt. Those
+  //     guests are still covered by the per-IP and per-restaurant limits below.
   if (
+    payload.orderNumber &&
     await hasRecentDuplicate(
       restaurant.id,
       payload.orderNumber,

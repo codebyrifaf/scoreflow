@@ -39,6 +39,13 @@ export async function getMenu(brandId: number): Promise<MenuItemRecord[]> {
   return rows.map(toRecord);
 }
 
+/** One dish still on the account's menu, or null. Scoped by brandId like `setChips`,
+ *  so a forged id from another account finds nothing. */
+export async function getDish(brandId: number, menuItemId: number): Promise<MenuItemRecord | null> {
+  const row = await prisma.menuItem.findFirst({ where: { id: menuItemId, brandId, active: true } });
+  return row ? toRecord(row) : null;
+}
+
 // NOTE: `getMenuIncludingInactive()` lived here to feed the dashboard's insights
 // view, before that view was built on `Feedback.dishNames` snapshots instead —
 // which is better, because it shows what a dish was called when the diner ate it
@@ -275,20 +282,48 @@ export async function setChipsForMany(
  * Deliberately NOT fuzzy beyond that: guessing wrongly here puts the wrong dish's
  * chips in front of a diner, and a wrong tap becomes wrong data on the owner's
  * dashboard. No match simply falls back to menu-wide chips, which is always safe.
+ *
+ * ⚠️ An EXACT name always wins over a containment match. This used to take whichever
+ * containment match came first, so on a menu with both "Latte" and "Iced Latte" a
+ * plain Latte order could get the Iced Latte's chips ("iced latte" contains
+ * "latte"). With a menu imported from Square the names are exactly the till's, so
+ * the exact rung is what nearly every order hits.
  */
 export function matchDishes(
   menu: MenuItemRecord[],
   itemNames: string[]
 ): MenuItemRecord[] {
+  const norm = (s: string) => s.trim().replace(/\s+/g, " ").toLowerCase();
+  const names = menu.map((m) => ({ item: m, name: norm(m.name) }));
+
   const matched: MenuItemRecord[] = [];
   for (const raw of itemNames) {
-    const needle = raw.trim().toLowerCase();
+    const needle = norm(raw);
     if (!needle) continue;
-    const hit = menu.find((m) => {
-      const name = m.name.toLowerCase();
-      return name === needle || needle.includes(name) || name.includes(needle);
-    });
+    const hit =
+      names.find((n) => n.name === needle)?.item ?? closestContaining(names, needle);
     if (hit && !matched.some((m) => m.id === hit.id)) matched.push(hit);
   }
   return matched;
+}
+
+/**
+ * The containment match nearest in length to the till's name — so "Iced Latte (L)"
+ * picks "Iced Latte" over "Latte", both of which it contains.
+ */
+function closestContaining(
+  names: { item: MenuItemRecord; name: string }[],
+  needle: string
+): MenuItemRecord | undefined {
+  let best: MenuItemRecord | undefined;
+  let bestGap = Infinity;
+  for (const { item, name } of names) {
+    if (!needle.includes(name) && !name.includes(needle)) continue;
+    const gap = Math.abs(name.length - needle.length);
+    if (gap < bestGap) {
+      best = item;
+      bestGap = gap;
+    }
+  }
+  return best;
 }

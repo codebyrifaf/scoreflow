@@ -70,6 +70,51 @@ const MAX_CHIPS_PER_BAND = 6;
 const MAX_DISHES = 200;
 const MAX_DISH_NAME_LENGTH = 80;
 
+/**
+ * American → British spelling for the words that actually turn up in food feedback.
+ *
+ * ⚠️ WHY. ScoreFlow is sold in the UK, and its built-in suggestions say "Great
+ * flavour" — but the model wrote "Bland flavor", "Very flavorful", "Weak coffee
+ * flavor" on a real menu, even though nothing told it to write American. A UK guest
+ * reads that as a small but real "this wasn't made for us". The prompt now asks for
+ * British English; this is the safety net for when the model doesn't listen, which
+ * is why it's deterministic rather than a second request.
+ *
+ * Matches the start of a word, so one entry covers a whole family ("flavor" also
+ * fixes flavors, flavorful, flavored, flavorless). Capitals are kept.
+ */
+const US_TO_UK: [RegExp, string][] = [
+  [/\bflavor/gi, "flavour"],
+  [/\bcolor/gi, "colour"],
+  [/\bfavorite/gi, "favourite"],
+  [/\bsavory\b/gi, "savoury"],
+  [/\bcentered\b/gi, "centred"],
+  [/\bcenter(s?)\b/gi, "centre$1"],
+  [/\bgray\b/gi, "grey"],
+  [/\bcaramelized\b/gi, "caramelised"],
+];
+
+function keepCase(original: string, replacement: string): string {
+  if (original.length > 1 && original === original.toUpperCase()) return replacement.toUpperCase();
+  if (original[0] === original[0].toUpperCase()) {
+    return replacement[0].toUpperCase() + replacement.slice(1);
+  }
+  return replacement;
+}
+
+/** Exported for the QA suite; used only on MODEL output — never on a dish name or
+ *  on wording the owner typed, which are theirs to spell as they like. */
+export function toBritishSpelling(text: string): string {
+  let out = text;
+  for (const [pattern, replacement] of US_TO_UK) {
+    out = out.replace(pattern, (match, ...groups) => {
+      const suffix = typeof groups[0] === "string" ? groups[0] : "";
+      return keepCase(match, replacement.replace("$1", suffix));
+    });
+  }
+  return out;
+}
+
 /** Clean one model-produced chip list into something safe to store and render. */
 function boundChips(raw: unknown): string[] {
   if (!Array.isArray(raw)) return [];
@@ -77,7 +122,7 @@ function boundChips(raw: unknown): string[] {
   const out: string[] = [];
   for (const item of raw) {
     if (typeof item !== "string") continue;
-    const chip = item.trim().replace(/\s+/g, " ").slice(0, MAX_CHIP_LENGTH);
+    const chip = toBritishSpelling(item.trim().replace(/\s+/g, " ")).slice(0, MAX_CHIP_LENGTH);
     if (!chip) continue;
     const key = chip.toLowerCase();
     if (seen.has(key)) continue;
@@ -159,14 +204,23 @@ export async function extractMenu(
  * wrong. An owner would keep retaking perfectly good photos of a menu that was never
  * the problem. Three different situations, three different honest answers:
  *
- *   • busy   (429) — the free tier allows ~10 requests a minute. Waiting fixes it.
  *   • setup  (401/403/404, or a rejected key) — nothing the owner can do; say so.
- *   • photo  (anything else) — the one case where "try a clearer picture" is right.
+ *   • photo  (any other 4xx) — Google refused the IMAGE itself. The one case where
+ *            "try a clearer picture" is right.
+ *   • busy   (everything else) — 429 (the free tier allows ~10 requests a minute),
+ *            5xx (Google overloaded: "This model is currently experiencing high
+ *            demand"), a dropped connection, a garbled reply. Waiting fixes all of
+ *            them, and none is the photo's fault.
+ *
+ * ⚠️ 5xx used to fall through to "photo": during a real Gemini demand spike the owner
+ * was told to retake a perfectly good picture. (A photo that simply has no dishes on
+ * it isn't an error at all — the model answers with an empty list, handled by the
+ * caller with its own message.)
  *
  * The SDK's `ApiError` carries the HTTP `status`. Read by shape rather than
- * `instanceof`, because the SDK is dynamically imported.
+ * `instanceof`, because the SDK is dynamically imported. Exported for QA.
  */
-function describeAiFailure(err: unknown): {
+export function describeAiFailure(err: unknown): {
   kind: "busy" | "setup" | "photo";
   ownerMessage: string;
 } {
@@ -175,21 +229,21 @@ function describeAiFailure(err: unknown): {
     : null;
   const message = err instanceof Error ? err.message : String(err);
 
-  if (status === 429) {
-    return {
-      kind: "busy",
-      ownerMessage: "Photo reading is busy right now — wait a minute and try again, or type your menu below.",
-    };
-  }
   if (status === 401 || status === 403 || status === 404 || /api key/i.test(message)) {
     return {
       kind: "setup",
       ownerMessage: "Photo reading isn't working right now (a setup problem on our side) — please type or paste your menu below.",
     };
   }
+  if (status !== null && status >= 400 && status < 500 && status !== 429) {
+    return {
+      kind: "photo",
+      ownerMessage: "We couldn't read that photo. Try a clearer picture, or type your menu below.",
+    };
+  }
   return {
-    kind: "photo",
-    ownerMessage: "We couldn't read that photo. Try a clearer picture, or type your menu below.",
+    kind: "busy",
+    ownerMessage: "Photo reading is busy right now — wait a minute and try again, or type your menu below.",
   };
 }
 
@@ -369,7 +423,9 @@ async function geminiGenerateChips(
               "'Bad' and 'Food was not good' are not.\n" +
               "  • Describe the FOOD, not the service — service is asked about " +
               "separately.\n" +
-              "  • Plain language a guest would actually use. No emoji.\n\n" +
+              "  • Plain language a guest would actually use. No emoji.\n" +
+              "  • British English — the guests are in the UK: 'flavour', 'colour', " +
+              "'favourite', 'savoury', 'centre'.\n\n" +
               "Dishes:\n" +
               dishes
                 .map((d) => `- ${d.name}${d.category ? ` (${d.category})` : ""}`)
