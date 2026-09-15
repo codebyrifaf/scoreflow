@@ -28,7 +28,7 @@ import { getOwnerByEmail } from "@/lib/owners";
 import { getOperatorByEmail } from "@/lib/operators";
 import { createAccountFromSignup } from "@/lib/brands";
 import { validateNewPassword } from "@/lib/passwords";
-import { sendEmail } from "@/lib/email";
+import { sendEmail, type EmailResult } from "@/lib/email";
 import { clientIpHash } from "@/lib/request-ip";
 import { isThrottled, recordFailure, clearFailures } from "@/lib/login-attempts";
 import { issueCode, verifyCode, pruneExpiredCodes } from "@/lib/verification";
@@ -40,10 +40,14 @@ export type SignupState =
   | { errors: Record<string, string> }
   | undefined;
 
-/** Send (or re-send) the verification email. */
-async function emailCode(email: string) {
+/** Said whenever the email didn't actually leave — on every path, word for word. */
+const SEND_FAILED =
+  "We couldn't send your verification email just now. Please try again in a few minutes.";
+
+/** Send (or re-send) the verification email. "failed" means it never left. */
+async function emailCode(email: string): Promise<EmailResult> {
   const code = await issueCode(email, "signup");
-  await sendEmail({
+  return sendEmail({
     to: email,
     subject: "Your ScoreFlow verification code",
     body:
@@ -102,9 +106,10 @@ export async function requestSignup(
   // becomes an enumeration oracle. Hashing here keeps both paths ~constant-time.
   const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
 
+  let sent: EmailResult;
   try {
     if (existing) {
-      await sendEmail({
+      sent = await sendEmail({
         to: email,
         subject: "You already have a ScoreFlow account",
         body:
@@ -121,27 +126,47 @@ export async function requestSignup(
         update: { passwordHash, businessName },
         create: { email, passwordHash, businessName },
       });
-      await emailCode(email);
+      sent = await emailCode(email);
+      // No email, no half-started signup left behind.
+      if (sent === "failed") await prisma.pendingSignup.delete({ where: { email } }).catch(() => {});
     }
     await recordFailure(email, ipHash); // counts toward the IP throttle either way
   } catch {
     return { errors: { form: "Could not start signup. Please try again." } };
   }
 
+  // ⚠️ The email must actually have LEFT. `sendEmail` never throws (a failed alert
+  // mustn't break whatever triggered it), and this used to ignore its answer — so
+  // when the Gmail app password was revoked, a new owner was told "We sent a 6-digit
+  // code" for a code that never went, and waited for nothing. The SAME message on
+  // both paths, so an email outage can't reveal which addresses have accounts (M25).
+  // ("logged" — no provider set up, in development — still goes on: the code is in
+  // the terminal.)
+  if (sent === "failed") return { errors: { form: SEND_FAILED } };
+
   // Same destination whether the email existed or not — no enumeration.
   // (redirect throws — must be outside try/catch.)
   redirect(`/signup/verify?email=${encodeURIComponent(email)}`);
 }
 
-/** Re-send the code (bound with the email in the client). */
-export async function resendSignupCode(email: string): Promise<void> {
+export type ResendState = { ok: true } | { error: string };
+
+/**
+ * Re-send the code (bound with the email in the client).
+ *
+ * "Nothing to resend" and "throttled" still answer like a success, as before — saying
+ * otherwise would tell a stranger whether a signup is waiting for an address. Only a
+ * send that genuinely FAILED is reported: the Resend link used to say "Sent!" then too.
+ */
+export async function resendSignupCode(email: string): Promise<ResendState> {
   const normalized = email.trim().toLowerCase();
   const pending = await prisma.pendingSignup.findUnique({ where: { email: normalized } });
-  if (!pending) return; // nothing to resend
+  if (!pending) return { ok: true }; // nothing to resend
   const ipHash = clientIpHash(await headers());
-  if (await isThrottled(normalized, ipHash)) return;
-  await emailCode(normalized);
+  if (await isThrottled(normalized, ipHash)) return { ok: true };
+  const sent = await emailCode(normalized);
   await recordFailure(normalized, ipHash);
+  return sent === "failed" ? { error: SEND_FAILED } : { ok: true };
 }
 
 export type VerifyState = { error: string } | undefined;

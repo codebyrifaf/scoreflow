@@ -23,6 +23,7 @@ export default function VerifyForm({ email }: { email: string }) {
   const error = state && "error" in state ? state.error : undefined;
 
   const [resent, setResent] = useState(false);
+  const [resendError, setResendError] = useState<string | null>(null);
   const [isResending, startResend] = useTransition();
 
   // Countdown: starts at 60 on mount, ticks to 0, resets to 60 on each resend.
@@ -37,10 +38,22 @@ export default function VerifyForm({ email }: { email: string }) {
 
   function resend() {
     if (!canResend) return;
+    setResendError(null);
     startResend(async () => {
-      await resendSignupCode(email);
-      setResent(true);
+      // The cooldown restarts either way — a failed send shouldn't be hammered either.
       setCooldown(RESEND_COOLDOWN);
+      try {
+        const result = await resendSignupCode(email);
+        if ("error" in result) {
+          // Never "Sent!" for an email that didn't go.
+          setResendError(result.error);
+          return;
+        }
+      } catch {
+        setResendError("We couldn't send your verification email just now. Please try again in a few minutes.");
+        return;
+      }
+      setResent(true);
       setTimeout(() => setResent(false), 4000);
     });
   }
@@ -80,6 +93,11 @@ export default function VerifyForm({ email }: { email: string }) {
                 : "Resend code"}
         </button>
       </p>
+      {resendError && (
+        <p role="alert" className="text-center text-sm font-medium text-red-600">
+          {resendError}
+        </p>
+      )}
     </form>
   );
 }
