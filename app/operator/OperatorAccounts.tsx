@@ -220,6 +220,7 @@ function SupportTools({ a }: { a: AccountRow }) {
   const [confirmText, setConfirmText] = useState("");
   const rescueErr = rescueState && "error" in rescueState ? rescueState.error : undefined;
   const rescueOk = rescueState && "ok" in rescueState;
+  const rescueWarning = rescueState && "ok" in rescueState ? rescueState.warning : undefined;
   const delErr = delState && "error" in delState ? delState.error : undefined;
 
   if (!open) {
@@ -271,9 +272,15 @@ function SupportTools({ a }: { a: AccountRow }) {
           </button>
         </div>
         {rescueErr && <p className="mt-1 text-xs font-medium text-red-600">{rescueErr}</p>}
-        {rescueOk && (
+        {/* Only claim the emails went if they went. */}
+        {rescueOk && !rescueWarning && (
           <p className="mt-1 text-xs font-medium text-green-600">
             Login moved. Both addresses have been emailed.
+          </p>
+        )}
+        {rescueWarning && (
+          <p role="alert" className="mt-1 rounded-lg bg-amber-50 px-2 py-1.5 text-xs font-medium text-amber-800">
+            {rescueWarning}
           </p>
         )}
       </form>

@@ -17,7 +17,6 @@
  *     used everywhere else something irreversible happens.
  */
 
-import { redirect } from "next/navigation";
 import { requireAccountOwner } from "@/lib/auth-guard";
 import { deleteBrandCascade } from "@/lib/brands";
 import { signOut } from "@/auth";

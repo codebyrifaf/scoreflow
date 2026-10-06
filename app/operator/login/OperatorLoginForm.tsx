@@ -25,6 +25,8 @@ export default function OperatorLoginForm() {
           type="email"
           autoComplete="email"
           required
+          // Kept after a failed attempt — React resets the form to its defaultValue.
+          defaultValue={state?.email ?? ""}
           className={FIELD}
         />
       </div>

@@ -75,10 +75,30 @@ function BranchForm({
   // Who runs this location. Defaults to "self" — the common case for a one-restaurant
   // owner, and the reversible choice (a manager can be invited afterwards).
   const [mode, setMode] = useState<"self" | "invite">("self");
+  const warning = state && "ok" in state ? state.warning : undefined;
   useEffect(() => {
-    if (state && "ok" in state) onSuccess();
+    // Close on success — unless there's something the owner has to read first (the
+    // location was created, but its manager's invite email couldn't be sent).
+    if (state && "ok" in state && !state.warning) onSuccess();
   }, [state, onSuccess]);
   const errors = state && "errors" in state ? state.errors : {};
+
+  if (warning) {
+    return (
+      <div className="flex flex-col gap-4">
+        <p className="rounded-xl bg-amber-50 px-3 py-2.5 text-sm text-amber-800">
+          {warning}
+        </p>
+        <button
+          type="button"
+          onClick={onSuccess}
+          className="w-full rounded-2xl bg-amber-500 px-6 py-3 font-semibold text-white"
+        >
+          Done
+        </button>
+      </div>
+    );
+  }
 
   return (
     <form action={formAction} className="flex flex-col gap-4">
@@ -380,10 +400,11 @@ function ResetDialog({
     bound,
     undefined
   );
-  const [done, setDone] = useState(false);
-  useEffect(() => {
-    if (state && "ok" in state) setDone(true);
-  }, [state]);
+  // DERIVED, not copied into state by an effect. `useActionState` already keeps the
+  // result across renders, so a `done` flag set inside a `useEffect` was a second
+  // source of truth and an extra render for nothing — the same call the invite dialog
+  // below documents, and what react-hooks/set-state-in-effect was flagging here.
+  const done = !!state && "ok" in state;
   const error = state && "error" in state ? state.error : undefined;
 
   return (
@@ -462,18 +483,22 @@ function InviteManagerDialog({
   // be a second source of truth and an extra render for no gain — the exact thing
   // react-hooks/set-state-in-effect warns about.
   const done = !!state && "ok" in state;
+  const warning = state && "ok" in state ? state.warning : undefined;
   const error = state && "error" in state ? state.error : undefined;
 
   return (
     <Modal title={`Invite a manager for ${branch.name}`} onClose={onClose}>
       {done ? (
         <div className="flex flex-col items-center gap-4 py-2 text-center">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-green-50 text-2xl text-green-600">
-            ✓
+          {/* The account is made either way; the tick is only for an invite that went. */}
+          <div
+            className={`flex h-14 w-14 items-center justify-center rounded-full text-2xl ${warning ? "bg-amber-50 text-amber-600" : "bg-green-50 text-green-600"}`}
+          >
+            {warning ? "!" : "✓"}
           </div>
           <p className="text-[15px] text-[#374151]">
-            Invite sent. They&apos;ll get a link to set their own password and sign
-            in.
+            {warning ??
+              "Invite sent. They'll get a link to set their own password and sign in."}
           </p>
           <button
             onClick={onClose}
@@ -522,14 +547,12 @@ function InviteManagerDialog({
 }
 
 function BranchCard({
-  brandSlug,
   b,
   onEdit,
   onDelete,
   onReset,
   onInvite,
 }: {
-  brandSlug: string;
   b: BranchData;
   onEdit: (b: BranchData) => void;
   onDelete: (b: BranchData) => void;
@@ -683,7 +706,6 @@ export default function BrandBranches({
           {branches.map((b) => (
             <BranchCard
               key={b.id}
-              brandSlug={brandSlug}
               b={b}
               onEdit={setEditTarget}
               onDelete={setDeleteTarget}

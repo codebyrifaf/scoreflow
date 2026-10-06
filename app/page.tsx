@@ -30,6 +30,20 @@
  * rebuilt to carry the missing proof (ProofCards), and the wordiest one was cut down
  * to a single picture (GatingCompare). More proof, less prose, same length.
  *
+ * ── Square, in three sentences and no new section ────────────────────────────
+ * The till link is what makes the dish-level promise believable, and the page was
+ * hiding it behind "if your till can send us each order" — the vaguest line here,
+ * guarding the best claim. Square is named in the three places a reader decides
+ * something: the dish FAQ (is this real?), the setup strip (is this a project?) and
+ * the price list (is it included?).
+ *
+ * Deliberately NOT a fourth section. The mistake M40 fixed was the page growing, and
+ * a Square banner would push the compliance differentiator and the prices further
+ * down for the many owners who don't use Square.
+ *
+ * ⚠️ Text only, never Square's logo — using someone's trademark on a marketing page
+ * is their call to give, and we haven't asked.
+ *
  * ── The pitch ────────────────────────────────────────────────────────────────
  * One idea, repeated: **you find out while they're still at the table.** Everything
  * else (setup, platforms, compliance, the trial) is support for that.
@@ -342,6 +356,7 @@ export default function Home() {
                   // ⚠️ Was "NFC links for every table" — stale since M30, and it
                   // implied hardware was required. QR leads; NFC is the option.
                   "Printable QR kit — or NFC",
+                  "Square till: connect in one click",
                   "Google, Tripadvisor, Yelp & Zomato",
                   "See how many guests clicked through",
                 ]}
@@ -401,12 +416,15 @@ export default function Home() {
             </Reveal>
             <Reveal delay={110}>
               <Faq q="Can it tell me which dish people are unhappy about?">
-                Yes — that&apos;s the part owners find most useful. If your till can
-                send us each order, a poor score is tied to the food it was actually
-                about, so your dashboard says &ldquo;the burger is the problem&rdquo;
-                rather than just &ldquo;someone was unhappy&rdquo;. Your guests
-                aren&apos;t asked anything extra. No till? You still get suggestions
-                based on your menu.
+                Yes — that&apos;s the part owners find most useful. On Square, connect
+                your till in one click and import your menu the same way; your guest
+                types the four-character code from the bottom of their receipt, and the
+                score is tied to the food it was actually about. Your dashboard then
+                says &ldquo;the burger is the problem&rdquo; rather than just
+                &ldquo;someone was unhappy&rdquo;. Other tills can send us each order
+                too. Nothing is asked of your guests beyond that code — and if they
+                haven&apos;t got their receipt, they can leave it blank and still be
+                offered your menu.
               </Faq>
             </Reveal>
             <Reveal delay={120}>

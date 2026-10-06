@@ -26,6 +26,7 @@ import { requireDashboardAccess } from "@/lib/auth-guard";
 import { getRestaurantBySlug, updateRestaurantSettings } from "@/lib/restaurants";
 import { updateNotificationPrefs } from "@/lib/owners";
 import { updateBrandLogo } from "@/lib/brands";
+import { emailIsConfigured, emailSystemWorks } from "@/lib/email";
 import { isValidReviewUrl, reviewUrlError } from "@/lib/review-url";
 import { REVIEW_PLATFORMS } from "@/lib/review-platforms";
 
@@ -33,6 +34,49 @@ export type SettingsState =
   | { ok: true }
   | { errors: Record<string, string> }
   | undefined;
+
+/** What "Check email delivery" found. */
+export type EmailCheckState =
+  | { status: "working" | "refused" | "off" }
+  | { error: string }
+  | undefined;
+
+/**
+ * Remembered for a moment so repeated clicks don't hammer the mail provider with
+ * sign-ins (Gmail throttles those). 30 seconds is long enough to stop a drum roll of
+ * clicks, short enough that a fix shows up straight away.
+ */
+let lastCheck: { at: number; working: boolean } | null = null;
+const CHECK_CACHE_MS = 30_000;
+
+/**
+ * Is email delivery ACTUALLY working right now?
+ *
+ * ⚠️ Settings used to judge this purely on whether the provider's settings existed —
+ * so a revoked Gmail App Password showed a perfectly happy screen while every alert
+ * silently failed (it did, for eight days). This opens the connection and signs in,
+ * sending nothing, and reports what really happened.
+ */
+export async function checkEmailDelivery(slug: string): Promise<EmailCheckState> {
+  const access = await requireDashboardAccess(slug);
+  if (!access.authorized) {
+    return { error: "You are not authorized to do this." };
+  }
+  if (!emailIsConfigured()) return { status: "off" };
+
+  if (lastCheck && Date.now() - lastCheck.at < CHECK_CACHE_MS) {
+    return { status: lastCheck.working ? "working" : "refused" };
+  }
+  let working: boolean;
+  try {
+    working = await emailSystemWorks();
+  } catch (err) {
+    console.error("[settings] email check failed:", err);
+    return { error: "Couldn't check email just now. Please try again." };
+  }
+  lastCheck = { at: Date.now(), working };
+  return { status: working ? "working" : "refused" };
+}
 
 /**
  * Save a restaurant's settings. Bound in the client as

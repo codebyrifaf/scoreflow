@@ -8,8 +8,13 @@
  * trusted.
  */
 
-import { useActionState, useEffect, useState } from "react";
-import { saveSettings, type SettingsState } from "./actions";
+import { useActionState, useEffect, useState, useTransition } from "react";
+import {
+  saveSettings,
+  checkEmailDelivery,
+  type SettingsState,
+  type EmailCheckState,
+} from "./actions";
 import { REVIEW_PLATFORMS, type ReviewPlatformDef } from "@/lib/review-platforms";
 import { isValidReviewUrl } from "@/lib/review-url";
 
@@ -205,6 +210,68 @@ function ReviewLinkField({
   );
 }
 
+/**
+ * "Check email delivery" — asks the provider, live, whether it will accept our mail.
+ *
+ * A button rather than something the page does on every load: signing in to the mail
+ * provider takes a second or two, and nobody should wait for that just to read their
+ * settings. It's the honest answer to "will my alerts actually arrive?".
+ */
+function EmailCheck({ slug }: { slug: string }) {
+  const [result, setResult] = useState<EmailCheckState>(undefined);
+  const [checking, startCheck] = useTransition();
+
+  const MESSAGES: Record<string, { text: string; tone: string }> = {
+    working: {
+      text: "Email delivery is working — your alerts will arrive.",
+      tone: "text-green-600",
+    },
+    refused: {
+      text:
+        "Our email provider is refusing to send right now, so alerts won't arrive. " +
+        "Unhappy diners still show up in Needs attention on your dashboard.",
+      tone: "text-red-600",
+    },
+    off: {
+      text: "Email delivery isn't switched on yet.",
+      tone: "text-amber-700",
+    },
+  };
+  const shown =
+    result && "status" in result
+      ? MESSAGES[result.status]
+      : result && "error" in result
+        ? { text: result.error, tone: "text-red-600" }
+        : null;
+
+  return (
+    <div className="mb-4">
+      <button
+        type="button" // never submits the settings form around it
+        disabled={checking}
+        onClick={() =>
+          startCheck(async () => {
+            setResult(undefined);
+            try {
+              setResult(await checkEmailDelivery(slug));
+            } catch {
+              setResult({ error: "Couldn't check email just now. Please try again." });
+            }
+          })
+        }
+        className="rounded-xl border border-[#E5E7EB] px-3 py-1.5 text-sm font-medium text-[#111827] transition-colors hover:bg-[#F9FAFB] disabled:cursor-not-allowed disabled:text-[#9CA3AF]"
+      >
+        {checking ? "Checking…" : "Check email delivery"}
+      </button>
+      {shown && (
+        <p role="status" className={`mt-2 text-sm font-medium ${shown.tone}`}>
+          {shown.text}
+        </p>
+      )}
+    </div>
+  );
+}
+
 export default function SettingsForm(props: SettingsFormProps) {
   const boundSave = saveSettings.bind(null, props.slug);
   const [state, action, pending] = useActionState<SettingsState, FormData>(
@@ -214,13 +281,21 @@ export default function SettingsForm(props: SettingsFormProps) {
   const [saved, setSaved] = useState(false);
 
   // Show a brief "Saved" confirmation, then let it fade.
+  //
+  // Raising it is a plain reaction to the save finishing, so it's done while rendering
+  // (React's "adjust state when a value changes"), not from an effect — an effect that
+  // sets state immediately just causes a second render. Taking it down IS a timer, so
+  // that part stays an effect.
+  const [lastState, setLastState] = useState(state);
+  if (state !== lastState) {
+    setLastState(state);
+    setSaved(!!state && "ok" in state);
+  }
   useEffect(() => {
-    if (state && "ok" in state) {
-      setSaved(true);
-      const t = setTimeout(() => setSaved(false), 3000);
-      return () => clearTimeout(t);
-    }
-  }, [state]);
+    if (!saved) return;
+    const t = setTimeout(() => setSaved(false), 3000);
+    return () => clearTimeout(t);
+  }, [saved]);
 
   const errors = state && "errors" in state ? state.errors : {};
 
@@ -380,6 +455,12 @@ export default function SettingsForm(props: SettingsFormProps) {
             <b>Needs attention</b> on your dashboard.
           </p>
         )}
+
+        {/* ⚠️ The note above only knows whether an email provider is SET UP. It can't
+            tell you the provider has started refusing us — which is exactly what
+            happened for eight days while this screen looked perfectly healthy. This
+            button asks the provider, and says what it answered. */}
+        {props.emailConfigured && <EmailCheck slug={props.slug} />}
 
         <div className="flex flex-col gap-5">
           <Toggle

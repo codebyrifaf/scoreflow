@@ -36,8 +36,15 @@ import { issueCode, verifyCode, pruneExpiredCodes } from "@/lib/verification";
 const SALT_ROUNDS = 10;
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
+/**
+ * `values`: what was typed, handed back so the form can put it straight back in the
+ * boxes. React resets an uncontrolled form once its action finishes — errors included
+ * — so without this, one short password made you retype your business name and email
+ * as well. The PASSWORD is deliberately never returned; it stays on the device it was
+ * typed on.
+ */
 export type SignupState =
-  | { errors: Record<string, string> }
+  | { errors: Record<string, string>; values?: { businessName: string; email: string } }
   | undefined;
 
 /** Said whenever the email didn't actually leave — on every path, word for word. */
@@ -72,6 +79,9 @@ export async function requestSignup(
   // The ACCOUNT's name (the company), not a venue — locations are added later.
   const businessName = String(formData.get("businessName") ?? "").trim();
 
+  // Everything the owner typed except the password, for putting back on screen.
+  const values = { businessName, email };
+
   const errors: Record<string, string> = {};
   if (!email) errors.email = "Email is required.";
   else if (!EMAIL_RE.test(email)) errors.email = "Enter a valid email address.";
@@ -79,13 +89,16 @@ export async function requestSignup(
   const weak = validateNewPassword(password);
   if (weak) errors.password = weak;
 
-  if (Object.keys(errors).length > 0) return { errors };
+  if (Object.keys(errors).length > 0) return { errors, values };
 
   // Rate-limit by IP so nobody can hammer this to blast OTP emails from our Gmail
   // (reuses the hardened login-attempt guard).
   const ipHash = clientIpHash(await headers());
   if (await isThrottled(email, ipHash)) {
-    return { errors: { form: "Too many attempts. Please try again in a few minutes." } };
+    return {
+      errors: { form: "Too many attempts. Please try again in a few minutes." },
+      values,
+    };
   }
 
   // ── No user enumeration (M25) ──────────────────────────────────────────────
@@ -132,7 +145,7 @@ export async function requestSignup(
     }
     await recordFailure(email, ipHash); // counts toward the IP throttle either way
   } catch {
-    return { errors: { form: "Could not start signup. Please try again." } };
+    return { errors: { form: "Could not start signup. Please try again." }, values };
   }
 
   // ⚠️ The email must actually have LEFT. `sendEmail` never throws (a failed alert
@@ -142,7 +155,7 @@ export async function requestSignup(
   // both paths, so an email outage can't reveal which addresses have accounts (M25).
   // ("logged" — no provider set up, in development — still goes on: the code is in
   // the terminal.)
-  if (sent === "failed") return { errors: { form: SEND_FAILED } };
+  if (sent === "failed") return { errors: { form: SEND_FAILED }, values };
 
   // Same destination whether the email existed or not — no enumeration.
   // (redirect throws — must be outside try/catch.)

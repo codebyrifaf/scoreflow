@@ -15,11 +15,16 @@ import bcrypt from "bcryptjs";
 import { getOwnerByEmail, updateOwnerPassword } from "@/lib/owners";
 import { validateNewPassword } from "@/lib/passwords";
 import { verifyCode, issueCode } from "@/lib/verification";
-import { sendEmail } from "@/lib/email";
+import { sendEmail, emailSystemWorks } from "@/lib/email";
 import { clientIpHash } from "@/lib/request-ip";
 import { isThrottled, recordFailure } from "@/lib/login-attempts";
 
 export type ResetState = { error: string } | undefined;
+export type ResendState = { ok: true } | { error: string };
+
+/** Said when our mail system is down — identical wording whoever asked. */
+const MAIL_DOWN =
+  "We couldn't send your reset email just now. Please try again in a few minutes.";
 
 /**
  * Resend a password-reset code (Milestone 37) — the "Resend code" button on /reset.
@@ -28,22 +33,27 @@ export type ResetState = { error: string } | undefined;
  * whose invite link lapsed (both use a "reset" code). Bound in the client with the
  * email.
  *
- * ⚠️ NO USER ENUMERATION. Like `requestReset`, this always does the same observable
- * thing (returns void, no error) whether or not the email has an account — it only
- * actually issues + emails a code when the account exists. Throttled by IP + email so
- * it can't be abused to spray reset emails.
+ * ⚠️ NO USER ENUMERATION. Like `requestReset`, this answers the same way whether or
+ * not the email has an account — it only actually issues + emails a code when the
+ * account exists. Throttled by IP + email so it can't be abused to spray reset emails.
+ *
+ * The ONE thing it now reports is our own mail system failing, which it used to
+ * ignore: the button said "Sent!" for an email that never left. With no account to
+ * email, the mail system is checked directly (nothing is sent), so that error can
+ * never double as "this address is registered".
  */
-export async function resendResetCode(email: string): Promise<void> {
+export async function resendResetCode(email: string): Promise<ResendState> {
   const normalized = email.trim().toLowerCase();
-  if (!normalized) return;
+  if (!normalized) return { ok: true };
 
   const ipHash = clientIpHash(await headers());
-  if (await isThrottled(normalized, ipHash)) return; // silently, no signal
+  if (await isThrottled(normalized, ipHash)) return { ok: true }; // silently, no signal
 
   const owner = await getOwnerByEmail(normalized);
+  let emailWorked: boolean;
   if (owner) {
     const code = await issueCode(normalized, "reset");
-    await sendEmail({
+    emailWorked = (await sendEmail({
       to: normalized,
       subject: "Your ScoreFlow password reset code",
       body:
@@ -52,11 +62,14 @@ export async function resendResetCode(email: string): Promise<void> {
         `minutes.\n\n` +
         `If you didn't ask for this, you can ignore this email — your password stays ` +
         `the same.`,
-    });
+    })) !== "failed";
+  } else {
+    emailWorked = await emailSystemWorks();
   }
   // Counts toward the throttle whether or not the email existed, so timing/behaviour
   // is identical either way.
   await recordFailure(normalized, ipHash);
+  return emailWorked ? { ok: true } : { error: MAIL_DOWN };
 }
 
 export async function resetPassword(

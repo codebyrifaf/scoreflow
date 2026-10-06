@@ -13,12 +13,17 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getOwnerByEmail } from "@/lib/owners";
-import { sendEmail } from "@/lib/email";
+import { sendEmail, emailSystemWorks } from "@/lib/email";
 import { clientIpHash } from "@/lib/request-ip";
 import { isThrottled, recordFailure } from "@/lib/login-attempts";
 import { issueCode } from "@/lib/verification";
 
-export type ForgotState = { error: string } | undefined;
+/** `email` comes back so the form can keep what was typed (React clears it otherwise). */
+export type ForgotState = { error: string; email?: string } | undefined;
+
+/** Said when our mail system is down — identical wording whoever asked. */
+const MAIL_DOWN =
+  "We couldn't send your reset email just now. Please try again in a few minutes.";
 
 export async function requestReset(
   _prev: ForgotState,
@@ -31,9 +36,15 @@ export async function requestReset(
   // Throttle by IP either way, so this can't be used to spray reset emails.
   if (!(await isThrottled(email, ipHash))) {
     const owner = await getOwnerByEmail(email);
+    // ⚠️ Did the email actually GO? It used to ignore the answer, so a broken mail
+    // setup sent the owner to "check your email" to wait for a code that was never
+    // sent. With NO account there's nothing to send, so we check the mail system
+    // itself instead — that way this error says "our email is down" and never "this
+    // address is registered" (M25).
+    let emailWorked: boolean;
     if (owner) {
       const code = await issueCode(email, "reset");
-      await sendEmail({
+      emailWorked = (await sendEmail({
         to: email,
         subject: "Your ScoreFlow password reset code",
         body:
@@ -42,11 +53,15 @@ export async function requestReset(
           `Enter it on the reset screen to choose a new password. ` +
           `It expires in 10 minutes.\n\n` +
           `If this wasn't you, you can ignore this email — your password stays the same.`,
-      });
+      })) !== "failed";
+    } else {
+      emailWorked = await emailSystemWorks();
     }
     await recordFailure(email, ipHash);
+    if (!emailWorked) return { error: MAIL_DOWN, email };
   }
 
   // Same destination regardless of whether the email exists — no enumeration.
+  // (redirect throws — it must not sit inside a try/catch.)
   redirect(`/reset?email=${encodeURIComponent(email)}`);
 }

@@ -87,7 +87,8 @@ export async function sendEmail(message: EmailMessage): Promise<EmailResult> {
  */
 let gmailTransport: Transporter | null = null;
 
-async function sendViaGmail(message: EmailMessage): Promise<EmailResult> {
+/** The shared transport, or null when Gmail isn't usable (so we log instead). */
+async function gmailTransporter(): Promise<Transporter | null> {
   const user = process.env.GMAIL_USER;
   const pass = process.env.GMAIL_APP_PASSWORD;
 
@@ -97,7 +98,7 @@ async function sendViaGmail(message: EmailMessage): Promise<EmailResult> {
     console.warn(
       "[email] EMAIL_PROVIDER=gmail but GMAIL_USER / GMAIL_APP_PASSWORD are not set — logging instead."
     );
-    return logInstead(message);
+    return null;
   }
 
   // Dynamic import so nodemailer is only loaded when Gmail is actually the
@@ -106,9 +107,25 @@ async function sendViaGmail(message: EmailMessage): Promise<EmailResult> {
   gmailTransport ??= nodemailer.createTransport({
     service: "gmail", // nodemailer's preset for smtp.gmail.com
     auth: { user, pass },
+    // ⚠️ Nodemailer's own defaults are far too patient for something a person is
+    // waiting on: 2 minutes to connect, 30s for the greeting, 10 minutes of socket
+    // silence. A refusal (a dead App Password) comes back in a second or two, but if
+    // Gmail ever stops answering instead of refusing, a signup or a "forgot password"
+    // would sit there spinning for minutes. Fail in ~10 seconds and say so — the
+    // caller always has something honest to show, and alerts still retry later.
+    connectionTimeout: 10_000,
+    greetingTimeout: 10_000,
+    socketTimeout: 20_000,
   });
+  return gmailTransport;
+}
 
-  await gmailTransport.sendMail({
+async function sendViaGmail(message: EmailMessage): Promise<EmailResult> {
+  const user = process.env.GMAIL_USER;
+  const transport = await gmailTransporter();
+  if (!transport) return logInstead(message);
+
+  await transport.sendMail({
     // "ScoreFlow <you@gmail.com>" if EMAIL_FROM is set, else just the account.
     // Gmail will rewrite the address to the account either way, but a friendly
     // display name still shows in the inbox.
@@ -127,6 +144,33 @@ function logInstead(message: EmailMessage): EmailResult {
     `\n[email:stub] would send to ${message.to}\n  subject: ${message.subject}\n  ${message.body.split("\n").join("\n  ")}\n`
   );
   return "logged";
+}
+
+/**
+ * Can we send email AT ALL right now? Opens the connection and signs in — it sends
+ * nothing and emails nobody.
+ *
+ * ⚠️ Exists for the flows that must not reveal who has an account. "Forgot password"
+ * only emails an address that really belongs to an owner, so reporting a failed SEND
+ * would quietly answer "yes, this address is registered" (M25). Those flows ask this
+ * instead when there's no account to email, so "we couldn't send" depends on OUR mail
+ * system and nothing else.
+ *
+ * `true` whenever email isn't really being sent (no provider, or missing Gmail
+ * credentials): `sendEmail` logs the message in those modes and never fails, so
+ * there's nothing to warn about.
+ */
+export async function emailSystemWorks(): Promise<boolean> {
+  if (process.env.EMAIL_PROVIDER !== "gmail") return true;
+  try {
+    const transport = await gmailTransporter();
+    if (!transport) return true; // logging mode — sending can't fail
+    await transport.verify(); // connect + authenticate, no message
+    return true;
+  } catch (err) {
+    console.error("[email] connection check failed:", err);
+    return false;
+  }
 }
 
 /** Is a real provider actually configured (and usable)? The settings page uses

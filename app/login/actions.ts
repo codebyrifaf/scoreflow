@@ -15,8 +15,17 @@ import { getOwnerByEmail } from "@/lib/owners";
 import { getOperatorByEmail } from "@/lib/operators";
 import { brandOwnerHome } from "@/lib/brands";
 
-/** Shape the login form reads back: an error message, or nothing on success. */
-export type LoginState = { error: string } | undefined;
+/**
+ * Shape the login form reads back: an error message, or nothing on success.
+ *
+ * `email` is the address that was submitted, handed back so the form can put it
+ * straight back in the box. React clears an uncontrolled form once its action
+ * finishes — including when the action returns an ERROR — so without this, one typo
+ * in the password made you retype your email as well.
+ * (The password is deliberately NOT returned: a password has no business travelling
+ * back down to the browser.)
+ */
+export type LoginState = { error: string; email?: string } | undefined;
 
 /**
  * Handle a login form submission.
@@ -38,7 +47,7 @@ export async function login(
   const password = String(formData.get("password") ?? "");
 
   if (!email || !password) {
-    return { error: "Please enter your email and password." };
+    return { error: "Please enter your email and password.", email };
   }
 
   try {
@@ -51,7 +60,7 @@ export async function login(
     // message for every kind of failure so we never reveal whether the email
     // exists or the password was the wrong part.
     if (error instanceof AuthError) {
-      return { error: "Invalid email or password." };
+      return { error: "Invalid email or password.", email };
     }
     // Anything else is an unexpected bug — let it surface.
     throw error;
@@ -84,7 +93,7 @@ export async function login(
       // Best-effort: even if the sign-out hiccups, /operator pages still enforce
       // requireOperator(); the operator simply wasn't handed the console here.
     }
-    return { error: "Invalid email or password." };
+    return { error: "Invalid email or password.", email };
   }
   const owner = await getOwnerByEmail(email);
   // Brand owner → their account home: a single-venue account goes straight to that

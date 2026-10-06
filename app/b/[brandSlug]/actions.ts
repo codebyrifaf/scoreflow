@@ -31,7 +31,7 @@ import {
 import { getOperatorByEmail } from "@/lib/operators";
 import { validateNewPassword } from "@/lib/passwords";
 import { issueCode } from "@/lib/verification";
-import { sendEmail } from "@/lib/email";
+import { sendEmail, type EmailResult } from "@/lib/email";
 import { appUrl } from "@/lib/app-url";
 
 const SALT_ROUNDS = 10;
@@ -56,9 +56,9 @@ async function sendManagerInvite(
   brandName: string,
   branchName: string,
   code: string
-): Promise<void> {
+): Promise<EmailResult> {
   const link = `${appUrl()}/reset?email=${encodeURIComponent(managerEmail)}&code=${code}`;
-  await sendEmail({
+  return sendEmail({
     to: managerEmail,
     subject: `You've been added as a manager for ${branchName}`,
     body:
@@ -83,11 +83,23 @@ async function lockedPasswordHash(): Promise<string> {
 }
 
 /**
- * Issue the one-time invite code and email the link.
+ * What the owner is told when the invite email didn't go. The account IS set up —
+ * only the email failed — so this says what to do rather than sounding like a failure.
+ */
+const INVITE_NOT_EMAILED =
+  "The manager's account is set up, but we couldn't email their invite. Once email is " +
+  "working again, they can use “Forgot password” on the sign-in page to set their " +
+  "password — their account is already waiting.";
+
+/**
+ * Issue the one-time invite code and email the link. Returns whether the invite
+ * actually went out.
  *
- * BEST-EFFORT on purpose: the manager's account already exists by the time we get
- * here, so a mail hiccup must not undo the owner's action. If the email never lands,
- * "Forgot password" issues a fresh code against the same account. We log and move on.
+ * NEVER THROWS: the manager's account already exists by the time we get here, so a mail
+ * hiccup must not undo the owner's action, and nothing here is rolled back. But it is
+ * no longer SILENT — the caller passes the answer on, because an owner who thinks an
+ * invite was sent will sit waiting for a manager who was never told (the same mistake
+ * signup made).
  *
  * Shared by BOTH entry points — naming a manager when the location is created, and
  * attaching one later — so an invite can never drift between the two.
@@ -96,12 +108,13 @@ async function inviteManager(
   managerEmail: string,
   brandName: string,
   branchName: string
-): Promise<void> {
+): Promise<EmailResult> {
   try {
     const code = await issueCode(managerEmail, "reset", INVITE_TTL_MS);
-    await sendManagerInvite(managerEmail, brandName, branchName, code);
+    return await sendManagerInvite(managerEmail, brandName, branchName, code);
   } catch (err) {
     console.error("[branch] failed to send manager invite:", err);
+    return "failed";
   }
 }
 
@@ -122,13 +135,17 @@ async function managerEmailError(email: string): Promise<string | null> {
   return null;
 }
 
+/** `warning`: it worked, but something the owner must read (an invite that wasn't emailed). */
 export type BranchState =
-  | { ok: true }
+  | { ok: true; warning?: string }
   | { errors: Record<string, string> }
   | undefined;
 export type ResetState = { error: string } | { ok: true } | undefined;
 export type DeleteBranchState = { error: string } | { ok: true } | undefined;
-export type InviteManagerState = { error: string } | { ok: true } | undefined;
+export type InviteManagerState =
+  | { error: string }
+  | { ok: true; warning?: string }
+  | undefined;
 
 /**
  * Validate the EDIT form's fields (name / slug / threshold).
@@ -238,10 +255,11 @@ export async function addBranch(
     return { errors: { form: "Could not add the location. Please try again." } };
   }
 
-  if (invite) await inviteManager(managerEmail, brand.name, name);
+  // The location is created either way; only the invite email can fall over.
+  const invited = invite ? await inviteManager(managerEmail, brand.name, name) : null;
 
   revalidatePath(`/b/${brandSlug}`);
-  return { ok: true };
+  return invited === "failed" ? { ok: true, warning: INVITE_NOT_EMAILED } : { ok: true };
 }
 
 /**
@@ -299,10 +317,10 @@ export async function inviteBranchManager(
     return { error: "Could not add the manager. Please try again." };
   }
 
-  await inviteManager(managerEmail, brand.name, branch.name);
+  const invited = await inviteManager(managerEmail, brand.name, branch.name);
 
   revalidatePath(`/b/${brandSlug}`);
-  return { ok: true };
+  return invited === "failed" ? { ok: true, warning: INVITE_NOT_EMAILED } : { ok: true };
 }
 
 /** Edit a branch's settings. `currentSlug` identifies which branch. */

@@ -261,6 +261,14 @@ export default function SetupStrip({ qr }: { qr: QrMatrix }) {
               Print the kit, stand a card on each table, and you&apos;re taking
               feedback by tonight&apos;s service. No chips, no app, no hardware.
             </p>
+            {/* One line, not a panel: the till link is an ACCELERATOR for the owners
+                who have Square, and must not read as a requirement for everyone else —
+                the whole point of this section is "nothing to buy, nothing to set up". */}
+            <p className="mt-3 text-[15px] leading-relaxed text-[#6E6E73]">
+              On Square? Connect your till in one click — no key, no developer — and
+              bring your menu across with it. Every score then arrives knowing what was
+              on the plate.
+            </p>
           </div>
         </Reveal>
 

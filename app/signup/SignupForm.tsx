@@ -33,6 +33,10 @@ export default function SignupForm() {
     undefined
   );
   const errors = state && "errors" in state ? state.errors : {};
+  // React resets the form after every submit, errors included, putting each field back
+  // to its defaultValue — so these are what keep the typed details on screen. The
+  // password box starts empty again on purpose; it's never sent back from the server.
+  const values = state && "errors" in state ? state.values : undefined;
 
   return (
     <form action={action} className="flex flex-col gap-4">
@@ -43,6 +47,7 @@ export default function SignupForm() {
         <input
           id="businessName"
           name="businessName"
+          defaultValue={values?.businessName ?? ""}
           placeholder="e.g. Uncle Bobo's"
           className={FIELD}
         />
@@ -61,6 +66,7 @@ export default function SignupForm() {
           name="email"
           type="email"
           autoComplete="email"
+          defaultValue={values?.email ?? ""}
           placeholder="you@restaurant.com"
           className={FIELD}
         />

@@ -68,10 +68,11 @@ export async function recordPaymentAction(
 }
 
 /** Suspend an account (non-payment / abuse). Reversible by recording a payment. */
-export async function suspendAccountAction(
-  brandId: number,
-  _formData: FormData
-): Promise<void> {
+// Bound as `suspendAccountAction.bind(null, a.id)` and handed to <form action=…>,
+// which passes a FormData this action has no use for. Declaring a parameter just to
+// ignore it is lint noise for nothing — a function with fewer parameters is still a
+// valid form action (the same call M34 made for `regenerateChips`).
+export async function suspendAccountAction(brandId: number): Promise<void> {
   const access = await requireOperator();
   if (!access.authorized) return;
 
@@ -241,7 +242,11 @@ async function audit(input: {
   }
 }
 
-export type RescueState = { error: string } | { ok: true } | undefined;
+/** `warning`: the login DID move, but at least one of the two notices didn't send. */
+export type RescueState =
+  | { error: string }
+  | { ok: true; warning?: string }
+  | undefined;
 
 /**
  * RESCUE: change an account's login email.
@@ -311,10 +316,29 @@ export async function rescueAccountEmail(
     `password" to set a password).\n\n` +
     `If you did NOT ask for this, reply immediately — your account may have been ` +
     `taken over.`;
-  await sendEmail({ to: newEmail, subject: "Your ScoreFlow login email was changed", body });
-  await sendEmail({ to: oldEmail, subject: "Your ScoreFlow login email was changed", body });
+  const subject = "Your ScoreFlow login email was changed";
+  const toNew = await sendEmail({ to: newEmail, subject, body });
+  const toOld = await sendEmail({ to: oldEmail, subject, body });
 
   revalidatePath("/operator");
+
+  // ⚠️ Whether those notices actually SENT used to be ignored, while the screen said
+  // "Both addresses have been emailed" regardless. That matters more here than almost
+  // anywhere else: the OLD address is how the real owner finds out their login was
+  // moved without them, and the operator is the only person who can tell them by
+  // another route. The change itself stands either way — it's already done.
+  const undelivered = [
+    toNew === "failed" ? newEmail : null,
+    toOld === "failed" ? oldEmail : null,
+  ].filter((e): e is string => e !== null);
+  if (undelivered.length > 0) {
+    return {
+      ok: true,
+      warning:
+        `The login was moved, but we couldn't email ${undelivered.join(" or ")}. ` +
+        `Tell them another way: they sign in with ${newEmail} and use “Forgot password” to set one.`,
+    };
+  }
   return { ok: true };
 }
 

@@ -10,7 +10,13 @@
  * the input after a successful add.
  */
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import {
+  useActionState,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { addTable, removeTable, type AddTableState } from "./actions";
 import QrCode from "@/app/QrCode";
 import type { QrMatrix } from "@/lib/qr";
@@ -109,10 +115,19 @@ export default function TablesManager({
     undefined
   );
 
-  // Absolute-URL origin (client only). Starts "" so server and client render the
-  // same initial HTML (no hydration mismatch), then fills in after mount.
-  const [origin, setOrigin] = useState("");
-  useEffect(() => setOrigin(window.location.origin), []);
+  // Absolute-URL origin (client only). Renders "" on the server AND on the first
+  // client render, so the HTML matches and there's no hydration mismatch; the real
+  // origin appears straight after.
+  //
+  // `useSyncExternalStore` is React's own way to read a browser-only value: the third
+  // argument is the server snapshot (""), the second is the browser's. It replaces a
+  // "setState in an effect", which renders twice and is what the lint rule objects to.
+  // The store never changes during the page's life, so `subscribe` has nothing to do.
+  const origin = useSyncExternalStore(
+    () => () => {},
+    () => window.location.origin,
+    () => ""
+  );
 
   // Clear the input after a successful add.
   const formRef = useRef<HTMLFormElement>(null);

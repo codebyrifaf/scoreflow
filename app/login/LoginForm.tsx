@@ -48,7 +48,10 @@ export default function LoginForm({
           type="email"
           autoComplete="email"
           required
-          defaultValue={defaultEmail}
+          // After a failed attempt React resets the form, putting each field back to
+          // its defaultValue — so handing back the submitted address here is what
+          // keeps it on screen. Only the password has to be typed again.
+          defaultValue={state?.email ?? defaultEmail}
           placeholder="owner@example.test"
           className={FIELD_CLASS}
         />

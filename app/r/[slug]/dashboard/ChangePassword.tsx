@@ -25,12 +25,22 @@ export default function ChangePassword() {
     undefined
   );
 
+  // Two different jobs, and only one of them belongs in an effect.
+  //
+  // Clearing the typed fields touches the DOM (an external system), so it stays here.
+  // Flipping to the "done" panel is state, and setting state straight from an effect
+  // costs an extra render — React's own advice is to adjust it while rendering when
+  // the value it depends on changes, which is what the block below does.
   useEffect(() => {
-    if (state && "ok" in state) {
-      formRef.current?.reset();
-      setDone(true);
-    }
+    if (state && "ok" in state) formRef.current?.reset();
   }, [state]);
+
+  const [lastState, setLastState] = useState(state);
+  if (state !== lastState) {
+    setLastState(state);
+    // Not `||=`: a second attempt that fails must take the panel back down.
+    setDone(!!state && "ok" in state);
+  }
 
   function openModal() {
     setDone(false);

@@ -25,6 +25,8 @@ export default function ForgotForm() {
           name="email"
           type="email"
           autoComplete="email"
+          // Kept after an error — React resets the form to its defaultValue.
+          defaultValue={state?.email ?? ""}
           placeholder="you@restaurant.com"
           className={FIELD}
         />

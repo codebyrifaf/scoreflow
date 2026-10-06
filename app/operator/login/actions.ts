@@ -29,7 +29,9 @@ import { redirect } from "next/navigation";
 import { signIn, signOut } from "@/auth";
 import { getOperatorByEmail } from "@/lib/operators";
 
-export type OperatorLoginState = { error: string } | undefined;
+/** `email` is handed back so the form can keep it — see the note on `LoginState`
+ *  (React clears an uncontrolled form once the action finishes, errors included). */
+export type OperatorLoginState = { error: string; email?: string } | undefined;
 
 /** One message for every failure — never reveal which part was wrong. */
 const GENERIC = "Invalid email or password.";
@@ -42,14 +44,14 @@ export async function operatorLogin(
   const password = String(formData.get("password") ?? "");
 
   if (!email || !password) {
-    return { error: "Please enter your email and password." };
+    return { error: "Please enter your email and password.", email };
   }
 
   try {
     // Normal, hardened sign-in (rate-limited, timing-safe — see auth.ts).
     await signIn("credentials", { email, password, redirect: false });
   } catch (error) {
-    if (error instanceof AuthError) return { error: GENERIC };
+    if (error instanceof AuthError) return { error: GENERIC, email };
     throw error; // an unexpected bug — let it surface
   }
 
@@ -62,7 +64,7 @@ export async function operatorLogin(
     } catch {
       // Even if this fails, requireOperator() still refuses them everywhere.
     }
-    return { error: GENERIC };
+    return { error: GENERIC, email };
   }
 
   // redirect() throws, so it must live outside the try/catch above.

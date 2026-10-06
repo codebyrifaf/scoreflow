@@ -118,11 +118,11 @@ export type ResolveState = { error: string } | { ok: true } | undefined;
  * feedback if the id were guessed. It's the pairing that closes it, the same way
  * `deleteTable` (lib/tables.ts) is written.
  */
+// Neither the previous state nor any form field is read, and a function with fewer
+// parameters is still a valid `useActionState` action (as `regenerateChips` notes).
 export async function markResolved(
   slug: string,
-  feedbackId: number,
-  _prevState: ResolveState,
-  _formData: FormData
+  feedbackId: number
 ): Promise<ResolveState> {
   const access = await requireDashboardAccess(slug);
   if (!access.authorized) {

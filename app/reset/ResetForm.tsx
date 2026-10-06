@@ -29,6 +29,7 @@ export default function ResetForm({
 
   // Resend + 60s cooldown — same as the signup screen, for consistency (M37).
   const [resent, setResent] = useState(false);
+  const [resendError, setResendError] = useState<string | null>(null);
   const [isResending, startResend] = useTransition();
   const [cooldown, setCooldown] = useState(RESEND_COOLDOWN);
   useEffect(() => {
@@ -40,10 +41,22 @@ export default function ResetForm({
   const canResend = cooldown <= 0 && !isResending;
   function resend() {
     if (!canResend) return;
+    setResendError(null);
     startResend(async () => {
-      await resendResetCode(email);
-      setResent(true);
+      // The cooldown restarts either way — a failed send shouldn't be hammered either.
       setCooldown(RESEND_COOLDOWN);
+      try {
+        const result = await resendResetCode(email);
+        if ("error" in result) {
+          // Never "Sent!" for an email that didn't go.
+          setResendError(result.error);
+          return;
+        }
+      } catch {
+        setResendError("We couldn't send your reset email just now. Please try again in a few minutes.");
+        return;
+      }
+      setResent(true);
       setTimeout(() => setResent(false), 4000);
     });
   }
@@ -70,6 +83,11 @@ export default function ResetForm({
                   : "Resend code"}
           </button>
         </p>
+        {resendError && (
+          <p role="alert" className="text-center text-sm font-medium text-red-600">
+            {resendError}
+          </p>
+        )}
       </div>
 
       <div className="flex flex-col gap-1.5">
