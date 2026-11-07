@@ -36,7 +36,7 @@ type Role = "operator" | "brand" | "owner";
 type AccountKind = "operator" | "owner";
 
 /** The identity claims — safe to authorize with, after a DB re-check. */
-interface IdentityClaims {
+export interface IdentityClaims {
   /** Primary key in the `Operator` or `Owner` table (see `kind`). */
   accountId?: number;
   kind?: AccountKind;
@@ -45,7 +45,7 @@ interface IdentityClaims {
 }
 
 /** The convenience claims — display and redirects only. Can be stale. */
-interface DisplayClaims {
+export interface DisplayClaims {
   role?: Role;
   restaurantId?: number;
   restaurantSlug?: string;
@@ -63,11 +63,17 @@ declare module "next-auth" {
   }
 }
 
-// NOTE: the `JWT` interface is actually declared in `@auth/core/jwt` (the
-// `next-auth/jwt` path just re-exports it). TypeScript interface merging has to
-// target the module that DECLARES the interface, so we augment `@auth/core/jwt`
-// here — otherwise the extra fields wouldn't show up on the `token` in auth.ts.
-declare module "@auth/core/jwt" {
-  /** The decoded session token. */
-  interface JWT extends IdentityClaims, DisplayClaims {}
-}
+// ⚠️ The JWT (session token) is deliberately NOT augmented here any more.
+//
+// Its interface is declared in `@auth/core/jwt`, and an augmentation only works if
+// TypeScript can FIND that module from this file. Auth.js declares an optional peer
+// of nodemailer ^7 || ^8, while we run the patched nodemailer 10 (see `overrides` in
+// package.json) — so npm installs `@auth/core` inside `next-auth`'s own folder, out
+// of reach from here. The augmentation then silently became a separate, unused
+// module, and every custom token field turned into `unknown`. (Augmenting the
+// `next-auth/jwt` re-export instead was tried and does not merge.)
+//
+// So auth.ts reads the token through an explicit view built from the two interfaces
+// above (`IdentityClaims & DisplayClaims`). Those fields are written by our own
+// `jwt` callback one step earlier, so the view is accurate — and unlike an
+// augmentation, it can't quietly stop working when npm rearranges node_modules.

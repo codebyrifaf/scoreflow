@@ -33,6 +33,7 @@
 import { headers } from "next/headers";
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
+import type { DisplayClaims, IdentityClaims } from "@/types/next-auth";
 import bcrypt from "bcryptjs";
 import { getOwnerByEmail } from "@/lib/owners";
 import { getOperatorByEmail } from "@/lib/operators";
@@ -205,15 +206,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
      * and redirects only.
      */
     async session({ session, token }) {
+      // The fields our own `jwt` callback (above) wrote onto the token. Read through
+      // an explicit view because the JWT type can't be augmented reliably — see the
+      // note at the bottom of types/next-auth.d.ts.
+      const claims = token as IdentityClaims & DisplayClaims;
       if (session.user) {
-        session.user.accountId = token.accountId;
-        session.user.kind = token.kind;
-        session.user.tokenVersion = token.tokenVersion;
-        session.user.role = token.role;
-        session.user.restaurantId = token.restaurantId;
-        session.user.restaurantSlug = token.restaurantSlug;
-        session.user.brandId = token.brandId;
-        session.user.brandSlug = token.brandSlug;
+        session.user.accountId = claims.accountId;
+        session.user.kind = claims.kind;
+        session.user.tokenVersion = claims.tokenVersion;
+        session.user.role = claims.role;
+        session.user.restaurantId = claims.restaurantId;
+        session.user.restaurantSlug = claims.restaurantSlug;
+        session.user.brandId = claims.brandId;
+        session.user.brandSlug = claims.brandSlug;
       }
       return session;
     },

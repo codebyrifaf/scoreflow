@@ -97,9 +97,14 @@ export function squareAuthorizeUrl(state: string): string {
   url.searchParams.set("scope", SQUARE_SCOPES.join(" "));
   url.searchParams.set("state", state);
   // Sent explicitly so a mismatch with the registered URL fails loudly at Square
-  // rather than returning the owner somewhere unexpected. (`session=false` is
-  // deliberately absent: Square's Sandbox doesn't support it.)
+  // rather than returning the owner somewhere unexpected.
   url.searchParams.set("redirect_uri", squareRedirectUri());
+  // ⚠️ PRODUCTION ONLY. Square's docs say production authorize URLs "must" set
+  // `session=false`, so Square asks the owner to sign in and choose the business
+  // instead of silently reusing whichever Square account this browser is already
+  // signed in to (a staff member's, or a different business). The Sandbox doesn't
+  // support it — Square ignores it there — so it's only sent in production.
+  if (squareEnvironment() === "production") url.searchParams.set("session", "false");
   return url.toString();
 }
 
