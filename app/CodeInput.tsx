@@ -19,7 +19,7 @@
 import { useRef, useState } from "react";
 
 const BOX =
-  "h-14 w-11 rounded-2xl border border-[#E5E7EB] bg-white text-center text-2xl font-semibold text-[#111827] outline-none transition duration-200 focus:border-amber-500 focus:ring-4 focus:ring-amber-500/15";
+  "h-14 w-11 rounded-2xl border border-[#E2E8F0] bg-white text-center text-2xl font-semibold text-[#0F172A] outline-none transition duration-200 focus:border-aqua-600 focus:ring-4 focus:ring-aqua-500/25";
 
 export default function CodeInput({
   name = "code",

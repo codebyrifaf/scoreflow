@@ -68,7 +68,7 @@ function quietFor(iso: string | null): { text: string; cold: boolean } {
 function StatusBadge({ a }: { a: AccountRow }) {
   if (a.isComped) {
     return (
-      <span className="rounded-full bg-[#F3F4F6] px-2.5 py-1 text-xs font-medium text-[#6B7280]">
+      <span className="rounded-full bg-[#F1F5F9] px-2.5 py-1 text-xs font-medium text-[#64748B]">
         Comped
       </span>
     );
@@ -127,14 +127,14 @@ function PaymentDialog({
       className="m-auto max-h-[90vh] w-[calc(100%-2rem)] max-w-sm rounded-3xl bg-white p-0 shadow-xl backdrop:bg-black/40"
     >
       <div className="p-6">
-        <h2 className="text-xl font-bold text-[#111827]">Record payment</h2>
-        <p className="mt-1 text-sm text-[#6B7280]">
+        <h2 className="text-xl font-bold text-[#0F172A]">Record payment</h2>
+        <p className="mt-1 text-sm text-[#64748B]">
           {target.name} — logs the money received and switches the account on.
         </p>
 
         <form action={action} className="mt-5 flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="amountPounds" className="text-sm font-medium text-[#111827]">
+            <label htmlFor="amountPounds" className="text-sm font-medium text-[#0F172A]">
               Amount received (£)
             </label>
             {/* Typed in POUNDS; the server converts to integer pence exactly once
@@ -147,25 +147,25 @@ function PaymentDialog({
               step={0.01}
               autoFocus
               placeholder="29.99"
-              className="w-full rounded-2xl border border-[#E5E7EB] px-4 py-3 text-base outline-none focus:border-[#111827] focus:ring-4 focus:ring-[#111827]/10"
+              className="w-full rounded-2xl border border-[#E2E8F0] px-4 py-3 text-base outline-none focus:border-[#0F172A] focus:ring-4 focus:ring-[#0F172A]/10"
             />
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="periodDays" className="text-sm font-medium text-[#111827]">
+            <label htmlFor="periodDays" className="text-sm font-medium text-[#0F172A]">
               Covers
             </label>
             <select
               id="periodDays"
               name="periodDays"
               defaultValue={30}
-              className="w-full rounded-2xl border border-[#E5E7EB] bg-white px-4 py-3 text-base outline-none focus:border-[#111827]"
+              className="w-full rounded-2xl border border-[#E2E8F0] bg-white px-4 py-3 text-base outline-none focus:border-[#0F172A]"
             >
               <option value={30}>1 month</option>
               <option value={90}>3 months</option>
               <option value={365}>1 year</option>
             </select>
-            <p className="text-xs text-[#9CA3AF]">
+            <p className="text-xs text-[#94A3B8]">
               Renewing early keeps any days they&apos;ve already paid for.
             </p>
           </div>
@@ -180,14 +180,14 @@ function PaymentDialog({
             <button
               type="button"
               onClick={() => ref.current?.close()}
-              className="flex-1 rounded-2xl border border-[#E5E7EB] px-4 py-3 font-semibold text-[#111827] hover:bg-[#F9FAFB]"
+              className="flex-1 rounded-2xl border border-[#E2E8F0] px-4 py-3 font-semibold text-[#0F172A] hover:bg-[#F8FAFC]"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={pending}
-              className="flex-1 rounded-2xl bg-[#111827] px-4 py-3 font-semibold text-white hover:bg-black disabled:bg-[#E5E7EB] disabled:text-[#9CA3AF]"
+              className="flex-1 rounded-2xl bg-brand px-4 py-3 font-semibold text-white hover:bg-brand-deep disabled:bg-[#E2E8F0] disabled:text-[#94A3B8]"
             >
               {pending ? "Saving…" : "Record"}
             </button>
@@ -228,7 +228,7 @@ function SupportTools({ a }: { a: AccountRow }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="mt-3 text-xs font-medium text-[#9CA3AF] underline hover:text-[#6B7280]"
+        className="mt-3 text-xs font-medium text-[#94A3B8] underline hover:text-[#64748B]"
       >
         Support tools
       </button>
@@ -236,15 +236,15 @@ function SupportTools({ a }: { a: AccountRow }) {
   }
 
   return (
-    <div className="mt-3 rounded-xl border border-[#E5E7EB] bg-[#FAFAFA] p-4">
+    <div className="mt-3 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-4">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold uppercase tracking-wide text-[#6B7280]">
+        <p className="text-xs font-semibold uppercase tracking-wide text-[#64748B]">
           Support tools
         </p>
         <button
           type="button"
           onClick={() => setOpen(false)}
-          className="text-xs text-[#9CA3AF] hover:text-[#6B7280]"
+          className="text-xs text-[#94A3B8] hover:text-[#64748B]"
         >
           Hide
         </button>
@@ -252,7 +252,7 @@ function SupportTools({ a }: { a: AccountRow }) {
 
       {/* RESCUE — the only way back for someone who lost their inbox. */}
       <form action={rescueAction} className="mt-3">
-        <label className="text-xs text-[#6B7280]">
+        <label className="text-xs text-[#64748B]">
           Lost access to their email? Move the login to a new address. They&apos;ll
           be signed out everywhere, and <b>both</b> addresses are emailed.
         </label>
@@ -261,12 +261,12 @@ function SupportTools({ a }: { a: AccountRow }) {
             name="newEmail"
             type="email"
             placeholder="new@email.com"
-            className="min-w-0 flex-1 rounded-lg border border-[#E5E7EB] px-3 py-1.5 text-sm outline-none focus:border-[#111827]"
+            className="min-w-0 flex-1 rounded-lg border border-[#E2E8F0] px-3 py-1.5 text-sm outline-none focus:border-[#0F172A]"
           />
           <button
             type="submit"
             disabled={rescuing}
-            className="flex-none rounded-lg border border-[#E5E7EB] bg-white px-3 py-1.5 text-sm font-medium text-[#111827] hover:bg-[#F3F4F6] disabled:text-[#9CA3AF]"
+            className="flex-none rounded-lg border border-[#E2E8F0] bg-white px-3 py-1.5 text-sm font-medium text-[#0F172A] hover:bg-[#F1F5F9] disabled:text-[#94A3B8]"
           >
             {rescuing ? "Moving…" : "Move login"}
           </button>
@@ -286,20 +286,20 @@ function SupportTools({ a }: { a: AccountRow }) {
       </form>
 
       {/* DELETE — abuse / legal / purge. Suspend first if it's just non-payment. */}
-      <form action={delAction} className="mt-4 border-t border-[#E5E7EB] pt-3">
+      <form action={delAction} className="mt-4 border-t border-[#E2E8F0] pt-3">
         {/* Rewritten for clarity (the old one-liner read as a cramped run-on, and the
             "suspend instead" hint was easy to miss). The explicit `{" "}` spacers around
             the bold words are just belt-and-suspenders so a space is never in doubt. */}
-        <label className="text-xs leading-relaxed text-[#6B7280]">
-          <b className="text-[#111827]">Permanently delete</b>{" "}
+        <label className="text-xs leading-relaxed text-[#64748B]">
+          <b className="text-[#0F172A]">Permanently delete</b>{" "}
           this account and all its data — every location and all its diner feedback.
           This{" "}
-          <b className="text-[#111827]">cannot be undone</b>, so only use it for abuse
+          <b className="text-[#0F172A]">cannot be undone</b>, so only use it for abuse
           or a legal request. For non-payment, use{" "}
-          <b className="text-[#111827]">Suspend</b>{" "}
+          <b className="text-[#0F172A]">Suspend</b>{" "}
           instead — that just pauses the account and can be switched back on later.
           To confirm, type the account name,{" "}
-          <span className="font-semibold text-[#111827]">{a.name}</span>, below.
+          <span className="font-semibold text-[#0F172A]">{a.name}</span>, below.
         </label>
         <div className="mt-1.5 flex gap-2">
           <input
@@ -308,12 +308,12 @@ function SupportTools({ a }: { a: AccountRow }) {
             value={confirmText}
             onChange={(e) => setConfirmText(e.target.value)}
             placeholder={a.name}
-            className="min-w-0 flex-1 rounded-lg border border-[#E5E7EB] px-3 py-1.5 text-sm outline-none focus:border-red-500"
+            className="min-w-0 flex-1 rounded-lg border border-[#E2E8F0] px-3 py-1.5 text-sm outline-none focus:border-red-500"
           />
           <button
             type="submit"
             disabled={deleting || confirmText.trim() !== a.name}
-            className="flex-none rounded-lg bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700 disabled:bg-[#E5E7EB] disabled:text-[#9CA3AF]"
+            className="flex-none rounded-lg bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700 disabled:bg-[#E2E8F0] disabled:text-[#94A3B8]"
           >
             {deleting ? "Deleting…" : "Delete"}
           </button>
@@ -321,7 +321,7 @@ function SupportTools({ a }: { a: AccountRow }) {
         {delErr && <p className="mt-1 text-xs font-medium text-red-600">{delErr}</p>}
       </form>
 
-      <p className="mt-3 text-[11px] leading-relaxed text-[#9CA3AF]">
+      <p className="mt-3 text-[11px] leading-relaxed text-[#94A3B8]">
         Both actions are recorded in the audit log with your email and the time.
       </p>
     </div>
@@ -337,7 +337,7 @@ export default function OperatorAccounts({
 
   if (accounts.length === 0) {
     return (
-      <p className="rounded-2xl border border-dashed border-[#E5E7EB] p-8 text-center text-sm text-[#6B7280]">
+      <p className="rounded-2xl border border-dashed border-[#E2E8F0] p-8 text-center text-sm text-[#64748B]">
         No customers yet. When a restaurant signs up at{" "}
         <span className="font-mono">/signup</span>, they&apos;ll appear here.
       </p>
@@ -352,17 +352,17 @@ export default function OperatorAccounts({
           return (
             <div
               key={a.id}
-              className="rounded-2xl border border-[#E5E7EB] bg-white p-5"
+              className="rounded-2xl border border-[#E2E8F0] bg-white p-5"
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="truncate text-base font-semibold text-[#111827]">
+                    <h3 className="truncate text-base font-semibold text-[#0F172A]">
                       {a.name}
                     </h3>
                     <StatusBadge a={a} />
                   </div>
-                  <p className="mt-0.5 truncate text-sm text-[#6B7280]">
+                  <p className="mt-0.5 truncate text-sm text-[#64748B]">
                     {a.ownerEmail}
                   </p>
                 </div>
@@ -372,7 +372,7 @@ export default function OperatorAccounts({
                     <button
                       type="button"
                       onClick={() => setPayTarget(a)}
-                      className="rounded-lg bg-[#111827] px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-black"
+                      className="rounded-lg bg-brand px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-brand-deep"
                     >
                       Record payment
                     </button>
@@ -399,7 +399,7 @@ export default function OperatorAccounts({
                     <form action={uncompAccountAction.bind(null, a.id)}>
                       <button
                         type="submit"
-                        className="rounded-lg px-2.5 py-1.5 text-sm font-medium text-[#6B7280] transition-colors hover:bg-[#F9FAFB]"
+                        className="rounded-lg px-2.5 py-1.5 text-sm font-medium text-[#64748B] transition-colors hover:bg-[#F8FAFC]"
                       >
                         End free access
                       </button>
@@ -408,7 +408,7 @@ export default function OperatorAccounts({
                     <form action={compAccountAction.bind(null, a.id)}>
                       <button
                         type="submit"
-                        className="rounded-lg px-2.5 py-1.5 text-sm font-medium text-[#6B7280] transition-colors hover:bg-[#F9FAFB]"
+                        className="rounded-lg px-2.5 py-1.5 text-sm font-medium text-[#64748B] transition-colors hover:bg-[#F8FAFC]"
                       >
                         Make free
                       </button>
@@ -421,32 +421,32 @@ export default function OperatorAccounts({
                   about to leave, and that's what you act on. */}
               <div className="mt-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
                 <div>
-                  <div className="text-xs text-[#9CA3AF]">Paid to date</div>
-                  <div className="font-semibold text-[#111827]">
+                  <div className="text-xs text-[#94A3B8]">Paid to date</div>
+                  <div className="font-semibold text-[#0F172A]">
                     {a.totalPaid > 0 ? formatGbp(a.totalPaid) : "—"}
                   </div>
                 </div>
                 <div>
-                  <div className="text-xs text-[#9CA3AF]">Per month</div>
-                  <div className="font-semibold text-[#111827]">
+                  <div className="text-xs text-[#94A3B8]">Per month</div>
+                  <div className="font-semibold text-[#0F172A]">
                     {a.monthlyPricePence > 0 ? formatGbp(a.monthlyPricePence) : "—"}
                   </div>
                 </div>
                 <div>
-                  <div className="text-xs text-[#9CA3AF]">Responses</div>
-                  <div className="font-semibold text-[#111827]">{a.responses}</div>
+                  <div className="text-xs text-[#94A3B8]">Responses</div>
+                  <div className="font-semibold text-[#0F172A]">{a.responses}</div>
                 </div>
                 <div>
-                  <div className="text-xs text-[#9CA3AF]">Last used</div>
+                  <div className="text-xs text-[#94A3B8]">Last used</div>
                   <div
-                    className={`font-semibold ${quiet.cold ? "text-red-600" : "text-[#111827]"}`}
+                    className={`font-semibold ${quiet.cold ? "text-red-600" : "text-[#0F172A]"}`}
                   >
                     {quiet.text}
                   </div>
                 </div>
               </div>
 
-              <p className="mt-3 border-t border-[#F3F4F6] pt-3 text-xs text-[#9CA3AF]">
+              <p className="mt-3 border-t border-[#F1F5F9] pt-3 text-xs text-[#94A3B8]">
                 Joined {shortDate(a.createdAt)} ·{" "}
                 {a.locations === 1 ? "1 location" : `${a.locations} locations`}
                 {a.currentPeriodEnd
@@ -457,7 +457,7 @@ export default function OperatorAccounts({
               {/* See every branch's review links + turn off a bad one (M39). */}
               <Link
                 href={`/operator/customers/${a.id}/links`}
-                className="mt-2 inline-block text-xs font-medium text-amber-600 hover:underline"
+                className="mt-2 inline-block text-xs font-medium text-aqua-700 hover:underline"
               >
                 Review links →
               </Link>

@@ -53,9 +53,9 @@ const RECENT_LIMIT = 50;
 export const dynamic = "force-dynamic";
 
 // ── Style tokens (shared look with the feedback + login pages) ────────────────
-const CARD_CLASS = "rounded-2xl border border-[#E5E7EB] bg-white p-5";
+const CARD_CLASS = "rounded-2xl border border-[#E2E8F0] bg-white p-5";
 const PILL_BTN_CLASS =
-  "rounded-full border border-[#E5E7EB] px-3 py-1.5 text-sm font-medium text-[#111827] transition-colors hover:bg-[#F9FAFB]";
+  "rounded-full border border-[#E2E8F0] px-3 py-1.5 text-sm font-medium text-[#0F172A] transition-colors hover:bg-[#F8FAFC]";
 
 /**
  * A platform id → its display name ("yelp" → "Yelp"). Falls back to the raw id, so an
@@ -71,17 +71,17 @@ function platformName(id: string): string {
 /** Shown when a signed-in user opens a branch dashboard they can't access. */
 function NotAuthorized({ homeHref }: { homeHref: string }) {
   return (
-    <main className="font-system flex min-h-dvh w-full flex-col items-center justify-center gap-4 bg-white px-5 py-12 text-center text-[#111827]">
+    <main className="font-system flex min-h-dvh w-full flex-col items-center justify-center gap-4 bg-white px-5 py-12 text-center text-[#0F172A]">
       <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-100 text-3xl text-red-600">
         ⛔
       </div>
       <h1 className="text-2xl font-bold">Not authorized</h1>
-      <p className="text-[#6B7280]">
+      <p className="text-[#64748B]">
         You&apos;re signed in, but this dashboard isn&apos;t one you can view.
       </p>
       <Link
         href={homeHref}
-        className="mt-2 rounded-2xl bg-amber-500 px-6 py-3 font-semibold text-white transition-colors hover:bg-amber-600"
+        className="mt-2 rounded-2xl bg-brand px-6 py-3 font-semibold text-white transition-colors hover:bg-brand-deep"
       >
         Go back
       </Link>
@@ -186,7 +186,7 @@ export default async function DashboardPage({
       : null;
 
   return (
-    <main className="font-system min-h-dvh w-full bg-white text-[#111827]">
+    <main className="font-system min-h-dvh w-full bg-white text-[#0F172A]">
       <div className="mx-auto w-full max-w-3xl px-5 py-8">
         {/* Header (reorganised M31).
             Row 1: who you are + the SESSION control. Sign out is pulled out to the
@@ -197,13 +197,13 @@ export default async function DashboardPage({
         <header className="mb-6">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h1 className="text-2xl font-bold tracking-tight text-[#111827]">
+              <h1 className="text-2xl font-bold tracking-tight text-[#0F172A]">
                 {restaurant.name}
               </h1>
-              <p className="text-sm text-[#6B7280]">Feedback dashboard</p>
+              <p className="text-sm text-[#64748B]">Feedback dashboard</p>
             </div>
             <div className="flex flex-none items-center gap-3">
-              <span className="hidden text-sm text-[#9CA3AF] sm:inline">
+              <span className="hidden text-sm text-[#94A3B8] sm:inline">
                 {access.ownerEmail}
               </span>
               <form action={logout}>
@@ -254,7 +254,7 @@ export default async function DashboardPage({
               <b>No review links set.</b> Your guests aren&apos;t being invited to
               review you anywhere, so you&apos;re not getting any new reviews.{" "}
               <Link
-                href={`/r/${slug}/settings`}
+                href={`/r/${slug}/settings?section=reviews`}
                 className="font-semibold underline"
               >
                 Add your links
@@ -273,7 +273,7 @@ export default async function DashboardPage({
         />
 
         {/* Time-range segmented control */}
-        <div className="mb-6 inline-flex rounded-full bg-[#F3F4F6] p-1 text-sm">
+        <div className="mb-6 inline-flex rounded-full bg-[#F1F5F9] p-1 text-sm">
           {RANGES.map((r) => {
             const activeTab = r === range;
             return (
@@ -282,8 +282,8 @@ export default async function DashboardPage({
                 href={`/r/${slug}/dashboard?range=${r}`}
                 className={`rounded-full px-4 py-1.5 font-medium transition-colors ${
                   activeTab
-                    ? "bg-white text-[#111827] shadow-sm"
-                    : "text-[#6B7280] hover:text-[#111827]"
+                    ? "bg-white text-[#0F172A] shadow-sm"
+                    : "text-[#64748B] hover:text-[#0F172A]"
                 }`}
               >
                 {RANGE_LABELS[r]}
@@ -295,12 +295,12 @@ export default async function DashboardPage({
         {/* Summary cards */}
         <section className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
           <div className={CARD_CLASS}>
-            <div className="text-sm text-[#6B7280]">Total responses</div>
-            <div className="mt-1 text-3xl font-bold text-[#111827]">{total}</div>
+            <div className="text-sm text-[#64748B]">Total responses</div>
+            <div className="mt-1 text-3xl font-bold text-[#0F172A]">{total}</div>
           </div>
           <div className={CARD_CLASS}>
-            <div className="text-sm text-[#6B7280]">Average rating</div>
-            <div className="mt-1 text-3xl font-bold text-[#111827]">
+            <div className="text-sm text-[#64748B]">Average rating</div>
+            <div className="mt-1 text-3xl font-bold text-[#0F172A]">
               {averageRating === null
                 ? "—"
                 : `${averageRating.toFixed(1)} / 10`}
@@ -324,15 +324,15 @@ export default async function DashboardPage({
               {/* "Reviews left" was ambiguous — it reads as "reviews REMAINING", not
                   "reviews they left", and sitting above a percentage it was actively
                   confusing. This is a click-through rate; say so. */}
-              <div className="text-sm text-[#6B7280]">Tapped through</div>
-              <div className="mt-1 text-3xl font-bold text-[#111827]">
+              <div className="text-sm text-[#64748B]">Tapped through</div>
+              <div className="mt-1 text-3xl font-bold text-[#0F172A]">
                 {reviewRatePct === null ? "—" : `${reviewRatePct}%`}
               </div>
-              <div className="mt-1 text-xs text-[#9CA3AF]">
+              <div className="mt-1 text-xs text-[#94A3B8]">
                 {reviewStats.clicked} of {reviewStats.invited} guests invited
               </div>
               {clicksByPlatform.length > 0 && (
-                <div className="mt-2 text-xs text-[#6B7280]">
+                <div className="mt-2 text-xs text-[#64748B]">
                   {clicksByPlatform
                     .map((c) => `${platformName(c.platform)} ${c.count}`)
                     .join(" · ")}
@@ -354,17 +354,22 @@ export default async function DashboardPage({
         {/* Trend — last 7 days daily average */}
         <section className={`mb-4 ${CARD_CLASS}`}>
           <div className="mb-3 flex items-baseline justify-between">
-            <span className="text-sm text-[#6B7280]">
+            <span className="text-sm text-[#64748B]">
               Daily average — last 7 days
             </span>
-            <span className="text-xs text-[#9CA3AF]">out of 10</span>
+            <span className="text-xs text-[#94A3B8]">out of 10</span>
           </div>
-          <div className="flex h-24 items-end gap-2">
+          {/* ⚠️ No `items-end` on this row. The columns must STRETCH to the row's
+              fixed height: a bar's height is a percentage of its column, and a
+              percentage of a column that only wraps its content is zero — every bar
+              rendered 0px tall and the chart looked empty. The inner wrapper's
+              `items-end` is what sits each bar on the baseline. */}
+          <div className="flex h-24 gap-2">
             {days.map((d, i) => (
               <div key={i} className="flex flex-1 flex-col items-center gap-1">
                 <div className="flex w-full flex-1 items-end">
                   <div
-                    className="w-full rounded-t-md bg-amber-500"
+                    className="w-full rounded-t-md bg-brand"
                     style={{
                       height: d.avg !== null ? `${(d.avg / 10) * 100}%` : "3px",
                       opacity: d.avg !== null ? 1 : 0.15,
@@ -378,7 +383,7 @@ export default async function DashboardPage({
                     }
                   />
                 </div>
-                <span className="text-[10px] text-[#9CA3AF]">{d.label}</span>
+                <span className="text-[10px] text-[#94A3B8]">{d.label}</span>
               </div>
             ))}
           </div>
@@ -387,14 +392,14 @@ export default async function DashboardPage({
         {/* Top mentions (quick-tap tags) */}
         {topTags.length > 0 && (
           <section className={`mb-8 ${CARD_CLASS}`}>
-            <div className="mb-3 text-sm text-[#6B7280]">Top mentions</div>
+            <div className="mb-3 text-sm text-[#64748B]">Top mentions</div>
             <div className="flex flex-wrap gap-2">
               {topTags.map(({ tag, count }) => (
                 <span
                   key={tag}
-                  className="rounded-full bg-[#F3F4F6] px-3 py-1 text-sm font-medium text-[#111827]"
+                  className="rounded-full bg-[#F1F5F9] px-3 py-1 text-sm font-medium text-[#0F172A]"
                 >
-                  {tag} <span className="text-[#9CA3AF]">×{count}</span>
+                  {tag} <span className="text-[#94A3B8]">×{count}</span>
                 </span>
               ))}
             </div>
@@ -408,27 +413,27 @@ export default async function DashboardPage({
             worklist of unhappy diners). "Show me my worst" now lives on the All-orders
             page, which sorts by rating across the WHOLE history, not just the last few. */}
         {total === 0 ? (
-          <p className="rounded-2xl border border-dashed border-[#E5E7EB] p-8 text-center text-[#6B7280]">
+          <p className="rounded-2xl border border-dashed border-[#E2E8F0] p-8 text-center text-[#64748B]">
             No feedback in this period. Try a different range, or submissions from
             the customer form will show up here.
           </p>
         ) : (
           <section>
             <div className="mb-3 flex items-baseline justify-between gap-3">
-              <h2 className="text-lg font-semibold text-[#111827]">
+              <h2 className="text-lg font-semibold text-[#0F172A]">
                 Recent feedback
               </h2>
               {/* The dashboard shows a live snapshot; the full, paginated history —
                   with sort — is one tap away. */}
               <Link
                 href={`/r/${slug}/orders`}
-                className="flex-none text-sm font-medium text-amber-600 hover:underline"
+                className="flex-none text-sm font-medium text-aqua-700 hover:underline"
               >
                 All orders →
               </Link>
             </div>
             {total > RECENT_LIMIT && (
-              <p className="mb-3 text-sm text-[#9CA3AF]">
+              <p className="mb-3 text-sm text-[#94A3B8]">
                 Showing the {RECENT_LIMIT} most recent of {total} in this period.{" "}
                 <Link href={`/r/${slug}/orders`} className="font-medium underline">
                   See all

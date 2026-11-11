@@ -127,7 +127,7 @@ export async function importSquareMenu(
     return { error: "Couldn't read your Square item list just now. Please try again." };
   }
   if (items === null) {
-    return { error: "Connect Square first — it's below, under “Connect your till”." };
+    return { error: "Connect Square first — open “Till & Square” in the Settings menu." };
   }
   if (items.length === 0) {
     return {

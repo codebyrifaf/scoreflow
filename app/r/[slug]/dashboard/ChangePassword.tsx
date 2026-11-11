@@ -14,7 +14,7 @@ import { changePassword, type ChangePasswordState } from "./actions";
 import PasswordInput from "@/app/PasswordInput";
 
 const FIELD_CLASS =
-  "w-full rounded-2xl border border-[#E5E7EB] bg-white px-4 py-3 text-base text-[#111827] outline-none transition duration-200 placeholder:text-[#9CA3AF] focus:border-amber-500 focus:ring-4 focus:ring-amber-500/15";
+  "w-full rounded-2xl border border-[#E2E8F0] bg-white px-4 py-3 text-base text-[#0F172A] outline-none transition duration-200 placeholder:text-[#94A3B8] focus:border-aqua-600 focus:ring-4 focus:ring-aqua-500/25";
 
 export default function ChangePassword() {
   const ref = useRef<HTMLDialogElement>(null);
@@ -57,7 +57,7 @@ export default function ChangePassword() {
       <button
         type="button"
         onClick={openModal}
-        className="rounded-full border border-[#E5E7EB] px-3 py-1.5 text-sm font-medium text-[#111827] transition-colors hover:bg-[#F9FAFB]"
+        className="rounded-full border border-[#E2E8F0] px-3 py-1.5 text-sm font-medium text-[#0F172A] transition-colors hover:bg-[#F8FAFC]"
       >
         Change password
       </button>
@@ -71,12 +71,12 @@ export default function ChangePassword() {
       >
         <div className="p-6">
           <div className="mb-5 flex items-center justify-between">
-            <h2 className="text-xl font-bold text-[#111827]">Change password</h2>
+            <h2 className="text-xl font-bold text-[#0F172A]">Change password</h2>
             <button
               type="button"
               onClick={closeModal}
               aria-label="Close"
-              className="flex h-8 w-8 items-center justify-center rounded-full text-lg text-[#6B7280] transition-colors hover:bg-[#F3F4F6]"
+              className="flex h-8 w-8 items-center justify-center rounded-full text-lg text-[#64748B] transition-colors hover:bg-[#F1F5F9]"
             >
               ✕
             </button>
@@ -93,14 +93,14 @@ export default function ChangePassword() {
               <div className="flex h-14 w-14 items-center justify-center rounded-full bg-green-50 text-2xl text-green-600">
                 ✓
               </div>
-              <p className="text-[15px] text-[#374151]">
+              <p className="text-[15px] text-[#334155]">
                 Your password has been updated. For your security we signed you out
                 everywhere — please sign in again with your new password.
               </p>
               <form action={logout} className="w-full">
                 <button
                   type="submit"
-                  className="w-full rounded-2xl bg-amber-500 px-6 py-3 text-base font-semibold text-white shadow-sm transition-all duration-150 hover:bg-amber-600 active:scale-[0.98]"
+                  className="w-full rounded-2xl bg-brand px-6 py-3 text-base font-semibold text-white shadow-sm transition-all duration-150 hover:bg-brand-deep active:scale-[0.98]"
                 >
                   Sign in again
                 </button>
@@ -111,7 +111,7 @@ export default function ChangePassword() {
               <div className="flex flex-col gap-1.5">
                 <label
                   htmlFor="currentPassword"
-                  className="text-sm font-medium text-[#111827]"
+                  className="text-sm font-medium text-[#0F172A]"
                 >
                   Current password
                 </label>
@@ -125,10 +125,10 @@ export default function ChangePassword() {
               <div className="flex flex-col gap-1.5">
                 <label
                   htmlFor="newPassword"
-                  className="text-sm font-medium text-[#111827]"
+                  className="text-sm font-medium text-[#0F172A]"
                 >
                   New password{" "}
-                  <span className="font-normal text-[#9CA3AF]">
+                  <span className="font-normal text-[#94A3B8]">
                     (at least 12 characters)
                   </span>
                 </label>
@@ -142,7 +142,7 @@ export default function ChangePassword() {
               <div className="flex flex-col gap-1.5">
                 <label
                   htmlFor="confirmPassword"
-                  className="text-sm font-medium text-[#111827]"
+                  className="text-sm font-medium text-[#0F172A]"
                 >
                   Confirm new password
                 </label>
@@ -163,7 +163,7 @@ export default function ChangePassword() {
               <button
                 type="submit"
                 disabled={pending}
-                className="mt-1 w-full rounded-2xl bg-amber-500 px-6 py-3 text-base font-semibold text-white shadow-sm transition-all duration-150 hover:bg-amber-600 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-[#E5E7EB] disabled:text-[#9CA3AF] disabled:shadow-none disabled:active:scale-100"
+                className="mt-1 w-full rounded-2xl bg-brand px-6 py-3 text-base font-semibold text-white shadow-sm transition-all duration-150 hover:bg-brand-deep active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-[#E2E8F0] disabled:text-[#94A3B8] disabled:shadow-none disabled:active:scale-100"
               >
                 {pending ? "Updating…" : "Update password"}
               </button>

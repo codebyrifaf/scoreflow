@@ -23,17 +23,17 @@ export const dynamic = "force-dynamic";
 /** Same clean 403 screen the dashboard uses when access is denied. */
 function NotAuthorized({ homeHref }: { homeHref: string }) {
   return (
-    <main className="font-system flex min-h-dvh w-full flex-col items-center justify-center gap-4 bg-white px-5 py-12 text-center text-[#111827]">
+    <main className="font-system flex min-h-dvh w-full flex-col items-center justify-center gap-4 bg-white px-5 py-12 text-center text-[#0F172A]">
       <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-100 text-3xl text-red-600">
         ⛔
       </div>
-      <h1 className="text-2xl font-bold text-[#111827]">Not authorized</h1>
-      <p className="text-[#6B7280]">
+      <h1 className="text-2xl font-bold text-[#0F172A]">Not authorized</h1>
+      <p className="text-[#64748B]">
         You&apos;re signed in, but these tables aren&apos;t ones you can manage.
       </p>
       <Link
         href={homeHref}
-        className="mt-2 rounded-2xl bg-amber-500 px-6 py-3 font-semibold text-white transition-colors hover:bg-amber-600"
+        className="mt-2 rounded-2xl bg-brand px-6 py-3 font-semibold text-white transition-colors hover:bg-brand-deep"
       >
         Go back
       </Link>
@@ -74,14 +74,14 @@ export default async function TablesPage({
   }));
 
   return (
-    <main className="font-system min-h-dvh w-full bg-white text-[#111827]">
+    <main className="font-system min-h-dvh w-full bg-white text-[#0F172A]">
       <div className="mx-auto w-full max-w-3xl px-5 py-8">
         <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-[#111827]">
+            <h1 className="text-2xl font-bold tracking-tight text-[#0F172A]">
               {restaurant.name} — Tables &amp; links
             </h1>
-            <p className="text-sm text-[#6B7280]">
+            <p className="text-sm text-[#64748B]">
               Add a table, then put its QR code or NFC link on that table.
             </p>
           </div>
@@ -89,13 +89,13 @@ export default async function TablesPage({
             {/* The QR kit — the zero-hardware way to go live (M30). */}
             <Link
               href={`/r/${slug}/tables/print`}
-              className="rounded-full bg-amber-500 px-3 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-amber-600"
+              className="rounded-full bg-brand px-3 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-brand-deep"
             >
               Print QR kit →
             </Link>
             <Link
               href={`/r/${slug}/dashboard`}
-              className="rounded-full border border-[#E5E7EB] px-3 py-1.5 text-sm font-medium text-[#111827] transition-colors hover:bg-[#F9FAFB]"
+              className="rounded-full border border-[#E2E8F0] px-3 py-1.5 text-sm font-medium text-[#0F172A] transition-colors hover:bg-[#F8FAFC]"
             >
               ← Dashboard
             </Link>

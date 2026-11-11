@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Geist_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { appUrl } from "@/lib/app-url";
+import { introDecisionScript } from "@/lib/opening-intro";
+import OpeningIntro from "./OpeningIntro";
 import "./globals.css";
 
 /**
@@ -96,8 +98,22 @@ export default function RootLayout({
       // en-GB, not en-US: the product is sold in the UK.
       lang="en-GB"
       className={`${geistMono.variable} h-full antialiased`}
+      // The intro script below sets `data-intro` on <html> before React loads.
+      // That's intended, so don't report it as a server/browser mismatch.
+      suppressHydrationWarning
+      // globals.css scrolls smoothly (for "See how it works" etc.). This tells
+      // Next.js to switch that off while CHANGING pages, so a new page starts at
+      // the top at once instead of gliding there (Next 16 asks for it explicitly).
+      data-scroll-behavior="smooth"
     >
+      <head>
+        {/* Decides — before the page is drawn — whether this load gets the opening
+            intro (lib/opening-intro.ts). Must be this early: any later and returning
+            visitors and guests would see a flash of the navy screen. */}
+        <script dangerouslySetInnerHTML={{ __html: introDecisionScript() }} />
+      </head>
       <body className="min-h-full flex flex-col">
+        <OpeningIntro />
         {children}
         {/*
           Page-view analytics (M23). Without it you are selling blind: you cannot

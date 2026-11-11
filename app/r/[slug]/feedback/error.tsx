@@ -39,16 +39,16 @@ export default function FeedbackError({
   }, [error]);
 
   return (
-    <main className="font-system flex min-h-dvh w-full flex-col items-center justify-center bg-white px-5 py-10 text-center text-[#111827]">
+    <main className="font-system flex min-h-dvh w-full flex-col items-center justify-center bg-white px-5 py-10 text-center text-[#0F172A]">
       <div className="animate-card-in w-full max-w-[430px]">
-        <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-[#F3F4F6] text-3xl text-[#6B7280]">
+        <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-[#F1F5F9] text-3xl text-[#64748B]">
           ⚠
         </div>
 
-        <h1 className="text-2xl font-bold tracking-tight text-[#111827]">
+        <h1 className="text-2xl font-bold tracking-tight text-[#0F172A]">
           We couldn&apos;t load the form
         </h1>
-        <p className="mt-2 text-[15px] leading-relaxed text-[#6B7280]">
+        <p className="mt-2 text-[15px] leading-relaxed text-[#64748B]">
           Something went wrong on our side — nothing to do with your meal. Please
           try again in a moment, and do tell a member of staff if it keeps
           happening.
@@ -57,7 +57,7 @@ export default function FeedbackError({
         <button
           type="button"
           onClick={reset}
-          className="mt-8 w-full rounded-2xl bg-amber-500 px-6 py-4 text-base font-semibold text-white shadow-sm transition-all duration-150 hover:bg-amber-600 active:scale-[0.98]"
+          className="mt-8 w-full rounded-2xl bg-brand px-6 py-4 text-base font-semibold text-white shadow-sm transition-all duration-150 hover:bg-brand-deep active:scale-[0.98]"
         >
           Try again
         </button>

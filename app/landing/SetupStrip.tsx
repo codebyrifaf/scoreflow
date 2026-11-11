@@ -28,7 +28,7 @@ import { CONTAINER, SECTION } from "./tokens";
 /** The step number — a small dark pill, in place of an arrow or an icon. */
 function StepNumber({ n }: { n: number }) {
   return (
-    <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-[#1D1D1F] text-[12px] font-semibold text-white">
+    <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-brand text-[12px] font-semibold text-white">
       {n}
     </span>
   );
@@ -55,7 +55,7 @@ function Panel({
     // `h-full` keeps all three panels the SAME height regardless of how many lines of
     // copy each carries — the grid row stretches to the tallest and every panel fills
     // it, so their grey cards line up top and bottom.
-    <div className="flex h-full flex-col rounded-3xl bg-[#F5F5F7] p-6">
+    <div className="flex h-full flex-col rounded-3xl bg-[#F1F5F9] p-6">
       {/* Fixed height so the three visuals sit on a common baseline. Sized by the
           tallest of them — the specimen card, whose QR is deliberately big enough to
           actually scan off a screen (see TableCard). */}
@@ -68,11 +68,11 @@ function Panel({
           LEFT at `sm:` — the desktop three-column layout is unchanged. */}
       <div className="mt-6 flex items-center justify-center gap-2.5 sm:justify-start">
         <StepNumber n={n} />
-        <h3 className="text-[16px] font-semibold tracking-[-0.01em] text-[#1D1D1F]">
+        <h3 className="text-[16px] font-semibold tracking-[-0.01em] text-[#0F172A]">
           {title}
         </h3>
       </div>
-      <p className="mt-1.5 text-center text-[14px] leading-relaxed text-[#6E6E73] sm:text-left">
+      <p className="mt-1.5 text-center text-[14px] leading-relaxed text-[#64748B] sm:text-left">
         {children}
       </p>
     </div>
@@ -82,7 +82,7 @@ function Panel({
 /** The brand mark on a table card — the first initial, exactly like the real kit. */
 function BrandDisc() {
   return (
-    <span className="mx-auto flex h-5 w-5 items-center justify-center rounded-full bg-amber-500 text-[9px] font-semibold text-white">
+    <span className="mx-auto flex h-5 w-5 items-center justify-center rounded-full bg-brand text-[9px] font-semibold text-white">
       F
     </span>
   );
@@ -100,9 +100,9 @@ function BrandDisc() {
  */
 function TableCard({ qr }: { qr: QrMatrix }) {
   return (
-    <div className="w-[160px] rounded-xl border border-dashed border-[#C7C7CC] bg-white p-3 text-center shadow-[0_8px_24px_-12px_rgba(0,0,0,0.25)]">
+    <div className="w-[160px] rounded-xl border border-dashed border-[#CBD5E1] bg-white p-3 text-center shadow-[0_8px_24px_-12px_rgba(0,0,0,0.25)]">
       <BrandDisc />
-      <p className="mt-1.5 text-[9px] font-semibold text-[#1D1D1F]">
+      <p className="mt-1.5 text-[9px] font-semibold text-[#0F172A]">
         Scan to rate your meal
       </p>
       <QrCode
@@ -110,8 +110,8 @@ function TableCard({ qr }: { qr: QrMatrix }) {
         className="mx-auto mt-1.5 w-[112px]"
         title="Scan to open ScoreFlow"
       />
-      <p className="mt-1.5 text-[10px] font-semibold text-[#1D1D1F]">Table 7</p>
-      <p className="mt-0.5 text-[8px] text-[#AEAEB2]">Ten seconds · no app</p>
+      <p className="mt-1.5 text-[10px] font-semibold text-[#0F172A]">Table 7</p>
+      <p className="mt-0.5 text-[8px] text-[#94A3B8]">Ten seconds · no app</p>
     </div>
   );
 }
@@ -119,13 +119,13 @@ function TableCard({ qr }: { qr: QrMatrix }) {
 /** A thumbnail of the same card — used to show a stack of them, one per table. */
 function MiniCard({ qr, label }: { qr: QrMatrix; label: string }) {
   return (
-    <div className="w-[74px] rounded-lg border border-[#E5E5EA] bg-white p-2 text-center shadow-[0_8px_20px_-10px_rgba(0,0,0,0.3)]">
+    <div className="w-[74px] rounded-lg border border-[#E2E8F0] bg-white p-2 text-center shadow-[0_8px_20px_-10px_rgba(0,0,0,0.3)]">
       <QrCode
         matrix={qr}
         className="mx-auto w-[44px]"
         title={`${label} card`}
       />
-      <p className="mt-1 text-[7px] font-semibold text-[#1D1D1F]">{label}</p>
+      <p className="mt-1 text-[7px] font-semibold text-[#0F172A]">{label}</p>
     </div>
   );
 }
@@ -157,31 +157,31 @@ function CardStack({ qr }: { qr: QrMatrix }) {
 /** Visual 3 — the alert that proves it's working, minutes later. */
 function AlertCard() {
   return (
-    <div className="w-[176px] rounded-xl border border-[#E5E5EA] bg-white p-3 shadow-[0_8px_24px_-12px_rgba(0,0,0,0.25)]">
+    <div className="w-[176px] rounded-xl border border-[#E2E8F0] bg-white p-3 shadow-[0_8px_24px_-12px_rgba(0,0,0,0.25)]">
       <div className="flex items-center gap-2">
-        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#1D1D1F] text-[9px] font-semibold text-white">
+        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand text-[9px] font-semibold text-white">
           S
         </span>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[10px] font-semibold text-[#1D1D1F]">
+          <p className="truncate text-[10px] font-semibold text-[#0F172A]">
             ScoreFlow
           </p>
-          <p className="text-[8px] text-[#AEAEB2]">now</p>
+          <p className="text-[8px] text-[#94A3B8]">now</p>
         </div>
       </div>
 
-      <p className="mt-2 text-[10px] font-semibold leading-snug text-[#1D1D1F]">
+      <p className="mt-2 text-[10px] font-semibold leading-snug text-[#0F172A]">
         Fucco: an unhappy diner (3/10)
       </p>
 
-      <div className="mt-1.5 rounded-lg bg-[#F2F2F7] p-1.5">
-        <p className="text-[9px] font-semibold text-[#1D1D1F]">
+      <div className="mt-1.5 rounded-lg bg-[#F1F5F9] p-1.5">
+        <p className="text-[9px] font-semibold text-[#0F172A]">
           3/10 — order 1042, table 7
         </p>
-        <p className="mt-0.5 text-[8px] text-[#6E6E73]">Tagged: Food was cold</p>
+        <p className="mt-0.5 text-[8px] text-[#64748B]">Tagged: Food was cold</p>
       </div>
 
-      <div className="mt-2 rounded-lg bg-amber-500 py-1.5 text-center text-[9px] font-semibold text-white">
+      <div className="mt-2 rounded-lg bg-brand py-1.5 text-center text-[9px] font-semibold text-white">
         Open dashboard
       </div>
     </div>
@@ -222,7 +222,7 @@ export function TapWaves({ className = "" }: { className?: string }) {
  * this product), but the page gave QR a rich specimen card and NFC only a passing
  * line of text. That's an unfair picture: a reader skims the visuals, so a feature
  * with no visual reads as an afterthought. This gives NFC its own image, drawn in the
- * same near-black + one-amber-accent language as everything else.
+ * same navy-and-teal brand language as everything else.
  *
  * It's an illustration, not a QR: nothing here is scannable, so it carries no
  * "this is real" claim — it just shows the gesture (tap phone → chip).
@@ -231,15 +231,15 @@ function NfcTap() {
   return (
     <div className="relative flex h-[132px] w-[184px] items-center justify-center">
       {/* The reusable NFC chip sitting on the table. */}
-      <div className="absolute bottom-3 left-4 flex h-20 w-20 items-center justify-center rounded-full border border-[#E5E5EA] bg-white shadow-[0_8px_24px_-12px_rgba(0,0,0,0.28)]">
-        <span className="flex h-11 w-11 items-center justify-center rounded-full bg-amber-500 text-white">
+      <div className="absolute bottom-3 left-4 flex h-20 w-20 items-center justify-center rounded-full border border-[#E2E8F0] bg-white shadow-[0_8px_24px_-12px_rgba(0,0,0,0.28)]">
+        <span className="flex h-11 w-11 items-center justify-center rounded-full bg-brand text-white">
           <TapWaves className="h-6 w-6" />
         </span>
       </div>
 
       {/* The phone, tilted toward the chip as if being tapped to it. */}
-      <div className="absolute right-4 top-1 h-24 w-[54px] rotate-[16deg] rounded-[15px] bg-[#1D1D1F] p-[3px] shadow-[0_14px_34px_-12px_rgba(0,0,0,0.55)]">
-        <div className="flex h-full w-full items-start justify-center rounded-xl bg-gradient-to-b from-[#3A3A3C] to-[#1D1D1F] pt-2">
+      <div className="absolute right-4 top-1 h-24 w-[54px] rotate-[16deg] rounded-[15px] bg-[#0F172A] p-[3px] shadow-[0_14px_34px_-12px_rgba(0,0,0,0.55)]">
+        <div className="flex h-full w-full items-start justify-center rounded-xl bg-gradient-to-b from-[#334155] to-[#0F172A] pt-2">
           <span className="h-1 w-4 rounded-full bg-white/25" />
         </div>
       </div>
@@ -253,18 +253,18 @@ export default function SetupStrip({ qr }: { qr: QrMatrix }) {
       <div className={CONTAINER}>
         <Reveal>
           <div className="max-w-2xl">
-            <p className="text-[14px] font-medium text-[#6E6E73]">Setting up</p>
-            <h2 className="mt-4 text-[30px] font-semibold leading-[1.1] tracking-[-0.02em] text-[#1D1D1F] sm:text-[44px]">
+            <p className="text-[14px] font-medium text-[#64748B]">Setting up</p>
+            <h2 className="mt-4 text-[30px] font-semibold leading-[1.1] tracking-[-0.02em] text-[#0F172A] sm:text-[44px]">
               Live tonight. Nothing to buy.
             </h2>
-            <p className="mt-5 text-[17px] leading-relaxed text-[#6E6E73]">
+            <p className="mt-5 text-[17px] leading-relaxed text-[#64748B]">
               Print the kit, stand a card on each table, and you&apos;re taking
               feedback by tonight&apos;s service. No chips, no app, no hardware.
             </p>
             {/* One line, not a panel: the till link is an ACCELERATOR for the owners
                 who have Square, and must not read as a requirement for everyone else —
                 the whole point of this section is "nothing to buy, nothing to set up". */}
-            <p className="mt-3 text-[15px] leading-relaxed text-[#6E6E73]">
+            <p className="mt-3 text-[15px] leading-relaxed text-[#64748B]">
               On Square? Connect your till in one click — no key, no developer — and
               bring your menu across with it. Every score then arrives knowing what was
               on the plate.
@@ -301,18 +301,18 @@ export default function SetupStrip({ qr }: { qr: QrMatrix }) {
             footnote. Framed as the "or" to the QR story above — QR owns "nothing to
             buy"; NFC is the tap-instead-of-scan upgrade. */}
         <Reveal delay={240}>
-          <div className="mt-6 flex flex-col items-center gap-6 rounded-3xl border border-[#E5E5EA] bg-white p-6 text-center sm:flex-row sm:gap-9 sm:p-8 sm:text-left">
+          <div className="mt-6 flex flex-col items-center gap-6 rounded-3xl border border-[#E2E8F0] bg-white p-6 text-center sm:flex-row sm:gap-9 sm:p-8 sm:text-left">
             <div className="flex-none">
               <NfcTap />
             </div>
             <div>
-              <p className="text-[13px] font-medium text-[#AEAEB2]">
+              <p className="text-[13px] font-medium text-[#94A3B8]">
                 Or, if you&apos;d rather tap
               </p>
-              <h3 className="mt-1.5 text-[20px] font-semibold tracking-[-0.01em] text-[#1D1D1F] sm:text-[22px]">
+              <h3 className="mt-1.5 text-[20px] font-semibold tracking-[-0.01em] text-[#0F172A] sm:text-[22px]">
                 No camera? Tap instead.
               </h3>
-              <p className="mt-2 max-w-md text-[15px] leading-relaxed text-[#6E6E73]">
+              <p className="mt-2 max-w-md text-[15px] leading-relaxed text-[#64748B]">
                 Load the same link onto a reusable NFC chip and guests just tap their
                 phone to the table — no camera, no app. Buy the chips once; they last
                 for years.
@@ -325,7 +325,7 @@ export default function SetupStrip({ qr }: { qr: QrMatrix }) {
             it goes — a "specimen" card whose QR quietly did nothing (or went somewhere
             unexpected) would be exactly the kind of small lie this page can't afford. */}
         <Reveal delay={300}>
-          <p className="mt-8 text-[13px] text-[#AEAEB2]">
+          <p className="mt-8 text-[13px] text-[#94A3B8]">
             The QR code above is real — scan it and ScoreFlow opens on your phone. The
             cards you print carry your own restaurant&apos;s link instead.
           </p>

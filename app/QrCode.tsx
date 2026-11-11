@@ -53,7 +53,7 @@ export default function QrCode({
     >
       {/* White backing so the quiet zone is real even on a coloured/pattern surface. */}
       <rect width={full} height={full} fill="#ffffff" />
-      <path d={d} fill="#111827" />
+      <path d={d} fill="#0F172A" />
     </svg>
   );
 }

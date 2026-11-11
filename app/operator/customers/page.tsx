@@ -30,7 +30,7 @@ import OperatorAccounts from "../OperatorAccounts";
 export const dynamic = "force-dynamic";
 
 const PILL =
-  "rounded-full border border-[#E5E7EB] px-3 py-1.5 text-sm font-medium text-[#111827] transition-colors hover:bg-[#F9FAFB]";
+  "rounded-full border border-[#E2E8F0] px-3 py-1.5 text-sm font-medium text-[#0F172A] transition-colors hover:bg-[#F8FAFC]";
 
 const PAGE_SIZE = 20;
 
@@ -65,12 +65,12 @@ function parseSort(raw: string | string[] | undefined): Sort {
 
 function NotAuthorized({ homeHref }: { homeHref: string }) {
   return (
-    <main className="font-system flex min-h-dvh w-full flex-col items-center justify-center gap-4 bg-white px-5 py-12 text-center text-[#111827]">
+    <main className="font-system flex min-h-dvh w-full flex-col items-center justify-center gap-4 bg-white px-5 py-12 text-center text-[#0F172A]">
       <h1 className="text-2xl font-bold">Not authorized</h1>
-      <p className="text-[#6B7280]">This area is for ScoreFlow operators only.</p>
+      <p className="text-[#64748B]">This area is for ScoreFlow operators only.</p>
       <Link
         href={homeHref}
-        className="mt-2 rounded-2xl bg-amber-500 px-6 py-3 font-semibold text-white hover:bg-amber-600"
+        className="mt-2 rounded-2xl bg-brand px-6 py-3 font-semibold text-white hover:bg-brand-deep"
       >
         Go back
       </Link>
@@ -139,17 +139,17 @@ export default async function OperatorCustomersPage({
   const lastOnPage = Math.min(page * PAGE_SIZE, total);
 
   return (
-    <main className="font-system min-h-dvh w-full bg-[#FAFAFA] text-[#111827]">
+    <main className="font-system min-h-dvh w-full bg-[#F8FAFC] text-[#0F172A]">
       <div className="mx-auto w-full max-w-4xl px-5 py-8">
         <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-[#9CA3AF]">
+            <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-[#94A3B8]">
               Operator
             </p>
             <h1 className="mt-1 text-2xl font-bold tracking-tight">Customers</h1>
           </div>
           <div className="flex flex-none items-center gap-3">
-            <span className="hidden text-sm text-[#9CA3AF] sm:inline">
+            <span className="hidden text-sm text-[#94A3B8] sm:inline">
               {access.operatorEmail}
             </span>
             <Link href="/operator" className={PILL}>
@@ -168,15 +168,15 @@ export default async function OperatorCustomersPage({
 
         {/* Controls: status filter + sort. Changing either resets to page 1. */}
         <div className="mb-6 flex flex-wrap items-center gap-3">
-          <div className="inline-flex flex-wrap rounded-full bg-[#F3F4F6] p-1 text-sm">
+          <div className="inline-flex flex-wrap rounded-full bg-[#F1F5F9] p-1 text-sm">
             {FILTERS.map((f) => (
               <Link
                 key={f}
                 href={hrefWith({ status: f, page: 1 })}
                 className={`rounded-full px-4 py-1.5 font-medium transition-colors ${
                   f === filter
-                    ? "bg-white text-[#111827] shadow-sm"
-                    : "text-[#6B7280] hover:text-[#111827]"
+                    ? "bg-white text-[#0F172A] shadow-sm"
+                    : "text-[#64748B] hover:text-[#0F172A]"
                 }`}
               >
                 {FILTER_LABELS[f]}
@@ -184,15 +184,15 @@ export default async function OperatorCustomersPage({
             ))}
           </div>
 
-          <div className="inline-flex rounded-full bg-[#F3F4F6] p-1 text-sm">
+          <div className="inline-flex rounded-full bg-[#F1F5F9] p-1 text-sm">
             {SORTS.map((s) => (
               <Link
                 key={s}
                 href={hrefWith({ sort: s, page: 1 })}
                 className={`rounded-full px-4 py-1.5 font-medium transition-colors ${
                   s === sort
-                    ? "bg-white text-[#111827] shadow-sm"
-                    : "text-[#6B7280] hover:text-[#111827]"
+                    ? "bg-white text-[#0F172A] shadow-sm"
+                    : "text-[#64748B] hover:text-[#0F172A]"
                 }`}
               >
                 {SORT_LABELS[s]}
@@ -202,14 +202,14 @@ export default async function OperatorCustomersPage({
         </div>
 
         {total === 0 ? (
-          <p className="rounded-2xl border border-dashed border-[#E5E7EB] bg-white p-8 text-center text-[#6B7280]">
+          <p className="rounded-2xl border border-dashed border-[#E2E8F0] bg-white p-8 text-center text-[#64748B]">
             No {filter === "all" ? "" : FILTER_LABELS[filter].toLowerCase() + " "}
             customers{filter === "all" ? " yet" : ""}. When a restaurant signs up at{" "}
             <span className="font-mono">/signup</span>, they&apos;ll appear here.
           </p>
         ) : (
           <>
-            <p className="mb-4 text-sm text-[#9CA3AF]">
+            <p className="mb-4 text-sm text-[#94A3B8]">
               Showing {firstOnPage}–{lastOnPage} of {total}
             </p>
 
@@ -222,11 +222,11 @@ export default async function OperatorCustomersPage({
                     ‹ Prev
                   </Link>
                 ) : (
-                  <span className="rounded-full border border-[#F3F4F6] px-3 py-1.5 text-sm font-medium text-[#D1D5DB]">
+                  <span className="rounded-full border border-[#F1F5F9] px-3 py-1.5 text-sm font-medium text-[#CBD5E1]">
                     ‹ Prev
                   </span>
                 )}
-                <span className="text-sm text-[#6B7280]">
+                <span className="text-sm text-[#64748B]">
                   Page {page} of {pageCount}
                 </span>
                 {page < pageCount ? (
@@ -234,7 +234,7 @@ export default async function OperatorCustomersPage({
                     Next ›
                   </Link>
                 ) : (
-                  <span className="rounded-full border border-[#F3F4F6] px-3 py-1.5 text-sm font-medium text-[#D1D5DB]">
+                  <span className="rounded-full border border-[#F1F5F9] px-3 py-1.5 text-sm font-medium text-[#CBD5E1]">
                     Next ›
                   </span>
                 )}

@@ -17,14 +17,14 @@ export const dynamic = "force-dynamic";
 
 function NotAuthorized({ homeHref }: { homeHref: string }) {
   return (
-    <main className="font-system flex min-h-dvh w-full flex-col items-center justify-center gap-4 bg-white px-5 py-12 text-center text-[#111827]">
+    <main className="font-system flex min-h-dvh w-full flex-col items-center justify-center gap-4 bg-white px-5 py-12 text-center text-[#0F172A]">
       <h1 className="text-2xl font-bold">Not authorized</h1>
-      <p className="max-w-sm text-[#6B7280]">
+      <p className="max-w-sm text-[#64748B]">
         Only the account owner can close the account.
       </p>
       <Link
         href={homeHref}
-        className="mt-2 rounded-2xl bg-amber-500 px-6 py-3 font-semibold text-white hover:bg-amber-600"
+        className="mt-2 rounded-2xl bg-brand px-6 py-3 font-semibold text-white hover:bg-brand-deep"
       >
         Go back
       </Link>
@@ -50,11 +50,11 @@ export default async function CloseAccountPage() {
   ]);
 
   return (
-    <main className="font-system min-h-dvh w-full bg-white text-[#111827]">
+    <main className="font-system min-h-dvh w-full bg-white text-[#0F172A]">
       <div className="mx-auto w-full max-w-lg px-5 py-10">
         <Link
           href={`/b/${access.brandSlug}`}
-          className="text-sm font-medium text-[#6B7280] transition-colors hover:text-[#111827]"
+          className="text-sm font-medium text-[#64748B] transition-colors hover:text-[#0F172A]"
         >
           <span aria-hidden="true">‹</span> Back
         </Link>
@@ -62,28 +62,28 @@ export default async function CloseAccountPage() {
         <h1 className="mt-3 text-2xl font-bold tracking-tight">
           Close your account
         </h1>
-        <p className="mt-2 text-[15px] leading-relaxed text-[#6B7280]">
-          This permanently deletes <b className="text-[#111827]">{access.brandName}</b>{" "}
+        <p className="mt-2 text-[15px] leading-relaxed text-[#64748B]">
+          This permanently deletes <b className="text-[#0F172A]">{access.brandName}</b>{" "}
           and everything in it. It cannot be undone, and we cannot get it back for
           you.
         </p>
 
-        <div className="mt-6 rounded-2xl border border-[#E5E7EB] p-5">
-          <p className="text-sm font-semibold text-[#111827]">
+        <div className="mt-6 rounded-2xl border border-[#E2E8F0] p-5">
+          <p className="text-sm font-semibold text-[#0F172A]">
             What gets deleted
           </p>
-          <ul className="mt-2 space-y-1 text-sm text-[#374151]">
+          <ul className="mt-2 space-y-1 text-sm text-[#334155]">
             <li>
-              • <b className="text-[#111827]">{locations}</b>{" "}
+              • <b className="text-[#0F172A]">{locations}</b>{" "}
               {locations === 1 ? "location" : "locations"}
             </li>
             <li>
-              • <b className="text-[#111827]">{responses}</b> diner{" "}
+              • <b className="text-[#0F172A]">{responses}</b> diner{" "}
               {responses === 1 ? "response" : "responses"} — every rating and comment
               you&apos;ve ever received
             </li>
             <li>
-              • <b className="text-[#111827]">{managers}</b> manager{" "}
+              • <b className="text-[#0F172A]">{managers}</b> manager{" "}
               {managers === 1 ? "login" : "logins"}, your tables, and your own login
             </li>
           </ul>
@@ -96,11 +96,11 @@ export default async function CloseAccountPage() {
           <CloseAccountForm brandName={access.brandName} />
         </div>
 
-        <p className="mt-6 text-center text-sm text-[#6B7280]">
+        <p className="mt-6 text-center text-sm text-[#64748B]">
           Changed your mind?{" "}
           <Link
             href={`/b/${access.brandSlug}`}
-            className="font-medium text-amber-600 hover:underline"
+            className="font-medium text-aqua-700 hover:underline"
           >
             Keep my account
           </Link>

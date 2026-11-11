@@ -45,20 +45,20 @@ function ComplaintCard({
 
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline justify-between gap-2">
-          <span className="text-sm font-semibold text-[#111827]">
+          <span className="text-sm font-semibold text-[#0F172A]">
             {/* The order number is optional (a guest may have had no receipt). */}
             {record.orderNumber ? `Order ${record.orderNumber}` : "No order number"}
-            <span className="font-normal text-[#6B7280]">
+            <span className="font-normal text-[#64748B]">
               {" · "}Table {record.table ?? "—"}
             </span>
           </span>
-          <span className="flex-none text-xs text-[#9CA3AF]">
+          <span className="flex-none text-xs text-[#94A3B8]">
             {formatTimestamp(record.timestamp)}
           </span>
         </div>
 
         {record.comment && (
-          <p className="mt-1 text-sm text-[#374151]">{record.comment}</p>
+          <p className="mt-1 text-sm text-[#334155]">{record.comment}</p>
         )}
 
         {record.tags.length > 0 && (
@@ -66,7 +66,7 @@ function ComplaintCard({
             {record.tags.map((tag) => (
               <span
                 key={tag}
-                className="rounded-full bg-white px-2.5 py-0.5 text-xs font-medium text-[#374151]"
+                className="rounded-full bg-white px-2.5 py-0.5 text-xs font-medium text-[#334155]"
               >
                 {tag}
               </span>
@@ -79,18 +79,18 @@ function ComplaintCard({
             one-star into a regular. A tap-to-call link on mobile. */}
         {(record.contactName || record.contactPhone) && (
           <div className="mt-2 rounded-lg bg-white px-2.5 py-1.5 text-sm">
-            <span className="font-medium text-[#111827]">
+            <span className="font-medium text-[#0F172A]">
               {record.contactName || "Diner"} wants to hear from you:
             </span>{" "}
             {record.contactPhone ? (
               <a
                 href={`tel:${record.contactPhone.replace(/\s+/g, "")}`}
-                className="font-semibold text-amber-700 underline"
+                className="font-semibold text-aqua-700 underline"
               >
                 {record.contactPhone}
               </a>
             ) : (
-              <span className="text-[#6B7280]">no number left</span>
+              <span className="text-[#64748B]">no number left</span>
             )}
           </div>
         )}
@@ -99,7 +99,7 @@ function ComplaintCard({
           <button
             type="submit"
             disabled={pending}
-            className="rounded-lg border border-[#E5E7EB] bg-white px-3 py-1.5 text-sm font-medium text-[#111827] transition-colors hover:bg-[#F9FAFB] disabled:cursor-not-allowed disabled:text-[#9CA3AF]"
+            className="rounded-lg border border-[#E2E8F0] bg-white px-3 py-1.5 text-sm font-medium text-[#0F172A] transition-colors hover:bg-[#F8FAFC] disabled:cursor-not-allowed disabled:text-[#94A3B8]"
           >
             {pending ? "Saving…" : "Mark resolved"}
           </button>
@@ -145,10 +145,10 @@ export default function NeedsAttention({
   if (complaints.length === 0) {
     return (
       <section className="mb-8">
-        <h2 className="mb-3 text-lg font-semibold text-[#111827]">
+        <h2 className="mb-3 text-lg font-semibold text-[#0F172A]">
           Needs attention
         </h2>
-        <p className="rounded-2xl border border-dashed border-[#E5E7EB] p-6 text-center text-sm text-[#6B7280]">
+        <p className="rounded-2xl border border-dashed border-[#E2E8F0] p-6 text-center text-sm text-[#64748B]">
           Nothing open. Diners who rate {alertThreshold} or below show up here so
           you can put things right.
         </p>
@@ -159,13 +159,13 @@ export default function NeedsAttention({
   return (
     <section className="mb-8">
       <div className="mb-3 flex items-center gap-2">
-        <h2 className="text-lg font-semibold text-[#111827]">Needs attention</h2>
+        <h2 className="text-lg font-semibold text-[#0F172A]">Needs attention</h2>
         {/* The TRUE total, not the number of cards we render below. */}
         <span className="rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-bold text-red-700">
           {totalOpen}
         </span>
       </div>
-      <p className="mb-3 text-sm text-[#6B7280]">
+      <p className="mb-3 text-sm text-[#64748B]">
         Unhappy diners ({alertThreshold} or below) nobody has dealt with yet.
       </p>
 
@@ -184,7 +184,7 @@ export default function NeedsAttention({
           worklist would let complaints go missing, which is the one thing this
           feature exists to prevent. */}
       {totalOpen > complaints.length && (
-        <p className="mt-3 text-center text-sm text-[#6B7280]">
+        <p className="mt-3 text-center text-sm text-[#64748B]">
           Showing the {complaints.length} most recent of {totalOpen} open.
           Resolve some to see the rest.
         </p>

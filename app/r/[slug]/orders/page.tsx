@@ -45,17 +45,17 @@ function parseSort(raw: string | string[] | undefined): FeedbackSort {
 /** Same clean 403 the dashboard uses. */
 function NotAuthorized({ homeHref }: { homeHref: string }) {
   return (
-    <main className="font-system flex min-h-dvh w-full flex-col items-center justify-center gap-4 bg-white px-5 py-12 text-center text-[#111827]">
+    <main className="font-system flex min-h-dvh w-full flex-col items-center justify-center gap-4 bg-white px-5 py-12 text-center text-[#0F172A]">
       <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-100 text-3xl text-red-600">
         ⛔
       </div>
       <h1 className="text-2xl font-bold">Not authorized</h1>
-      <p className="text-[#6B7280]">
+      <p className="text-[#64748B]">
         You&apos;re signed in, but these orders aren&apos;t ones you can view.
       </p>
       <Link
         href={homeHref}
-        className="mt-2 rounded-2xl bg-amber-500 px-6 py-3 font-semibold text-white transition-colors hover:bg-amber-600"
+        className="mt-2 rounded-2xl bg-brand px-6 py-3 font-semibold text-white transition-colors hover:bg-brand-deep"
       >
         Go back
       </Link>
@@ -123,20 +123,20 @@ export default async function OrdersPage({
   const lastOnPage = Math.min(page * PAGE_SIZE, total);
 
   return (
-    <main className="font-system min-h-dvh w-full bg-white text-[#111827]">
+    <main className="font-system min-h-dvh w-full bg-white text-[#0F172A]">
       <div className="mx-auto w-full max-w-3xl px-5 py-8">
         <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-[#111827]">
+            <h1 className="text-2xl font-bold tracking-tight text-[#0F172A]">
               All orders
             </h1>
-            <p className="text-sm text-[#6B7280]">
+            <p className="text-sm text-[#64748B]">
               {restaurant.name} — every submission, newest first.
             </p>
           </div>
           <Link
             href={`/r/${slug}/dashboard`}
-            className="rounded-full border border-[#E5E7EB] px-3 py-1.5 text-sm font-medium text-[#111827] transition-colors hover:bg-[#F9FAFB]"
+            className="rounded-full border border-[#E2E8F0] px-3 py-1.5 text-sm font-medium text-[#0F172A] transition-colors hover:bg-[#F8FAFC]"
           >
             ← Dashboard
           </Link>
@@ -144,15 +144,15 @@ export default async function OrdersPage({
 
         {/* Controls: time range + sort. Changing either resets to page 1. */}
         <div className="mb-6 flex flex-wrap items-center gap-3">
-          <div className="inline-flex rounded-full bg-[#F3F4F6] p-1 text-sm">
+          <div className="inline-flex rounded-full bg-[#F1F5F9] p-1 text-sm">
             {RANGES.map((r) => (
               <Link
                 key={r}
                 href={hrefWith({ range: r, page: 1 })}
                 className={`rounded-full px-4 py-1.5 font-medium transition-colors ${
                   r === range
-                    ? "bg-white text-[#111827] shadow-sm"
-                    : "text-[#6B7280] hover:text-[#111827]"
+                    ? "bg-white text-[#0F172A] shadow-sm"
+                    : "text-[#64748B] hover:text-[#0F172A]"
                 }`}
               >
                 {RANGE_LABELS[r]}
@@ -160,15 +160,15 @@ export default async function OrdersPage({
             ))}
           </div>
 
-          <div className="inline-flex rounded-full bg-[#F3F4F6] p-1 text-sm">
+          <div className="inline-flex rounded-full bg-[#F1F5F9] p-1 text-sm">
             {SORTS.map((s) => (
               <Link
                 key={s}
                 href={hrefWith({ sort: s, page: 1 })}
                 className={`rounded-full px-4 py-1.5 font-medium transition-colors ${
                   s === sort
-                    ? "bg-white text-[#111827] shadow-sm"
-                    : "text-[#6B7280] hover:text-[#111827]"
+                    ? "bg-white text-[#0F172A] shadow-sm"
+                    : "text-[#64748B] hover:text-[#0F172A]"
                 }`}
               >
                 {SORT_LABELS[s]}
@@ -178,13 +178,13 @@ export default async function OrdersPage({
         </div>
 
         {total === 0 ? (
-          <p className="rounded-2xl border border-dashed border-[#E5E7EB] p-8 text-center text-[#6B7280]">
+          <p className="rounded-2xl border border-dashed border-[#E2E8F0] p-8 text-center text-[#64748B]">
             No orders in this period. Try a different range, or submissions from the
             feedback form will show up here.
           </p>
         ) : (
           <>
-            <p className="mb-3 text-sm text-[#9CA3AF]">
+            <p className="mb-3 text-sm text-[#94A3B8]">
               Showing {firstOnPage}–{lastOnPage} of {total}
             </p>
 
@@ -200,29 +200,29 @@ export default async function OrdersPage({
                 {page > 1 ? (
                   <Link
                     href={hrefWith({ page: page - 1 })}
-                    className="rounded-full border border-[#E5E7EB] px-4 py-2 text-sm font-medium text-[#111827] transition-colors hover:bg-[#F9FAFB]"
+                    className="rounded-full border border-[#E2E8F0] px-4 py-2 text-sm font-medium text-[#0F172A] transition-colors hover:bg-[#F8FAFC]"
                   >
                     ‹ Prev
                   </Link>
                 ) : (
-                  <span className="rounded-full border border-[#F3F4F6] px-4 py-2 text-sm font-medium text-[#D1D5DB]">
+                  <span className="rounded-full border border-[#F1F5F9] px-4 py-2 text-sm font-medium text-[#CBD5E1]">
                     ‹ Prev
                   </span>
                 )}
 
-                <span className="text-sm text-[#6B7280]">
+                <span className="text-sm text-[#64748B]">
                   Page {page} of {pageCount}
                 </span>
 
                 {page < pageCount ? (
                   <Link
                     href={hrefWith({ page: page + 1 })}
-                    className="rounded-full border border-[#E5E7EB] px-4 py-2 text-sm font-medium text-[#111827] transition-colors hover:bg-[#F9FAFB]"
+                    className="rounded-full border border-[#E2E8F0] px-4 py-2 text-sm font-medium text-[#0F172A] transition-colors hover:bg-[#F8FAFC]"
                   >
                     Next ›
                   </Link>
                 ) : (
-                  <span className="rounded-full border border-[#F3F4F6] px-4 py-2 text-sm font-medium text-[#D1D5DB]">
+                  <span className="rounded-full border border-[#F1F5F9] px-4 py-2 text-sm font-medium text-[#CBD5E1]">
                     Next ›
                   </span>
                 )}

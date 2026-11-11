@@ -42,7 +42,7 @@ export default function GlobalError({
           padding: "3rem 1.25rem",
           textAlign: "center",
           background: "#fff",
-          color: "#111827",
+          color: "#0F172A",
           fontFamily:
             "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
         }}
@@ -50,7 +50,7 @@ export default function GlobalError({
         <h1 style={{ fontSize: "1.5rem", fontWeight: 700, margin: 0 }}>
           Something went wrong
         </h1>
-        <p style={{ color: "#6B7280", maxWidth: "28rem", margin: 0 }}>
+        <p style={{ color: "#64748B", maxWidth: "28rem", margin: 0 }}>
           ScoreFlow hit an unexpected problem. Please try again in a moment.
         </p>
         <button

@@ -24,7 +24,7 @@ export default function SubscriptionLocked({
   const canceled = !state.live && state.kind === "canceled";
 
   return (
-    <main className="font-system flex min-h-dvh w-full flex-col items-center justify-center gap-5 bg-white px-5 py-12 text-center text-[#111827]">
+    <main className="font-system flex min-h-dvh w-full flex-col items-center justify-center gap-5 bg-white px-5 py-12 text-center text-[#0F172A]">
       <div className="flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 text-3xl text-amber-600">
         ⏳
       </div>
@@ -33,7 +33,7 @@ export default function SubscriptionLocked({
         <h1 className="text-2xl font-bold tracking-tight">
           {canceled ? "Your account is paused" : "Your free trial has ended"}
         </h1>
-        <p className="mt-2 text-[15px] leading-relaxed text-[#6B7280]">
+        <p className="mt-2 text-[15px] leading-relaxed text-[#64748B]">
           {canceled
             ? "This account isn't active right now. Renew to get back into your dashboard."
             : "Thanks for trying ScoreFlow! To keep seeing your feedback and analytics, subscribe to continue."}
@@ -41,13 +41,13 @@ export default function SubscriptionLocked({
       </div>
 
       {/* The manual-payment bridge (no online gateway yet). */}
-      <div className="w-full max-w-md rounded-2xl border border-[#E5E7EB] bg-[#F9FAFB] p-5 text-left text-sm text-[#374151]">
-        <p className="font-semibold text-[#111827]">To subscribe</p>
+      <div className="w-full max-w-md rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC] p-5 text-left text-sm text-[#334155]">
+        <p className="font-semibold text-[#0F172A]">To subscribe</p>
         <p className="mt-1">
           Get in touch with us and we&apos;ll set up your subscription and switch
           you back on — usually within a few hours. (Card payment is coming soon.)
         </p>
-        <p className="mt-3 text-[#6B7280]">
+        <p className="mt-3 text-[#64748B]">
           Your customers&apos; feedback form keeps working the whole time — nothing
           on your tables is affected.
         </p>
@@ -57,7 +57,7 @@ export default function SubscriptionLocked({
         <form action={logout}>
           <button
             type="submit"
-            className="rounded-2xl border border-[#E5E7EB] px-6 py-3 font-semibold text-[#111827] transition-colors hover:bg-[#F9FAFB]"
+            className="rounded-2xl border border-[#E2E8F0] px-6 py-3 font-semibold text-[#0F172A] transition-colors hover:bg-[#F8FAFC]"
           >
             Sign out
           </button>
@@ -70,9 +70,9 @@ export default function SubscriptionLocked({
           is deliberately NOT subscription-gated for exactly this reason. (A branch
           manager who follows this link is refused there — it isn't their account to
           close.) */}
-      <p className="mt-2 text-sm text-[#9CA3AF]">
+      <p className="mt-2 text-sm text-[#94A3B8]">
         Don&apos;t want to continue?{" "}
-        <Link href="/account/close" className="underline hover:text-[#6B7280]">
+        <Link href="/account/close" className="underline hover:text-[#64748B]">
           Close your account and delete your data
         </Link>
       </p>

@@ -71,18 +71,18 @@ export default function VerifyForm({ email }: { email: string }) {
       <button
         type="submit"
         disabled={pending}
-        className="w-full rounded-2xl bg-amber-500 px-6 py-4 text-base font-semibold text-white shadow-sm transition-all duration-150 hover:bg-amber-600 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-[#E5E7EB] disabled:text-[#9CA3AF]"
+        className="w-full rounded-2xl bg-brand px-6 py-4 text-base font-semibold text-white shadow-sm transition-all duration-150 hover:bg-brand-deep active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-[#E2E8F0] disabled:text-[#94A3B8]"
       >
         {pending ? "Verifying…" : "Verify & start trial"}
       </button>
 
-      <p className="text-center text-sm text-[#6B7280]">
+      <p className="text-center text-sm text-[#64748B]">
         Didn&apos;t get it?{" "}
         <button
           type="button"
           onClick={resend}
           disabled={!canResend}
-          className="font-medium text-amber-600 hover:underline disabled:cursor-not-allowed disabled:text-[#9CA3AF] disabled:no-underline"
+          className="font-medium text-aqua-700 hover:underline disabled:cursor-not-allowed disabled:text-[#94A3B8] disabled:no-underline"
         >
           {resent
             ? "Sent!"

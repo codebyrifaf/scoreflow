@@ -41,14 +41,14 @@ export default async function LoginPage({
 
   return (
     // Same premium white aesthetic as the customer feedback page.
-    <main className="font-system relative flex min-h-dvh w-full flex-col items-center justify-center bg-white px-5 py-10 text-[#111827]">
+    <main className="font-system relative flex min-h-dvh w-full flex-col items-center justify-center bg-white px-5 py-10 text-[#0F172A]">
       {/* Way back to the landing page. The wordmark IS the logo (M15) — no icon,
           no emoji; the chevron just makes it read as "back". */}
       <header className="absolute inset-x-0 top-0">
         <nav className="mx-auto flex h-14 w-full max-w-5xl items-center px-6">
           <Link
             href="/"
-            className="text-[17px] font-semibold tracking-[-0.02em] text-[#6E6E73] transition-colors hover:text-[#1D1D1F]"
+            className="text-[17px] font-semibold tracking-[-0.02em] text-[#64748B] transition-colors hover:text-[#0F172A]"
           >
             <span aria-hidden="true">‹</span> ScoreFlow
           </Link>
@@ -59,7 +59,7 @@ export default async function LoginPage({
         <header className="mb-8 text-center">
           {/* Generic heading — both restaurant owners and the operator sign in here.
               No logo, kept intentionally minimal. */}
-          <h1 className="text-3xl font-bold tracking-tight text-[#111827]">
+          <h1 className="text-3xl font-bold tracking-tight text-[#0F172A]">
             Sign in to ScoreFlow
           </h1>
         </header>
@@ -74,9 +74,9 @@ export default async function LoginPage({
 
         <LoginForm defaultEmail={prefillEmail} />
 
-        <p className="mt-6 text-center text-sm text-[#6B7280]">
+        <p className="mt-6 text-center text-sm text-[#64748B]">
           New to ScoreFlow?{" "}
-          <Link href="/signup" className="font-medium text-amber-600 hover:underline">
+          <Link href="/signup" className="font-medium text-aqua-700 hover:underline">
             Get started
           </Link>
         </p>

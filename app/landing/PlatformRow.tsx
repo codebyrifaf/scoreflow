@@ -26,13 +26,13 @@ export default function PlatformRow() {
     <section className={SECTION}>
       <div className={`${CONTAINER} text-center`}>
         <Reveal>
-          <p className="text-[14px] font-medium text-[#6E6E73]">
+          <p className="text-[14px] font-medium text-[#64748B]">
             Where the reviews land
           </p>
-          <h2 className="mx-auto mt-4 max-w-2xl text-[30px] font-semibold leading-[1.1] tracking-[-0.02em] text-[#1D1D1F] sm:text-[44px]">
+          <h2 className="mx-auto mt-4 max-w-2xl text-[30px] font-semibold leading-[1.1] tracking-[-0.02em] text-[#0F172A] sm:text-[44px]">
             Send them where it counts.
           </h2>
-          <p className="mx-auto mt-5 max-w-xl text-[17px] leading-relaxed text-[#6E6E73]">
+          <p className="mx-auto mt-5 max-w-xl text-[17px] leading-relaxed text-[#64748B]">
             A tourist leaves a Tripadvisor review. A local leaves a Google one. You
             choose which platforms your guests are offered — and every guest sees the
             same ones.
@@ -57,7 +57,7 @@ export default function PlatformRow() {
                 key={p.id}
                 className="flex w-16 flex-col items-center gap-2 sm:w-[104px]"
               >
-                <span className="flex h-12 w-12 items-center justify-center rounded-2xl border border-[#E5E7EB] bg-white shadow-sm sm:h-16 sm:w-16">
+                <span className="flex h-12 w-12 items-center justify-center rounded-2xl border border-[#E2E8F0] bg-white shadow-sm sm:h-16 sm:w-16">
                   {/* Local SVG — the CSP (M25) is `img-src 'self'`, so a CDN-hosted
                       logo would be silently blocked. The name is spelled out below,
                       so the mark itself is decorative. */}
@@ -70,7 +70,7 @@ export default function PlatformRow() {
                     className="h-6 w-6 object-contain sm:h-8 sm:w-8"
                   />
                 </span>
-                <span className="text-center text-[11px] font-medium leading-tight text-[#6E6E73] sm:text-[13px]">
+                <span className="text-center text-[11px] font-medium leading-tight text-[#64748B] sm:text-[13px]">
                   {p.name}
                 </span>
               </div>
@@ -79,7 +79,7 @@ export default function PlatformRow() {
         </Reveal>
 
         <Reveal delay={200}>
-          <p className="mx-auto mt-10 max-w-md text-[14px] leading-relaxed text-[#AEAEB2]">
+          <p className="mx-auto mt-10 max-w-md text-[14px] leading-relaxed text-[#94A3B8]">
             Add the links you use in settings. Leave one blank and it simply
             doesn&apos;t appear.
           </p>

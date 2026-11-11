@@ -36,7 +36,7 @@ interface BranchData {
 }
 
 const FIELD =
-  "w-full rounded-2xl border border-[#E5E7EB] bg-white px-4 py-3 text-base text-[#111827] outline-none transition duration-200 placeholder:text-[#9CA3AF] focus:border-amber-500 focus:ring-4 focus:ring-amber-500/15";
+  "w-full rounded-2xl border border-[#E2E8F0] bg-white px-4 py-3 text-base text-[#0F172A] outline-none transition duration-200 placeholder:text-[#94A3B8] focus:border-aqua-600 focus:ring-4 focus:ring-aqua-500/25";
 const DIALOG =
   "m-auto max-h-[90vh] w-[calc(100%-2rem)] max-w-md rounded-3xl bg-white p-0 shadow-xl backdrop:bg-black/40";
 
@@ -47,7 +47,7 @@ function FieldError({ message }: { message?: string }) {
 }
 
 function ratingTone(v: number | null) {
-  if (v === null) return "text-[#9CA3AF]";
+  if (v === null) return "text-[#94A3B8]";
   if (v >= 8) return "text-green-600";
   if (v >= 5) return "text-amber-600";
   return "text-red-600";
@@ -92,7 +92,7 @@ function BranchForm({
         <button
           type="button"
           onClick={onSuccess}
-          className="w-full rounded-2xl bg-amber-500 px-6 py-3 font-semibold text-white"
+          className="w-full rounded-2xl bg-brand px-6 py-3 font-semibold text-white"
         >
           Done
         </button>
@@ -103,7 +103,7 @@ function BranchForm({
   return (
     <form action={formAction} className="flex flex-col gap-4">
       <div className="flex flex-col gap-1.5">
-        <label className="text-sm font-medium text-[#111827]">
+        <label className="text-sm font-medium text-[#0F172A]">
           {branch ? "Branch name" : "Location name"}
         </label>
         <input
@@ -121,9 +121,9 @@ function BranchForm({
             free of Prisma precisely so a client component can import it. The server
             still resolves the real slug and may append "-2" to dodge a collision. */}
         {!branch && name.trim() !== "" && (
-          <p className="text-xs text-[#9CA3AF]">
+          <p className="text-xs text-[#94A3B8]">
             Feedback link:{" "}
-            <span className="font-mono text-[#6B7280]">
+            <span className="font-mono text-[#64748B]">
               /r/{slugify(name)}/feedback
             </span>
           </p>
@@ -137,8 +137,8 @@ function BranchForm({
           printing, and the warning spells out the cost of doing it after. */}
       {branch && (
         <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-[#111827]">
-            Slug <span className="font-normal text-[#9CA3AF]">(used in the URL)</span>
+          <label className="text-sm font-medium text-[#0F172A]">
+            Slug <span className="font-normal text-[#94A3B8]">(used in the URL)</span>
           </label>
           <input name="slug" defaultValue={branch.slug} className={FIELD} />
           <p className="rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-800">
@@ -151,9 +151,9 @@ function BranchForm({
       {/* Review links are NOT set here (M35). All four platforms live in the branch's
           own Settings, set by whoever runs it — the same as a solo restaurant — so
           they're never split between "creation" and "Settings". */}
-      <p className="rounded-xl bg-[#F9FAFB] px-3 py-2.5 text-xs text-[#6B7280]">
+      <p className="rounded-xl bg-[#F8FAFC] px-3 py-2.5 text-xs text-[#64748B]">
         Review links (Google, Tripadvisor, Yelp, Zomato) are set in the branch&apos;s{" "}
-        <b className="text-[#111827]">Settings</b>, by whoever runs it — just like a
+        <b className="text-[#0F172A]">Settings</b>, by whoever runs it — just like a
         single restaurant.
       </p>
       {/* EDIT ONLY, for the same reason as the slug: a brand-new customer asked for a
@@ -161,9 +161,9 @@ function BranchForm({
           It defaults to 8 and is explained properly in the location's own Settings. */}
       {branch && (
         <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-[#111827]">
+          <label className="text-sm font-medium text-[#0F172A]">
             Review threshold{" "}
-            <span className="font-normal text-[#9CA3AF]">(1–10)</span>
+            <span className="font-normal text-[#94A3B8]">(1–10)</span>
           </label>
           <input
             name="positiveThreshold"
@@ -185,17 +185,17 @@ function BranchForm({
           its tables, or any QR code already printed and stood on a table. */}
       {!branch && (
         <>
-          <hr className="border-[#E5E7EB]" />
+          <hr className="border-[#E2E8F0]" />
           <fieldset className="flex flex-col gap-2">
-            <legend className="mb-1 text-sm font-medium text-[#111827]">
+            <legend className="mb-1 text-sm font-medium text-[#0F172A]">
               Who runs this location?
             </legend>
 
             <label
               className={`flex cursor-pointer items-start gap-3 rounded-2xl border p-3 transition-colors ${
                 mode === "self"
-                  ? "border-amber-500 bg-amber-50/50"
-                  : "border-[#E5E7EB] hover:bg-[#F9FAFB]"
+                  ? "border-aqua-600 bg-aqua-50/60"
+                  : "border-[#E2E8F0] hover:bg-[#F8FAFC]"
               }`}
             >
               <input
@@ -204,13 +204,13 @@ function BranchForm({
                 value="self"
                 checked={mode === "self"}
                 onChange={() => setMode("self")}
-                className="mt-1 accent-amber-500"
+                className="mt-1 accent-brand"
               />
               <span>
-                <span className="block text-sm font-medium text-[#111827]">
+                <span className="block text-sm font-medium text-[#0F172A]">
                   I&apos;ll run it myself
                 </span>
-                <span className="mt-0.5 block text-xs text-[#6B7280]">
+                <span className="mt-0.5 block text-xs text-[#64748B]">
                   You manage it from your own login. You can hand it to a manager
                   later.
                 </span>
@@ -220,8 +220,8 @@ function BranchForm({
             <label
               className={`flex cursor-pointer items-start gap-3 rounded-2xl border p-3 transition-colors ${
                 mode === "invite"
-                  ? "border-amber-500 bg-amber-50/50"
-                  : "border-[#E5E7EB] hover:bg-[#F9FAFB]"
+                  ? "border-aqua-600 bg-aqua-50/60"
+                  : "border-[#E2E8F0] hover:bg-[#F8FAFC]"
               }`}
             >
               <input
@@ -230,13 +230,13 @@ function BranchForm({
                 value="invite"
                 checked={mode === "invite"}
                 onChange={() => setMode("invite")}
-                className="mt-1 accent-amber-500"
+                className="mt-1 accent-brand"
               />
               <span>
-                <span className="block text-sm font-medium text-[#111827]">
+                <span className="block text-sm font-medium text-[#0F172A]">
                   Invite a manager
                 </span>
-                <span className="mt-0.5 block text-xs text-[#6B7280]">
+                <span className="mt-0.5 block text-xs text-[#64748B]">
                   They get their own login and see only this location. You still see
                   everything.
                 </span>
@@ -246,7 +246,7 @@ function BranchForm({
 
           {mode === "invite" && (
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-[#111827]">
+              <label className="text-sm font-medium text-[#0F172A]">
                 Manager email
               </label>
               <input
@@ -257,7 +257,7 @@ function BranchForm({
               />
               {/* No password field (M36). We email the manager a link to set their OWN
                   password — the owner never has to create or share one. */}
-              <p className="text-xs text-[#6B7280]">
+              <p className="text-xs text-[#64748B]">
                 We&apos;ll email them a link to set their own password and sign in. You
                 don&apos;t need to create or share a password.
               </p>
@@ -271,7 +271,7 @@ function BranchForm({
       <button
         type="submit"
         disabled={pending}
-        className="w-full rounded-2xl bg-amber-500 px-6 py-3.5 text-base font-semibold text-white shadow-sm transition-all duration-150 hover:bg-amber-600 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-[#E5E7EB] disabled:text-[#9CA3AF]"
+        className="w-full rounded-2xl bg-brand px-6 py-3.5 text-base font-semibold text-white shadow-sm transition-all duration-150 hover:bg-brand-deep active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-[#E2E8F0] disabled:text-[#94A3B8]"
       >
         {pending ? "Saving…" : branch ? "Save changes" : "Add location"}
       </button>
@@ -304,12 +304,12 @@ function Modal({
     >
       <div className="max-h-[85vh] overflow-y-auto p-6">
         <div className="mb-5 flex items-center justify-between">
-          <h2 className="text-xl font-bold text-[#111827]">{title}</h2>
+          <h2 className="text-xl font-bold text-[#0F172A]">{title}</h2>
           <button
             type="button"
             onClick={() => ref.current?.close()}
             aria-label="Close"
-            className="flex h-8 w-8 items-center justify-center rounded-full text-lg text-[#6B7280] hover:bg-[#F3F4F6]"
+            className="flex h-8 w-8 items-center justify-center rounded-full text-lg text-[#64748B] hover:bg-[#F1F5F9]"
           >
             ✕
           </button>
@@ -343,13 +343,13 @@ function DeleteDialog({
 
   return (
     <Modal title={`Delete “${branch.name}”?`} onClose={onClose}>
-      <p className="text-sm text-[#6B7280]">This permanently deletes:</p>
-      <ul className="mt-2 space-y-1 text-sm text-[#374151]">
+      <p className="text-sm text-[#64748B]">This permanently deletes:</p>
+      <ul className="mt-2 space-y-1 text-sm text-[#334155]">
         <li>
-          • <b className="text-[#111827]">{branch.responses}</b> feedback responses
+          • <b className="text-[#0F172A]">{branch.responses}</b> feedback responses
         </li>
         <li>
-          • <b className="text-[#111827]">{branch.tables}</b> tables
+          • <b className="text-[#0F172A]">{branch.tables}</b> tables
         </li>
         <li>• manager login: {branch.managerEmails.join(", ") || "—"}</li>
       </ul>
@@ -357,7 +357,7 @@ function DeleteDialog({
         This cannot be undone.
       </p>
       <form action={action} className="mt-4 flex flex-col gap-3">
-        <label className="text-sm text-[#111827]">
+        <label className="text-sm text-[#0F172A]">
           Type <span className="font-mono font-semibold">{branch.slug}</span> to
           confirm
         </label>
@@ -367,8 +367,8 @@ function DeleteDialog({
           autoComplete="off"
           value={confirm}
           onChange={(e) => setConfirm(e.target.value)}
-          className={FIELD.replace("focus:ring-amber-500/15", "focus:ring-red-500/15").replace(
-            "focus:border-amber-500",
+          className={FIELD.replace("focus:ring-aqua-500/25", "focus:ring-red-500/15").replace(
+            "focus:border-aqua-600",
             "focus:border-red-500"
           )}
         />
@@ -376,7 +376,7 @@ function DeleteDialog({
         <button
           type="submit"
           disabled={confirm.trim() !== branch.slug || pending}
-          className="w-full rounded-2xl bg-red-600 px-4 py-3 text-base font-semibold text-white shadow-sm transition-all duration-150 hover:bg-red-700 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-[#E5E7EB] disabled:text-[#9CA3AF]"
+          className="w-full rounded-2xl bg-red-600 px-4 py-3 text-base font-semibold text-white shadow-sm transition-all duration-150 hover:bg-red-700 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-[#E2E8F0] disabled:text-[#94A3B8]"
         >
           {pending ? "Deleting…" : "Delete branch"}
         </button>
@@ -414,21 +414,21 @@ function ResetDialog({
           <div className="flex h-14 w-14 items-center justify-center rounded-full bg-green-50 text-2xl text-green-600">
             ✓
           </div>
-          <p className="text-[15px] text-[#374151]">
+          <p className="text-[15px] text-[#334155]">
             Password reset for <b>{managerEmail}</b>. Share it with them.
           </p>
           <button
             onClick={onClose}
-            className="w-full rounded-2xl bg-amber-500 px-6 py-3 font-semibold text-white"
+            className="w-full rounded-2xl bg-brand px-6 py-3 font-semibold text-white"
           >
             Done
           </button>
         </div>
       ) : (
         <form action={action} className="flex flex-col gap-4">
-          <p className="text-sm text-[#6B7280]">
+          <p className="text-sm text-[#64748B]">
             Set a new password for{" "}
-            <span className="font-medium text-[#111827]">{managerEmail}</span>.
+            <span className="font-medium text-[#0F172A]">{managerEmail}</span>.
           </p>
           <input
             name="newPassword"
@@ -441,7 +441,7 @@ function ResetDialog({
           <button
             type="submit"
             disabled={pending}
-            className="w-full rounded-2xl bg-amber-500 px-6 py-3 font-semibold text-white disabled:bg-[#E5E7EB] disabled:text-[#9CA3AF]"
+            className="w-full rounded-2xl bg-brand px-6 py-3 font-semibold text-white disabled:bg-[#E2E8F0] disabled:text-[#94A3B8]"
           >
             {pending ? "Resetting…" : "Reset password"}
           </button>
@@ -496,27 +496,27 @@ function InviteManagerDialog({
           >
             {warning ? "!" : "✓"}
           </div>
-          <p className="text-[15px] text-[#374151]">
+          <p className="text-[15px] text-[#334155]">
             {warning ??
               "Invite sent. They'll get a link to set their own password and sign in."}
           </p>
           <button
             onClick={onClose}
-            className="w-full rounded-2xl bg-amber-500 px-6 py-3 font-semibold text-white"
+            className="w-full rounded-2xl bg-brand px-6 py-3 font-semibold text-white"
           >
             Done
           </button>
         </div>
       ) : (
         <form action={action} className="flex flex-col gap-4">
-          <p className="text-sm text-[#6B7280]">
+          <p className="text-sm text-[#64748B]">
             They&apos;ll get their own login and see{" "}
-            <b className="text-[#111827]">only {branch.name}</b>.{" "}
-            <b className="text-[#111827]">You keep full access</b> to this location and
+            <b className="text-[#0F172A]">only {branch.name}</b>.{" "}
+            <b className="text-[#0F172A]">You keep full access</b> to this location and
             everything else.
           </p>
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-[#111827]">
+            <label className="text-sm font-medium text-[#0F172A]">
               Manager email
             </label>
             <input
@@ -527,7 +527,7 @@ function InviteManagerDialog({
               className={FIELD}
             />
             {/* We never email a password (M36) — only a link to choose one. */}
-            <p className="text-xs text-[#6B7280]">
+            <p className="text-xs text-[#64748B]">
               We&apos;ll email them a link to set their own password. You don&apos;t
               need to create or share one.
             </p>
@@ -536,7 +536,7 @@ function InviteManagerDialog({
           <button
             type="submit"
             disabled={pending}
-            className="w-full rounded-2xl bg-amber-500 px-6 py-3.5 text-base font-semibold text-white shadow-sm transition-all duration-150 hover:bg-amber-600 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-[#E5E7EB] disabled:text-[#9CA3AF]"
+            className="w-full rounded-2xl bg-brand px-6 py-3.5 text-base font-semibold text-white shadow-sm transition-all duration-150 hover:bg-brand-deep active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-[#E2E8F0] disabled:text-[#94A3B8]"
           >
             {pending ? "Sending invite…" : "Send invite"}
           </button>
@@ -560,57 +560,57 @@ function BranchCard({
   onInvite: (b: BranchData) => void;
 }) {
   return (
-    <div className="rounded-2xl border border-[#E5E7EB] bg-white p-5">
+    <div className="rounded-2xl border border-[#E2E8F0] bg-white p-5">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="truncate text-lg font-semibold text-[#111827]">
+          <h3 className="truncate text-lg font-semibold text-[#0F172A]">
             {b.name}
           </h3>
-          <p className="font-mono text-sm text-[#6B7280]">{b.slug}</p>
+          <p className="font-mono text-sm text-[#64748B]">{b.slug}</p>
         </div>
         <div className="text-right">
           <div className={`text-2xl font-bold ${ratingTone(b.avgRating)}`}>
             {b.avgRating === null ? "—" : b.avgRating.toFixed(1)}
           </div>
-          <div className="text-xs text-[#9CA3AF]">avg</div>
+          <div className="text-xs text-[#94A3B8]">avg</div>
         </div>
       </div>
 
       {/* "No manager" read like something was missing. Running a location yourself is
           a deliberate, supported choice — say so, and offer the way out of it. */}
-      <p className="mt-2 truncate text-sm text-[#374151]">
+      <p className="mt-2 truncate text-sm text-[#334155]">
         {b.managerEmails.length ? (
           b.managerEmails.join(", ")
         ) : (
-          <span className="text-[#6B7280]">You run this location</span>
+          <span className="text-[#64748B]">You run this location</span>
         )}
       </p>
-      <div className="mt-3 flex flex-wrap gap-2 text-xs text-[#6B7280]">
-        <span className="rounded-full bg-[#F3F4F6] px-2.5 py-1">
-          <b className="text-[#111827]">{b.responses}</b> responses
+      <div className="mt-3 flex flex-wrap gap-2 text-xs text-[#64748B]">
+        <span className="rounded-full bg-[#F1F5F9] px-2.5 py-1">
+          <b className="text-[#0F172A]">{b.responses}</b> responses
         </span>
-        <span className="rounded-full bg-[#F3F4F6] px-2.5 py-1">
-          <b className="text-[#111827]">{b.tables}</b> tables
+        <span className="rounded-full bg-[#F1F5F9] px-2.5 py-1">
+          <b className="text-[#0F172A]">{b.tables}</b> tables
         </span>
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-1 border-t border-[#F3F4F6] pt-3">
+      <div className="mt-4 flex flex-wrap gap-1 border-t border-[#F1F5F9] pt-3">
         <Link
           href={`/r/${b.slug}/dashboard`}
-          className="rounded-lg border border-[#E5E7EB] px-3 py-1.5 text-sm font-medium text-[#111827] hover:bg-[#F9FAFB]"
+          className="rounded-lg border border-[#E2E8F0] px-3 py-1.5 text-sm font-medium text-[#0F172A] hover:bg-[#F8FAFC]"
         >
           Dashboard
         </Link>
         <Link
           href={`/r/${b.slug}/tables`}
-          className="rounded-lg border border-[#E5E7EB] px-3 py-1.5 text-sm font-medium text-[#111827] hover:bg-[#F9FAFB]"
+          className="rounded-lg border border-[#E2E8F0] px-3 py-1.5 text-sm font-medium text-[#0F172A] hover:bg-[#F8FAFC]"
         >
           Tables
         </Link>
         <button
           type="button"
           onClick={() => onEdit(b)}
-          className="rounded-lg px-2.5 py-1.5 text-sm font-medium text-[#111827] hover:bg-[#F3F4F6]"
+          className="rounded-lg px-2.5 py-1.5 text-sm font-medium text-[#0F172A] hover:bg-[#F1F5F9]"
         >
           Edit
         </button>
@@ -621,7 +621,7 @@ function BranchCard({
           <button
             type="button"
             onClick={() => onReset(b.managerEmails[0])}
-            className="rounded-lg px-2.5 py-1.5 text-sm font-medium text-amber-600 hover:bg-amber-50"
+            className="rounded-lg px-2.5 py-1.5 text-sm font-medium text-aqua-700 hover:bg-aqua-50"
           >
             Reset password
           </button>
@@ -629,7 +629,7 @@ function BranchCard({
           <button
             type="button"
             onClick={() => onInvite(b)}
-            className="rounded-lg px-2.5 py-1.5 text-sm font-medium text-amber-600 hover:bg-amber-50"
+            className="rounded-lg px-2.5 py-1.5 text-sm font-medium text-aqua-700 hover:bg-aqua-50"
           >
             Invite manager
           </button>
@@ -664,7 +664,7 @@ export default function BrandBranches({
   return (
     <section>
       <div className="mb-4 flex items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold text-[#111827]">
+        <h2 className="text-lg font-semibold text-[#0F172A]">
           {empty ? "Your locations" : "Locations"}
         </h2>
         {/* Hidden while empty — the empty state below carries its own, bigger CTA, and
@@ -673,7 +673,7 @@ export default function BrandBranches({
           <button
             type="button"
             onClick={() => setAdding(true)}
-            className="rounded-full bg-amber-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all duration-150 hover:bg-amber-600 active:scale-[0.98]"
+            className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all duration-150 hover:bg-brand-deep active:scale-[0.98]"
           >
             + Add location
           </button>
@@ -684,11 +684,11 @@ export default function BrandBranches({
         /* THE FIRST SCREEN A NEW CUSTOMER SEES. Signup creates the account and stops,
            so this is where they land — it has to explain what to do next and make
            doing it the obvious action, not just report that a list is empty. */
-        <div className="rounded-2xl border border-dashed border-[#E5E7EB] p-8 text-center">
-          <h3 className="text-lg font-semibold text-[#111827]">
+        <div className="rounded-2xl border border-dashed border-[#E2E8F0] p-8 text-center">
+          <h3 className="text-lg font-semibold text-[#0F172A]">
             Add your first location
           </h3>
-          <p className="mx-auto mt-2 max-w-md text-[15px] leading-relaxed text-[#6B7280]">
+          <p className="mx-auto mt-2 max-w-md text-[15px] leading-relaxed text-[#64748B]">
             A location is one restaurant — its own feedback, its own tables and QR
             codes. Add one if you have a single restaurant, or one for each site if you
             run several.
@@ -696,7 +696,7 @@ export default function BrandBranches({
           <button
             type="button"
             onClick={() => setAdding(true)}
-            className="mt-5 rounded-2xl bg-amber-500 px-6 py-3 text-base font-semibold text-white shadow-sm transition-all duration-150 hover:bg-amber-600 active:scale-[0.98]"
+            className="mt-5 rounded-2xl bg-brand px-6 py-3 text-base font-semibold text-white shadow-sm transition-all duration-150 hover:bg-brand-deep active:scale-[0.98]"
           >
             + Add your first location
           </button>

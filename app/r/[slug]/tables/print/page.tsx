@@ -33,17 +33,17 @@ export const dynamic = "force-dynamic";
 /** Same clean 403 the dashboard/tables pages use. */
 function NotAuthorized({ homeHref }: { homeHref: string }) {
   return (
-    <main className="font-system flex min-h-dvh w-full flex-col items-center justify-center gap-4 bg-white px-5 py-12 text-center text-[#111827]">
+    <main className="font-system flex min-h-dvh w-full flex-col items-center justify-center gap-4 bg-white px-5 py-12 text-center text-[#0F172A]">
       <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-100 text-3xl text-red-600">
         ⛔
       </div>
-      <h1 className="text-2xl font-bold text-[#111827]">Not authorized</h1>
-      <p className="text-[#6B7280]">
+      <h1 className="text-2xl font-bold text-[#0F172A]">Not authorized</h1>
+      <p className="text-[#64748B]">
         You&apos;re signed in, but this kit isn&apos;t one you can print.
       </p>
       <Link
         href={homeHref}
-        className="mt-2 rounded-2xl bg-amber-500 px-6 py-3 font-semibold text-white transition-colors hover:bg-amber-600"
+        className="mt-2 rounded-2xl bg-brand px-6 py-3 font-semibold text-white transition-colors hover:bg-brand-deep"
       >
         Go back
       </Link>
@@ -65,37 +65,39 @@ function KitCard({
   tableLabel: string | null;
 }) {
   return (
-    <div className="qr-card flex flex-col items-center gap-3 rounded-2xl border border-dashed border-[#C7C7CC] p-6 text-center">
+    <div className="qr-card flex min-w-0 flex-col items-center gap-3 rounded-2xl border border-dashed border-[#CBD5E1] p-4 text-center sm:p-6 print:p-6">
       {/* Brand: the logo (M26) if the owner set one, otherwise the name in text. */}
       {logoUrl ? (
         // eslint-disable-next-line @next/next/no-img-element -- data: URL, not remote
         <img
           src={logoUrl}
           alt={name}
-          className="h-12 w-12 rounded-xl border border-[#E5E7EB] object-contain p-1"
+          className="h-12 w-12 rounded-xl border border-[#E2E8F0] object-contain p-1"
         />
       ) : (
-        <div className="text-lg font-bold tracking-tight text-[#111827]">
+        <div className="text-lg font-bold tracking-tight text-[#0F172A]">
           {name}
         </div>
       )}
 
-      <p className="text-sm font-semibold text-[#111827]">Scan to rate your meal</p>
+      <p className="text-sm font-semibold text-[#0F172A]">Scan to rate your meal</p>
 
-      {/* The code. Fixed physical box so every card prints the same size. */}
+      {/* The code. PRINTED in a fixed physical box so every card prints the same
+          size. On SCREEN it may shrink to fit its card: two fixed 176px codes side by
+          side are wider than a small phone, and the preview scrolled sideways. */}
       <QrCode
         matrix={matrix}
         title={tableLabel ? `Feedback QR for table ${tableLabel}` : "Feedback QR"}
-        className="h-44 w-44"
+        className="aspect-square h-auto w-full max-w-44 print:h-44 print:w-44 print:max-w-none"
       />
 
       <div>
         {tableLabel ? (
-          <p className="text-base font-bold text-[#111827]">Table {tableLabel}</p>
+          <p className="text-base font-bold text-[#0F172A]">Table {tableLabel}</p>
         ) : (
-          <p className="text-base font-bold text-[#111827]">Order at the counter</p>
+          <p className="text-base font-bold text-[#0F172A]">Order at the counter</p>
         )}
-        <p className="mt-0.5 text-xs text-[#6B7280]">
+        <p className="mt-0.5 text-xs text-[#64748B]">
           Takes 10 seconds · no app needed
         </p>
       </div>
@@ -143,15 +145,15 @@ export default async function PrintKitPage({
       : null;
 
   return (
-    <main className="font-system min-h-dvh w-full bg-white text-[#111827]">
+    <main className="font-system min-h-dvh w-full bg-white text-[#0F172A]">
       {/* Toolbar — hidden when printing. */}
-      <div className="print:hidden border-b border-[#E5E7EB]">
+      <div className="print:hidden border-b border-[#E2E8F0]">
         <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-3 px-5 py-4">
           <div>
-            <h1 className="text-lg font-bold tracking-tight text-[#111827]">
+            <h1 className="text-lg font-bold tracking-tight text-[#0F172A]">
               {restaurant.name} — QR kit
             </h1>
-            <p className="text-sm text-[#6B7280]">
+            <p className="text-sm text-[#64748B]">
               Print this, cut out the cards, and stand one on each table. No chips, no
               app.
             </p>
@@ -159,11 +161,11 @@ export default async function PrintKitPage({
           <div className="flex flex-none items-center gap-2">
             <Link
               href={`/r/${slug}/tables`}
-              className="rounded-full border border-[#E5E7EB] px-3 py-1.5 text-sm font-medium text-[#111827] transition-colors hover:bg-[#F9FAFB]"
+              className="rounded-full border border-[#E2E8F0] px-3 py-1.5 text-sm font-medium text-[#0F172A] transition-colors hover:bg-[#F8FAFC]"
             >
               ← Tables
             </Link>
-            <PrintButton className="rounded-full bg-amber-500 px-4 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-amber-600" />
+            <PrintButton className="rounded-full bg-brand px-4 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-brand-deep" />
           </div>
         </div>
       </div>

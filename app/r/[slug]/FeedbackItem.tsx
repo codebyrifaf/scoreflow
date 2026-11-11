@@ -16,7 +16,7 @@ export function ratingTone(rating: number): string {
 
 export default function FeedbackItem({ record }: { record: FeedbackRecord }) {
   return (
-    <div className="flex gap-3 rounded-2xl border border-[#E5E7EB] p-4">
+    <div className="flex gap-3 rounded-2xl border border-[#E2E8F0] p-4">
       <div
         className={`flex h-11 w-11 flex-none items-center justify-center rounded-xl text-sm font-bold ${ratingTone(
           record.rating
@@ -26,26 +26,26 @@ export default function FeedbackItem({ record }: { record: FeedbackRecord }) {
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline justify-between gap-2">
-          <span className="text-sm font-semibold text-[#111827]">
+          <span className="text-sm font-semibold text-[#0F172A]">
             {/* The order number is optional (a guest may have had no receipt). */}
             {record.orderNumber ? `Order ${record.orderNumber}` : "No order number"}
-            <span className="font-normal text-[#6B7280]">
+            <span className="font-normal text-[#64748B]">
               {" · "}Table {record.table ?? "—"}
             </span>
           </span>
-          <span className="flex-none text-xs text-[#9CA3AF]">
+          <span className="flex-none text-xs text-[#94A3B8]">
             {formatInAppTz(record.timestamp)}
           </span>
         </div>
         {record.comment && (
-          <p className="mt-1 text-sm text-[#374151]">{record.comment}</p>
+          <p className="mt-1 text-sm text-[#334155]">{record.comment}</p>
         )}
         {record.tags.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-1.5">
             {record.tags.map((tag) => (
               <span
                 key={tag}
-                className="rounded-full bg-[#F3F4F6] px-2.5 py-0.5 text-xs font-medium text-[#374151]"
+                className="rounded-full bg-[#F1F5F9] px-2.5 py-0.5 text-xs font-medium text-[#334155]"
               >
                 {tag}
               </span>
@@ -54,7 +54,7 @@ export default function FeedbackItem({ record }: { record: FeedbackRecord }) {
         )}
         {/* Win-back contact, if this diner left one (M24). */}
         {(record.contactName || record.contactPhone) && (
-          <p className="mt-2 rounded-lg bg-amber-50 px-2.5 py-1.5 text-sm font-medium text-amber-900">
+          <p className="mt-2 rounded-lg bg-aqua-50 px-2.5 py-1.5 text-sm font-medium text-brand">
             Contact:{" "}
             {[record.contactName, record.contactPhone].filter(Boolean).join(" · ")}
           </p>

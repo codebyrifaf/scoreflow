@@ -70,7 +70,7 @@ export default function PitchPage() {
   const signupQr = qrMatrix(`${appUrl()}/signup`);
 
   return (
-    <main className="font-system min-h-dvh w-full bg-[#F5F5F7] text-[#1D1D1F] antialiased">
+    <main className="font-system min-h-dvh w-full bg-[#F1F5F9] text-[#0F172A] antialiased">
       {/* Toolbar — screen only, never printed, never screenshotted. */}
       <div className="print:hidden">
         <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-4 px-6 py-6">
@@ -78,11 +78,11 @@ export default function PitchPage() {
             <p className="text-[15px] font-semibold tracking-[-0.02em]">
               ScoreFlow
             </p>
-            <p className="text-[13px] text-[#6E6E73]">
+            <p className="text-[13px] text-[#64748B]">
               Eight slides. Screenshot any one of them to post it.
             </p>
           </div>
-          <PrintButton className="rounded-full border border-[#D2D2D7] bg-white px-5 py-2.5 text-[14px] font-medium text-[#1D1D1F] transition-colors hover:border-[#1D1D1F]" />
+          <PrintButton className="rounded-full border border-[#CBD5E1] bg-white px-5 py-2.5 text-[14px] font-medium text-[#0F172A] transition-colors hover:border-[#0F172A]" />
         </div>
       </div>
 
@@ -137,10 +137,10 @@ export default function PitchPage() {
               read in under a second — so the one line of copy carries the whole
               lower half and is sized up to fill it. */}
           <SlideVisual>
-            <p className="text-[17px] font-medium leading-relaxed text-[#1D1D1F] sm:text-[19px]">
+            <p className="text-[17px] font-medium leading-relaxed text-[#0F172A] sm:text-[19px]">
               A problem you hear about at the table is a free dessert.
               <br />
-              <span className="text-[#6E6E73]">
+              <span className="text-[#64748B]">
                 The same problem on Google is a one-star, forever.
               </span>
             </p>
@@ -160,8 +160,8 @@ export default function PitchPage() {
           <SlideVisual className="items-center gap-5">
             <div className="flex items-end justify-center gap-4">
               {/* The table card, as the print kit actually renders it. */}
-              <div className="rounded-2xl border border-[#D2D2D7] bg-white p-3 text-center shadow-sm">
-                <p className="text-[10px] font-semibold text-[#1D1D1F]">
+              <div className="rounded-2xl border border-[#CBD5E1] bg-white p-3 text-center shadow-sm">
+                <p className="text-[10px] font-semibold text-[#0F172A]">
                   Table 4
                 </p>
                 <div className="my-1.5 flex justify-center">
@@ -171,7 +171,7 @@ export default function PitchPage() {
                     title="Scan to start a free trial"
                   />
                 </div>
-                <p className="text-[8px] leading-tight text-[#6E6E73]">
+                <p className="text-[8px] leading-tight text-[#64748B]">
                   How was
                   <br />
                   your meal?
@@ -180,7 +180,7 @@ export default function PitchPage() {
 
               <PhoneFrame width="w-[132px]">
                 <div className="px-2.5 py-3">
-                  <p className="text-center text-[8px] font-semibold text-[#111827]">
+                  <p className="text-center text-[8px] font-semibold text-[#0F172A]">
                     How was your meal?
                   </p>
                   <div className="mt-2 grid grid-cols-5 gap-1">
@@ -189,8 +189,8 @@ export default function PitchPage() {
                         key={n}
                         className={`flex aspect-square items-center justify-center rounded-md text-[8px] font-semibold ${
                           n === 3
-                            ? "bg-amber-500 text-white"
-                            : "bg-[#F3F4F6] text-[#111827]"
+                            ? "bg-brand text-white"
+                            : "bg-[#F1F5F9] text-[#0F172A]"
                         }`}
                       >
                         {n}
@@ -201,7 +201,7 @@ export default function PitchPage() {
                     {["Burger was dry", "Bun soggy"].map((c) => (
                       <span
                         key={c}
-                        className="rounded-full bg-[#F3F4F6] px-1.5 py-0.5 text-[7px] font-medium text-[#111827]"
+                        className="rounded-full bg-[#F1F5F9] px-1.5 py-0.5 text-[7px] font-medium text-[#0F172A]"
                       >
                         {c}
                       </span>
@@ -221,13 +221,13 @@ export default function PitchPage() {
                 that line untrue. This is the same split the landing page already
                 makes — the printed card owns "nothing to buy", NFC is the upgrade for
                 anyone who'd rather tap than scan. */}
-            <div className="flex items-center gap-3 rounded-2xl border border-[#D2D2D7] bg-white/70 px-4 py-2.5">
-              <span className="flex h-7 w-7 flex-none items-center justify-center rounded-full bg-amber-500 text-white">
+            <div className="flex items-center gap-3 rounded-2xl border border-[#CBD5E1] bg-white/70 px-4 py-2.5">
+              <span className="flex h-7 w-7 flex-none items-center justify-center rounded-full bg-brand text-white">
                 <TapWaves className="h-4 w-4" />
               </span>
-              <p className="text-[12.5px] leading-snug text-[#3A3A3C]">
+              <p className="text-[12.5px] leading-snug text-[#334155]">
                 Or load the same link onto an{" "}
-                <span className="font-medium text-[#1D1D1F]">NFC chip</span> — they
+                <span className="font-medium text-[#0F172A]">NFC chip</span> — they
                 tap, no camera.
               </p>
             </div>
@@ -243,17 +243,17 @@ export default function PitchPage() {
           </div>
 
           <SlideVisual>
-            <div className="rounded-2xl border border-[#D2D2D7] bg-white p-4 shadow-sm">
-              <p className="text-[11px] font-medium text-[#AEAEB2]">
+            <div className="rounded-2xl border border-[#CBD5E1] bg-white p-4 shadow-sm">
+              <p className="text-[11px] font-medium text-[#94A3B8]">
                 ScoreFlow · now
               </p>
-              <p className="mt-1 text-[15px] font-semibold text-[#1D1D1F]">
+              <p className="mt-1 text-[15px] font-semibold text-[#0F172A]">
                 Table 4 rated you 3/10
               </p>
-              <p className="mt-1 text-[13px] leading-relaxed text-[#6E6E73]">
+              <p className="mt-1 text-[13px] leading-relaxed text-[#64748B]">
                 &ldquo;Burger was dry&rdquo; · Order 102
               </p>
-              <p className="mt-3 text-[13px] font-medium text-[#1D1D1F]">
+              <p className="mt-3 text-[13px] font-medium text-[#0F172A]">
                 You have about four minutes.
               </p>
             </div>
@@ -277,8 +277,8 @@ export default function PitchPage() {
           </div>
 
           <SlideVisual>
-            <div className="rounded-2xl bg-white p-4 text-[#1D1D1F]">
-              <p className="text-[11px] text-[#6E6E73]">
+            <div className="rounded-2xl bg-white p-4 text-[#0F172A]">
+              <p className="text-[11px] text-[#64748B]">
                 By dish · worst first
               </p>
               {[
@@ -297,11 +297,11 @@ export default function PitchPage() {
               ].map((r) => (
                 <div
                   key={r.dish}
-                  className="mt-2.5 flex items-start justify-between gap-3 border-t border-[#F3F4F6] pt-2.5 first:border-0 first:pt-0"
+                  className="mt-2.5 flex items-start justify-between gap-3 border-t border-[#F1F5F9] pt-2.5 first:border-0 first:pt-0"
                 >
                   <div className="min-w-0">
                     <p className="truncate text-[13px] font-medium">{r.dish}</p>
-                    <p className="mt-0.5 text-[11px] text-[#6E6E73]">
+                    <p className="mt-0.5 text-[11px] text-[#64748B]">
                       {r.chips}
                     </p>
                   </div>
@@ -312,7 +312,7 @@ export default function PitchPage() {
               ))}
               {/* Says plainly that this is an example, so no number here can be read
                 as a claim about a real restaurant's results. */}
-              <p className="mt-3 text-[10px] text-[#AEAEB2]">
+              <p className="mt-3 text-[10px] text-[#94A3B8]">
                 Example dashboard
               </p>
             </div>
@@ -340,7 +340,7 @@ export default function PitchPage() {
               {REVIEW_PLATFORMS.map((p) => (
                 <span
                   key={p.id}
-                  className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#D2D2D7] bg-white"
+                  className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#CBD5E1] bg-white"
                 >
                   {/* Local SVG — the M25 CSP is `img-src 'self'`, so a CDN logo would
                       be silently blocked. Decorative; the point is made in text. */}
@@ -355,10 +355,10 @@ export default function PitchPage() {
                 </span>
               ))}
             </div>
-            <p className="mt-3 text-[13px] leading-relaxed text-[#6E6E73]">
+            <p className="mt-3 text-[13px] leading-relaxed text-[#64748B]">
               Tools that hide it from unhappy guests break Google&apos;s rules
               and UK review law.{" "}
-              <span className="font-medium text-[#1D1D1F]">
+              <span className="font-medium text-[#0F172A]">
                 We never hide it.
               </span>
             </p>
@@ -381,10 +381,10 @@ export default function PitchPage() {
                 "Put one on each table",
               ].map((step, i) => (
                 <li key={step} className="flex items-center gap-3">
-                  <span className="flex h-7 w-7 flex-none items-center justify-center rounded-full bg-[#1D1D1F] text-[12px] font-semibold text-white">
+                  <span className="flex h-7 w-7 flex-none items-center justify-center rounded-full bg-brand text-[12px] font-semibold text-white">
                     {i + 1}
                   </span>
-                  <span className="text-[14px] text-[#1D1D1F]">{step}</span>
+                  <span className="text-[14px] text-[#0F172A]">{step}</span>
                 </li>
               ))}
             </ol>
@@ -437,7 +437,7 @@ export default function PitchPage() {
           <Link href="/signup" className={BTN_DARK}>
             Start {TRIAL_DAYS} days free
           </Link>
-          <p className="mt-4 text-[13px] text-[#6E6E73]">
+          <p className="mt-4 text-[13px] text-[#64748B]">
             Screenshot any slide to post it, or use Print / Save as PDF for a
             hand-out.
           </p>

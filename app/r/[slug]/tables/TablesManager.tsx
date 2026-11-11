@@ -59,7 +59,7 @@ function TableItem({
   }
 
   return (
-    <div className="flex gap-4 rounded-2xl border border-[#E5E7EB] bg-white p-4">
+    <div className="flex gap-4 rounded-2xl border border-[#E2E8F0] bg-white p-4">
       {/* QR preview (M30) — the owner can screen-share or photograph one table's code
           without printing the whole kit. */}
       <QrCode
@@ -70,14 +70,14 @@ function TableItem({
 
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0 text-base font-semibold text-[#111827]">
+          <div className="min-w-0 text-base font-semibold text-[#0F172A]">
             {table.label}
           </div>
           <div className="flex flex-none items-center gap-1">
             <button
               type="button"
               onClick={copy}
-              className="rounded-lg border border-[#E5E7EB] px-3 py-1.5 text-sm font-medium text-[#111827] transition-colors hover:bg-[#F9FAFB]"
+              className="rounded-lg border border-[#E2E8F0] px-3 py-1.5 text-sm font-medium text-[#0F172A] transition-colors hover:bg-[#F8FAFC]"
             >
               {copied ? "Copied!" : "Copy link"}
             </button>
@@ -92,7 +92,7 @@ function TableItem({
             </form>
           </div>
         </div>
-        <code className="mt-2 block break-all font-mono text-xs text-[#6B7280]">
+        <code className="mt-2 block break-all font-mono text-xs text-[#64748B]">
           {url}
         </code>
       </div>
@@ -141,7 +141,7 @@ export default function TablesManager({
     <div className="flex flex-col gap-6">
       {/* Tables list (cards) */}
       {tables.length === 0 ? (
-        <p className="rounded-2xl border border-dashed border-[#E5E7EB] p-8 text-center text-[#6B7280]">
+        <p className="rounded-2xl border border-dashed border-[#E2E8F0] p-8 text-center text-[#64748B]">
           No tables yet. Add your first table below.
         </p>
       ) : (
@@ -167,7 +167,7 @@ export default function TablesManager({
             name="label"
             type="text"
             placeholder="Table name or number, e.g. 4 or Patio 2"
-            className="w-full rounded-2xl border border-[#E5E7EB] bg-white px-4 py-3.5 text-base text-[#111827] outline-none transition duration-200 placeholder:text-[#9CA3AF] focus:border-amber-500 focus:ring-4 focus:ring-amber-500/15"
+            className="w-full rounded-2xl border border-[#E2E8F0] bg-white px-4 py-3.5 text-base text-[#0F172A] outline-none transition duration-200 placeholder:text-[#94A3B8] focus:border-aqua-600 focus:ring-4 focus:ring-aqua-500/25"
           />
           {error && (
             <p role="alert" className="mt-1 text-sm font-medium text-red-600">
@@ -178,7 +178,7 @@ export default function TablesManager({
         <button
           type="submit"
           disabled={pending}
-          className="rounded-2xl bg-amber-500 px-6 py-3.5 text-base font-semibold text-white shadow-sm transition-all duration-150 hover:bg-amber-600 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-[#E5E7EB] disabled:text-[#9CA3AF] disabled:shadow-none disabled:active:scale-100"
+          className="rounded-2xl bg-brand px-6 py-3.5 text-base font-semibold text-white shadow-sm transition-all duration-150 hover:bg-brand-deep active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-[#E2E8F0] disabled:text-[#94A3B8] disabled:shadow-none disabled:active:scale-100"
         >
           {pending ? "Adding…" : "Add table"}
         </button>

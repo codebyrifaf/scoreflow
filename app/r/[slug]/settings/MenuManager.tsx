@@ -1,13 +1,15 @@
 "use client";
 
 /**
- * Menu + POS settings — CLIENT component.
+ * Menu + POS settings — CLIENT components.
  *
- * Two jobs, both owner-facing:
- *   1. get the account's MENU in (photograph it, or type/paste it) and let the
- *      owner review the dishes and reword the suggestions;
- *   2. connect the restaurant's TILL, so chips can be about the dish a diner
- *      actually ordered rather than the menu in general.
+ * Three owner-facing pieces, each shown as its OWN Settings section (see
+ * SettingsShell — the page shows one section at a time):
+ *   1. `MenuManager`     — get the account's MENU in (Import from Square, photograph
+ *                          it, or type/paste it), review the dishes, save.
+ *   2. `DishSuggestions` — reword the suggestions guests see for each dish.
+ *   3. `PosConnection`   — connect the restaurant's TILL, so chips can be about the
+ *                          dish a diner actually ordered rather than the menu in general.
  *
  * Everything here is re-validated in menu-actions.ts. Nothing on this screen is
  * trusted — this is the friendly path, not the enforcement.
@@ -27,8 +29,9 @@ import {
   type PosKeyState,
 } from "./menu-actions";
 import SquareConnect, { type SquareProps } from "./SquareConnect";
+import { useSettingsSection } from "./SettingsShell";
 
-interface Dish {
+export interface Dish {
   id: number;
   name: string;
   category: string | null;
@@ -41,23 +44,17 @@ interface Props {
   slug: string;
   dishes: Dish[];
   aiConfigured: boolean;
-  posConnected: boolean;
-  posKeyPrefix: string | null;
-  lastOrderAt: string | null;
-  posUrl: string;
-  /** The account's Square connection, as Settings shows it. */
+  /** The account's Square connection — decides whether "Import from Square" shows. */
   square: SquareProps;
-  /** The `?square=` outcome after returning from Square, if any. */
-  squareNotice: string | null;
 }
 
-const CARD = "rounded-2xl border border-[#E5E7EB] bg-white p-5";
+const CARD = "rounded-2xl border border-[#E2E8F0] bg-white p-5";
 const FIELD =
-  "w-full rounded-2xl border border-[#E5E7EB] bg-white px-4 py-3 text-base text-[#111827] outline-none transition duration-200 placeholder:text-[#9CA3AF] focus:border-amber-500 focus:ring-4 focus:ring-amber-500/15";
+  "w-full rounded-2xl border border-[#E2E8F0] bg-white px-4 py-3 text-base text-[#0F172A] outline-none transition duration-200 placeholder:text-[#94A3B8] focus:border-aqua-600 focus:ring-4 focus:ring-aqua-500/25";
 const BTN =
-  "rounded-2xl bg-amber-500 px-5 py-3 text-base font-semibold text-white shadow-sm transition-all duration-150 hover:bg-amber-600 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-[#E5E7EB] disabled:text-[#9CA3AF]";
+  "rounded-2xl bg-brand px-5 py-3 text-base font-semibold text-white shadow-sm transition-all duration-150 hover:bg-brand-deep active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-[#E2E8F0] disabled:text-[#94A3B8]";
 const BTN_QUIET =
-  "rounded-xl border border-[#E5E7EB] px-3 py-1.5 text-sm font-medium text-[#111827] transition-colors hover:bg-[#F9FAFB]";
+  "rounded-xl border border-[#E2E8F0] px-3 py-1.5 text-sm font-medium text-[#0F172A] transition-colors hover:bg-[#F8FAFC]";
 
 /** Longest edge for the uploaded menu photo. Big enough to read small print,
  *  small enough not to send a multi-megabyte image over restaurant wifi. */
@@ -120,18 +117,9 @@ function appendNewDishes(
   return { text: prev.trim() ? `${prev.trim()}\n${joined}` : joined, added: lines.length };
 }
 
-export default function MenuManager(props: Props) {
-  const {
-    slug,
-    dishes,
-    aiConfigured,
-    posConnected,
-    posKeyPrefix,
-    lastOrderAt,
-    posUrl,
-    square,
-    squareNotice,
-  } = props;
+export default function MenuManager({ slug, dishes, aiConfigured, square }: Props) {
+  // To send the owner on to "Guest suggestions" once their menu is saved.
+  const { go } = useSettingsSection();
 
   // The dish list as editable text — one per line, "Name, category". Both entry
   // paths (photo and paste) fill this same box, so what the owner reviews is
@@ -149,11 +137,6 @@ export default function MenuManager(props: Props) {
     saveMenu.bind(null, slug),
     undefined
   );
-  const [regenState, regenAction, regenerating] = useActionState<MenuState, FormData>(
-    regenerateChips.bind(null, slug),
-    undefined
-  );
-
   function onPickPhoto(file: File | undefined) {
     if (!file) return;
     setPhotoError(null);
@@ -222,181 +205,205 @@ export default function MenuManager(props: Props) {
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      {/* ── Menu ─────────────────────────────────────────────────────────── */}
-      <section className={CARD}>
-        <h2 className="text-lg font-semibold text-[#111827]">Your menu</h2>
-        <p className="mt-1 text-sm text-[#6B7280]">
-          Once we know your dishes, guests get suggestions about the food they
-          actually ate — <b className="text-[#111827]">&ldquo;Burger was dry&rdquo;</b>{" "}
-          instead of &ldquo;Food was cold&rdquo;. Shared across all your locations.
-        </p>
+    <section className={CARD}>
+      <h2 className="text-lg font-semibold text-[#0F172A]">Your menu</h2>
+      <p className="mt-1 text-sm text-[#64748B]">
+        Once we know your dishes, guests get suggestions about the food they
+        actually ate — <b className="text-[#0F172A]">&ldquo;Burger was dry&rdquo;</b>{" "}
+        instead of &ldquo;Food was cold&rdquo;. Shared across all your locations.
+      </p>
 
-        {/* How the dishes get in — each way shown ONLY when it can work (the M18
-            rule: never a dead button). Square import needs a Square connection; the
-            photo needs an AI provider.
+      {/* How the dishes get in — each way shown ONLY when it can work (the M18
+          rule: never a dead button). Square import needs a Square connection; the
+          photo needs an AI provider.
 
-            With Square connected, Import is THE way and the photo shrinks to a small
-            link: Import's names are exactly the ones Square prints on every order,
-            while a printed menu's "Chicken Burger" may be Square's "Chicken Cheese
-            Burger" — a worse match. */}
-        {aiConfigured && (
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/png,image/jpeg,image/webp"
-            className="hidden"
-            onChange={(e) => onPickPhoto(e.target.files?.[0])}
-          />
-        )}
-        {square.connected ? (
-          <div className="mt-4">
+          With Square connected, Import is THE way and the photo shrinks to a small
+          link: Import's names are exactly the ones Square prints on every order,
+          while a printed menu's "Chicken Burger" may be Square's "Chicken Cheese
+          Burger" — a worse match. */}
+      {aiConfigured && (
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/png,image/jpeg,image/webp"
+          className="hidden"
+          onChange={(e) => onPickPhoto(e.target.files?.[0])}
+        />
+      )}
+      {square.connected ? (
+        <div className="mt-4">
+          <button
+            type="button"
+            disabled={importing || extracting}
+            onClick={onImportSquare}
+            className={BTN}
+          >
+            {importing ? "Reading Square…" : "Import from Square"}
+          </button>
+          <p className="mt-2 text-xs text-[#94A3B8]">
+            Import reads your Square item list — the same names Square prints on each
+            order, so every order matches its dishes exactly.
+          </p>
+          {aiConfigured && (
             <button
               type="button"
               disabled={importing || extracting}
-              onClick={onImportSquare}
-              className={BTN}
-            >
-              {importing ? "Reading Square…" : "Import from Square"}
-            </button>
-            <p className="mt-2 text-xs text-[#9CA3AF]">
-              Import reads your Square item list — the same names Square prints on each
-              order, so every order matches its dishes exactly.
-            </p>
-            {aiConfigured && (
-              <button
-                type="button"
-                disabled={importing || extracting}
-                onClick={() => fileRef.current?.click()}
-                className="mt-2 text-sm font-medium text-amber-700 underline-offset-2 hover:underline disabled:text-[#9CA3AF] disabled:no-underline"
-              >
-                {extracting ? "Reading your menu…" : "or photograph a menu"}
-              </button>
-            )}
-          </div>
-        ) : aiConfigured ? (
-          <div className="mt-4">
-            <button
-              type="button"
-              disabled={extracting}
               onClick={() => fileRef.current?.click()}
-              className={BTN}
+              className="mt-2 text-sm font-medium text-aqua-700 underline-offset-2 hover:underline disabled:text-[#94A3B8] disabled:no-underline"
             >
-              {extracting ? "Reading your menu…" : "📷 Photograph your menu"}
+              {extracting ? "Reading your menu…" : "or photograph a menu"}
             </button>
-            <p className="mt-2 text-xs text-[#9CA3AF]">
-              We&apos;ll read the dishes off the picture. You can fix anything before
-              saving.
-            </p>
-          </div>
-        ) : (
-          <p className="mt-4 rounded-xl bg-[#F9FAFB] px-3 py-2.5 text-sm text-[#6B7280]">
-            Photo reading isn&apos;t switched on, so type or paste your dishes below.
-            Everything else works exactly the same.
-          </p>
-        )}
-
-        {photoError && (
-          <p role="alert" className="mt-3 text-sm font-medium text-red-600">
-            {photoError}
-          </p>
-        )}
-        {photoNote && (
-          <p role="status" className="mt-3 text-sm font-medium text-green-600">
-            {photoNote}
-          </p>
-        )}
-
-        <form action={saveAction} className="mt-5 flex flex-col gap-3">
-          <label htmlFor="dishes" className="text-sm font-medium text-[#111827]">
-            Dishes <span className="font-normal text-[#9CA3AF]">one per line</span>
-          </label>
-          <textarea
-            id="dishes"
-            name="dishes"
-            rows={10}
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder={"Chicken Cheese Burger, burger\nChicken Wings, starter\nCold Coffee, coffee"}
-            className={`${FIELD} font-mono text-sm`}
-          />
-          <p className="text-xs text-[#6B7280]">
-            Add a category after a comma (burger, pizza, curry, coffee…) and the
-            suggestions get better. It&apos;s optional.
-          </p>
-
-          <div className="flex flex-wrap items-center gap-3">
-            <button type="submit" disabled={saving} className={BTN}>
-              {saving ? "Saving…" : "Save menu"}
-            </button>
-            {saveState && "ok" in saveState && (
-              <span role="status" className="text-sm font-medium text-green-600">
-                {saveState.message}
-              </span>
-            )}
-            {saveState && "error" in saveState && (
-              <span role="alert" className="text-sm font-medium text-red-600">
-                {saveState.error}
-              </span>
-            )}
-          </div>
-          {saveState && "ok" in saveState && saveState.warning && (
-            <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800">
-              {saveState.warning}
-            </p>
           )}
-        </form>
-      </section>
-
-      {/* ── Suggestions per dish ─────────────────────────────────────────── */}
-      {dishes.length > 0 && (
-        <section className={CARD}>
-          <div className="mb-1 flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-lg font-semibold text-[#111827]">
-              Suggestions guests see
-            </h2>
-            <form action={regenAction}>
-              <button type="submit" disabled={regenerating} className={BTN_QUIET}>
-                {regenerating ? "Regenerating…" : "Regenerate all"}
-              </button>
-            </form>
-          </div>
-          <p className={`mb-4 text-sm text-[#6B7280]`}>
-            Edit anything that doesn&apos;t sound like your food — you know it better
-            than we do. Anything you edit is left alone when you regenerate.
+        </div>
+      ) : aiConfigured ? (
+        <div className="mt-4">
+          <button
+            type="button"
+            disabled={extracting}
+            onClick={() => fileRef.current?.click()}
+            className={BTN}
+          >
+            {extracting ? "Reading your menu…" : "📷 Photograph your menu"}
+          </button>
+          <p className="mt-2 text-xs text-[#94A3B8]">
+            We&apos;ll read the dishes off the picture. You can fix anything before
+            saving.
           </p>
-          {regenState && "ok" in regenState && (
-            <p role="status" className="mb-3 text-sm font-medium text-green-600">
-              {regenState.message}
-            </p>
-          )}
-          {/* Never shown before — a failed or empty regenerate looked exactly like
-              nothing happening (the M18 rule: never a silent failure). */}
-          {regenState && "error" in regenState && (
-            <p role="alert" className="mb-3 text-sm font-medium text-red-600">
-              {regenState.error}
-            </p>
-          )}
-
-          <div className="flex flex-col gap-4">
-            {dishes.map((d) => (
-              <DishChipEditor key={d.id} slug={slug} dish={d} />
-            ))}
-          </div>
-        </section>
+        </div>
+      ) : (
+        <p className="mt-4 rounded-xl bg-[#F8FAFC] px-3 py-2.5 text-sm text-[#64748B]">
+          Photo reading isn&apos;t switched on, so type or paste your dishes below.
+          Everything else works exactly the same.
+        </p>
       )}
 
-      {/* ── POS connection ───────────────────────────────────────────────── */}
-      <PosConnection
-        slug={slug}
-        connected={posConnected}
-        keyPrefix={posKeyPrefix}
-        lastOrderAt={lastOrderAt}
-        posUrl={posUrl}
-        square={square}
-        squareNotice={squareNotice}
-      />
-    </div>
+      {photoError && (
+        <p role="alert" className="mt-3 text-sm font-medium text-red-600">
+          {photoError}
+        </p>
+      )}
+      {photoNote && (
+        <p role="status" className="mt-3 text-sm font-medium text-green-600">
+          {photoNote}
+        </p>
+      )}
+
+      <form action={saveAction} className="mt-5 flex flex-col gap-3">
+        <label htmlFor="dishes" className="text-sm font-medium text-[#0F172A]">
+          Dishes <span className="font-normal text-[#94A3B8]">one per line</span>
+        </label>
+        <textarea
+          id="dishes"
+          name="dishes"
+          rows={10}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder={"Chicken Cheese Burger, burger\nChicken Wings, starter\nCold Coffee, coffee"}
+          className={`${FIELD} font-mono text-sm`}
+        />
+        <p className="text-xs text-[#64748B]">
+          Add a category after a comma (burger, pizza, curry, coffee…) and the
+          suggestions get better. It&apos;s optional.
+        </p>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <button type="submit" disabled={saving} className={BTN}>
+            {saving ? "Saving…" : "Save menu"}
+          </button>
+          {saveState && "ok" in saveState && (
+            <span role="status" className="text-sm font-medium text-green-600">
+              {saveState.message}
+            </span>
+          )}
+          {saveState && "error" in saveState && (
+            <span role="alert" className="text-sm font-medium text-red-600">
+              {saveState.error}
+            </span>
+          )}
+        </div>
+        {saveState && "ok" in saveState && saveState.warning && (
+          <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800">
+            {saveState.warning}
+          </p>
+        )}
+        {/* The suggestions now live in their own section, so point the way there
+            rather than leaving the owner to wonder what saving did. */}
+        {saveState && "ok" in saveState && (
+          <button
+            type="button"
+            onClick={() => go("suggestions")}
+            className="self-start text-sm font-medium text-aqua-700 underline-offset-2 hover:underline"
+          >
+            See the suggestions guests get →
+          </button>
+        )}
+      </form>
+    </section>
+  );
+}
+
+/**
+ * "Guest suggestions" — each dish's two chip lists, editable, plus Regenerate all.
+ *
+ * Its own Settings section: with a real menu this is the longest thing on the page
+ * (two boxes per dish), and it used to bury everything below it.
+ */
+export function DishSuggestions({ slug, dishes }: { slug: string; dishes: Dish[] }) {
+  const { go } = useSettingsSection();
+  const [regenState, regenAction, regenerating] = useActionState<MenuState, FormData>(
+    regenerateChips.bind(null, slug),
+    undefined
+  );
+
+  // No menu yet → nothing to suggest about. Say so, and point to where it's added.
+  if (dishes.length === 0) {
+    return (
+      <section className={CARD}>
+        <h2 className="text-lg font-semibold text-[#0F172A]">Suggestions guests see</h2>
+        <p className="mt-1 text-sm text-[#64748B]">
+          Once your menu is in, each dish gets its own suggestions here — the quick
+          taps a guest sees, like &ldquo;Burger was dry&rdquo;.
+        </p>
+        <button type="button" onClick={() => go("menu")} className={`${BTN} mt-4`}>
+          Add your menu
+        </button>
+      </section>
+    );
+  }
+
+  return (
+    <section className={CARD}>
+      <div className="mb-1 flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-lg font-semibold text-[#0F172A]">Suggestions guests see</h2>
+        <form action={regenAction}>
+          <button type="submit" disabled={regenerating} className={BTN_QUIET}>
+            {regenerating ? "Regenerating…" : "Regenerate all"}
+          </button>
+        </form>
+      </div>
+      <p className="mb-4 text-sm text-[#64748B]">
+        Edit anything that doesn&apos;t sound like your food — you know it better
+        than we do. Anything you edit is left alone when you regenerate.
+      </p>
+      {regenState && "ok" in regenState && (
+        <p role="status" className="mb-3 text-sm font-medium text-green-600">
+          {regenState.message}
+        </p>
+      )}
+      {/* Never shown before — a failed or empty regenerate looked exactly like
+          nothing happening (the M18 rule: never a silent failure). */}
+      {regenState && "error" in regenState && (
+        <p role="alert" className="mb-3 text-sm font-medium text-red-600">
+          {regenState.error}
+        </p>
+      )}
+
+      <div className="flex flex-col gap-4">
+        {dishes.map((d) => (
+          <DishChipEditor key={d.id} slug={slug} dish={d} />
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -433,10 +440,10 @@ function DishChipEditor({ slug, dish }: { slug: string; dish: Dish }) {
   const negKey = dish.negativeChips.join("\n");
 
   return (
-    <form action={saveAction} className="rounded-xl border border-[#E5E7EB] p-4">
+    <form action={saveAction} className="rounded-xl border border-[#E2E8F0] p-4">
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-        <span className="font-semibold text-[#111827]">{dish.name}</span>
-        <span className="text-xs text-[#9CA3AF]">
+        <span className="font-semibold text-[#0F172A]">{dish.name}</span>
+        <span className="text-xs text-[#94A3B8]">
           {dish.chipsSource === "owner"
             ? "edited by you"
             : dish.chipsSource === "ai"
@@ -494,7 +501,7 @@ function DishChipEditor({ slug, dish }: { slug: string; dish: Dish }) {
                 formAction={resetAction}
                 disabled={pending}
                 onClick={() => setLastPressed("reset")}
-                className="rounded-xl bg-amber-500 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-amber-600 disabled:bg-[#E5E7EB] disabled:text-[#9CA3AF]"
+                className="rounded-xl bg-brand px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-brand-deep disabled:bg-[#E2E8F0] disabled:text-[#94A3B8]"
               >
                 {resetting ? "Replacing…" : "Yes, replace my wording"}
               </button>
@@ -502,7 +509,7 @@ function DishChipEditor({ slug, dish }: { slug: string; dish: Dish }) {
                 type="button"
                 disabled={pending}
                 onClick={() => setConfirmingReset(false)}
-                className="text-sm font-medium text-[#6B7280] hover:text-[#111827]"
+                className="text-sm font-medium text-[#64748B] hover:text-[#0F172A]"
               >
                 Keep mine
               </button>
@@ -512,7 +519,7 @@ function DishChipEditor({ slug, dish }: { slug: string; dish: Dish }) {
               type="button"
               disabled={pending}
               onClick={() => setConfirmingReset(true)}
-              className="text-sm font-medium text-amber-700 hover:text-amber-800"
+              className="text-sm font-medium text-aqua-700 hover:text-aqua-800"
             >
               Replace with fresh suggestions
             </button>
@@ -544,7 +551,7 @@ function DishChipEditor({ slug, dish }: { slug: string; dish: Dish }) {
  * whether the integration is alive, and without it a silently broken connection
  * would look identical to a working one.
  */
-function PosConnection({
+export function PosConnection({
   slug,
   connected,
   keyPrefix,
@@ -594,11 +601,11 @@ function PosConnection({
 
   return (
     <section className={CARD}>
-      <h2 className="text-lg font-semibold text-[#111827]">Connect your till</h2>
-      <p className="mt-1 text-sm text-[#6B7280]">
+      <h2 className="text-lg font-semibold text-[#0F172A]">Connect your till</h2>
+      <p className="mt-1 text-sm text-[#64748B]">
         Optional, and worth it. When your till tells us what was in each order,
         guests get suggestions about{" "}
-        <b className="text-[#111827]">the exact dish they ordered</b> — and your
+        <b className="text-[#0F172A]">the exact dish they ordered</b> — and your
         dashboard can tell you which dish is losing you customers.
       </p>
 
@@ -610,19 +617,19 @@ function PosConnection({
           the till to add one web request. Folded away when Square is on offer, so
           the common case isn't buried under developer instructions — but open if
           this branch already uses a key, or if Square isn't available here. */}
-      <details className="mt-4 rounded-xl border border-[#E5E7EB] p-4" open={keySectionOpen}>
-        <summary className="cursor-pointer text-sm font-medium text-[#111827]">
+      <details className="mt-4 rounded-xl border border-[#E2E8F0] p-4" open={keySectionOpen}>
+        <summary className="cursor-pointer text-sm font-medium text-[#0F172A]">
           Using a different till? Connect it with a key
         </summary>
 
       {connected ? (
         <>
-          <div className="mt-4 rounded-xl bg-[#F9FAFB] p-4">
-            <p className="text-sm font-medium text-[#111827]">
+          <div className="mt-4 rounded-xl bg-[#F8FAFC] p-4">
+            <p className="text-sm font-medium text-[#0F172A]">
               Send each new order to this address
             </p>
             <div className="mt-2 flex flex-wrap items-center gap-2">
-              <code className="min-w-0 flex-1 break-all rounded-lg bg-white px-3 py-2 font-mono text-xs text-[#111827]">
+              <code className="min-w-0 flex-1 break-all rounded-lg bg-white px-3 py-2 font-mono text-xs text-[#0F172A]">
                 {posUrl}
               </code>
               <button type="button" onClick={() => copy("url", posUrl)} className={BTN_QUIET}>
@@ -630,11 +637,11 @@ function PosConnection({
               </button>
             </div>
 
-            <p className="mt-4 text-sm font-medium text-[#111827]">With this key</p>
+            <p className="mt-4 text-sm font-medium text-[#0F172A]">With this key</p>
             {freshKey ? (
               <>
                 <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <code className="min-w-0 flex-1 break-all rounded-lg bg-white px-3 py-2 font-mono text-xs text-[#111827]">
+                  <code className="min-w-0 flex-1 break-all rounded-lg bg-white px-3 py-2 font-mono text-xs text-[#0F172A]">
                     {freshKey}
                   </code>
                   <button
@@ -653,7 +660,7 @@ function PosConnection({
                 </p>
               </>
             ) : (
-              <p className="mt-2 font-mono text-xs text-[#6B7280]">
+              <p className="mt-2 font-mono text-xs text-[#64748B]">
                 {keyPrefix ?? "sk_pos_…"}{" "}
                 <span className="font-sans">(hidden for security)</span>
               </p>
@@ -667,7 +674,7 @@ function PosConnection({
                 ● Last order received {lastOrderAt}
               </span>
             ) : (
-              <span className="text-[#6B7280]">
+              <span className="text-[#64748B]">
                 ○ No orders received yet. Once your till starts sending them,
                 you&apos;ll see it here.
               </span>
@@ -698,7 +705,7 @@ function PosConnection({
               {generating ? "Generating…" : "Connect my till"}
             </button>
           </form>
-          <p className="mt-2 text-xs text-[#9CA3AF]">
+          <p className="mt-2 text-xs text-[#94A3B8]">
             We&apos;ll give you an address and a key to hand to whoever runs your
             till. Nothing changes for your guests.
           </p>

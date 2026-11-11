@@ -70,12 +70,12 @@ function Preview({ src, fallback }: { src: string | null; fallback: string }) {
       <img
         src={src}
         alt="Your logo"
-        className="h-20 w-20 rounded-2xl border border-[#E5E7EB] bg-white object-contain p-1"
+        className="h-20 w-20 rounded-2xl border border-[#E2E8F0] bg-white object-contain p-1"
       />
     );
   }
   return (
-    <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-amber-500 text-4xl font-semibold text-white">
+    <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-brand text-4xl font-semibold text-white">
       {fallback}
     </div>
   );
@@ -139,9 +139,9 @@ export default function LogoUploader({
   }
 
   return (
-    <div className="rounded-2xl border border-[#E5E7EB] bg-white p-5">
-      <h2 className="text-lg font-semibold text-[#111827]">Logo</h2>
-      <p className="mt-1 text-sm text-[#6B7280]">
+    <div className="rounded-2xl border border-[#E2E8F0] bg-white p-5">
+      <h2 className="text-lg font-semibold text-[#0F172A]">Logo</h2>
+      <p className="mt-1 text-sm text-[#64748B]">
         Shown to diners at the top of your feedback page, so it looks like your own.
         A square image works best.
       </p>
@@ -155,7 +155,7 @@ export default function LogoUploader({
               type="button"
               onClick={() => fileRef.current?.click()}
               disabled={isPending}
-              className="rounded-xl bg-amber-500 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-amber-600 disabled:opacity-60"
+              className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-deep disabled:opacity-60"
             >
               {logo ? "Change logo" : "Upload logo"}
             </button>
@@ -164,13 +164,13 @@ export default function LogoUploader({
                 type="button"
                 onClick={() => persist(null)}
                 disabled={isPending}
-                className="rounded-xl border border-[#E5E7EB] px-4 py-2 text-sm font-medium text-[#6B7280] transition-colors hover:bg-[#F9FAFB] disabled:opacity-60"
+                className="rounded-xl border border-[#E2E8F0] px-4 py-2 text-sm font-medium text-[#64748B] transition-colors hover:bg-[#F8FAFC] disabled:opacity-60"
               >
                 Remove
               </button>
             )}
           </div>
-          <p className="text-xs text-[#9CA3AF]">PNG, JPG or WebP.</p>
+          <p className="text-xs text-[#94A3B8]">PNG, JPG or WebP.</p>
         </div>
 
         {/* Hidden real input — the styled buttons above drive it. */}
@@ -184,7 +184,7 @@ export default function LogoUploader({
       </div>
 
       {isPending && (
-        <p className="mt-3 text-sm text-[#6B7280]">Saving…</p>
+        <p className="mt-3 text-sm text-[#64748B]">Saving…</p>
       )}
       {error && (
         <p role="alert" className="mt-3 text-sm font-medium text-red-600">

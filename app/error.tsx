@@ -33,13 +33,13 @@ export default function AppError({
   }, [error]);
 
   return (
-    <main className="font-system flex min-h-dvh w-full flex-col items-center justify-center gap-4 bg-white px-5 py-12 text-center text-[#111827]">
-      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#F3F4F6] text-3xl text-[#6B7280]">
+    <main className="font-system flex min-h-dvh w-full flex-col items-center justify-center gap-4 bg-white px-5 py-12 text-center text-[#0F172A]">
+      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#F1F5F9] text-3xl text-[#64748B]">
         ⚠
       </div>
 
       <h1 className="text-2xl font-bold tracking-tight">Something went wrong</h1>
-      <p className="max-w-md text-[15px] leading-relaxed text-[#6B7280]">
+      <p className="max-w-md text-[15px] leading-relaxed text-[#64748B]">
         We hit an unexpected problem loading this page. Your data is safe — nothing
         was lost. Try again, and if it keeps happening let us know.
       </p>
@@ -48,13 +48,13 @@ export default function AppError({
         <button
           type="button"
           onClick={reset}
-          className="rounded-2xl bg-amber-500 px-6 py-3 font-semibold text-white shadow-sm transition-all duration-150 hover:bg-amber-600 active:scale-[0.98]"
+          className="rounded-2xl bg-brand px-6 py-3 font-semibold text-white shadow-sm transition-all duration-150 hover:bg-brand-deep active:scale-[0.98]"
         >
           Try again
         </button>
         <Link
           href="/login"
-          className="rounded-2xl border border-[#E5E7EB] px-6 py-3 font-semibold text-[#111827] transition-colors hover:bg-[#F9FAFB]"
+          className="rounded-2xl border border-[#E2E8F0] px-6 py-3 font-semibold text-[#0F172A] transition-colors hover:bg-[#F8FAFC]"
         >
           Back to sign in
         </Link>

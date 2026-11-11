@@ -76,15 +76,15 @@ interface FeedbackFormProps {
  *  (Form is top-aligned so a tall form never clips; short "thank-you" screens
  *  add `justify-center` to sit in the middle.) */
 const PAGE_CLASS =
-  "font-system flex min-h-dvh w-full flex-col items-center bg-white px-5 py-10 text-[#111827]";
+  "font-system flex min-h-dvh w-full flex-col items-center bg-white px-5 py-10 text-[#0F172A]";
 /** Centres the content column and fades it in on load (no card styling). */
 const CARD_CLASS = "animate-card-in w-full max-w-[430px]";
 /** Text inputs / textarea: rounded, light border, soft brand focus ring. */
 const FIELD_CLASS =
-  "w-full rounded-2xl border border-[#E5E7EB] bg-white px-4 py-3.5 text-base text-[#111827] outline-none transition duration-200 placeholder:text-[#9CA3AF] focus:border-amber-500 focus:ring-4 focus:ring-amber-500/15";
+  "w-full rounded-2xl border border-[#E2E8F0] bg-white px-4 py-3.5 text-base text-[#0F172A] outline-none transition duration-200 placeholder:text-[#94A3B8] focus:border-aqua-600 focus:ring-4 focus:ring-aqua-500/25";
 /** Primary full-width button (brand accent) with a gentle press animation. */
 const PRIMARY_BTN_CLASS =
-  "w-full rounded-2xl bg-amber-500 px-6 py-4 text-base font-semibold text-white shadow-sm transition-all duration-150 hover:bg-amber-600 active:scale-[0.98]";
+  "w-full rounded-2xl bg-brand px-6 py-4 text-base font-semibold text-white shadow-sm transition-all duration-150 hover:bg-brand-deep active:scale-[0.98]";
 
 /**
  * The brand mark at the top of the form (Milestone 26).
@@ -101,12 +101,12 @@ function BrandLogo({ name, logoUrl }: { name: string; logoUrl: string | null }) 
       <img
         src={logoUrl}
         alt={name}
-        className="h-16 w-16 rounded-2xl border border-[#E5E7EB] bg-white object-contain p-1 shadow-sm"
+        className="h-16 w-16 rounded-2xl border border-[#E2E8F0] bg-white object-contain p-1 shadow-sm"
       />
     );
   }
   return (
-    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-amber-500 text-3xl font-semibold text-white shadow-sm">
+    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-brand text-3xl font-semibold text-white shadow-sm">
       {name.charAt(0)}
     </div>
   );
@@ -309,18 +309,18 @@ export default function FeedbackForm({
           <div
             className={`mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full text-4xl ${
               wasDisappointing
-                ? "bg-[#F3F4F6] text-[#6B7280]"
+                ? "bg-[#F1F5F9] text-[#64748B]"
                 : "bg-green-50 text-green-600"
             }`}
           >
             ✓
           </div>
 
-          <h1 className="text-2xl font-bold tracking-tight text-[#111827]">
+          <h1 className="text-2xl font-bold tracking-tight text-[#0F172A]">
             {wasDisappointing ? "Thank you — we hear you" : "Thanks for your feedback!"}
           </h1>
 
-          <p className="mt-2 text-[15px] leading-relaxed text-[#6B7280]">
+          <p className="mt-2 text-[15px] leading-relaxed text-[#64748B]">
             {wasDisappointing
               ? `We're sorry your experience at ${restaurantName} fell short.`
               : `We really appreciate you taking the time to help ${restaurantName} improve.`}
@@ -329,7 +329,7 @@ export default function FeedbackForm({
           {/* Service recovery for an unhappy diner — an ADDITIONAL reassurance, not a
               replacement for the review invite below. */}
           {wasDisappointing && (
-            <p className="mt-4 rounded-2xl bg-[#F9FAFB] px-4 py-3 text-[14px] leading-relaxed text-[#374151]">
+            <p className="mt-4 rounded-2xl bg-[#F8FAFC] px-4 py-3 text-[14px] leading-relaxed text-[#334155]">
               What you told us has gone straight to the {restaurantName} team so they
               can put it right.
             </p>
@@ -351,7 +351,7 @@ export default function FeedbackForm({
               diner is never blocked by our analytics. */}
           {reviewLinks.length > 0 && (
             <div className="mt-8">
-              <p className="text-[15px] font-semibold text-[#111827]">
+              <p className="text-[15px] font-semibold text-[#0F172A]">
                 Leave a review
               </p>
 
@@ -367,7 +367,7 @@ export default function FeedbackForm({
                     aria-label={`Leave a review on ${link.name}`}
                     className="flex w-[72px] flex-col items-center gap-1.5"
                   >
-                    <span className="flex h-14 w-14 items-center justify-center rounded-2xl border border-[#E5E7EB] bg-white shadow-sm transition-all duration-150 hover:border-[#D1D5DB] hover:shadow-md active:scale-[0.96]">
+                    <span className="flex h-14 w-14 items-center justify-center rounded-2xl border border-[#E2E8F0] bg-white shadow-sm transition-all duration-150 hover:border-[#CBD5E1] hover:shadow-md active:scale-[0.96]">
                       {/* Local SVG — the CSP (M25) forbids remote images. The name is
                           spelled out below, so the image itself is decorative. */}
                       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -379,14 +379,14 @@ export default function FeedbackForm({
                         className="h-7 w-7 object-contain"
                       />
                     </span>
-                    <span className="text-center text-[11px] font-medium leading-tight text-[#6B7280]">
+                    <span className="text-center text-[11px] font-medium leading-tight text-[#64748B]">
                       {link.name}
                     </span>
                   </a>
                 ))}
               </div>
 
-              <p className="mt-5 text-[13px] text-[#9CA3AF]">
+              <p className="mt-5 text-[13px] text-[#94A3B8]">
                 Sharing your honest experience publicly is entirely up to you.
               </p>
             </div>
@@ -403,16 +403,16 @@ export default function FeedbackForm({
         {/* Header: brand logo + restaurant name + table chip */}
         <header className="mb-8 flex flex-col items-center gap-3 text-center">
           <BrandLogo name={restaurantName} logoUrl={logoUrl} />
-          <h1 className="text-2xl font-bold tracking-tight text-[#111827]">
+          <h1 className="text-2xl font-bold tracking-tight text-[#0F172A]">
             {restaurantName}
           </h1>
           {table ? (
-            <span className="rounded-full border border-[#E5E7EB] px-3 py-1 text-sm font-medium text-[#6B7280]">
+            <span className="rounded-full border border-[#E2E8F0] px-3 py-1 text-sm font-medium text-[#64748B]">
               Table {table}
             </span>
           ) : (
             // Shown when someone opens the page without a ?table= in the URL.
-            <span className="rounded-full border border-[#E5E7EB] px-3 py-1 text-sm font-medium text-[#9CA3AF]">
+            <span className="rounded-full border border-[#E2E8F0] px-3 py-1 text-sm font-medium text-[#94A3B8]">
               Table not set
             </span>
           )}
@@ -440,10 +440,10 @@ export default function FeedbackForm({
           <div className="flex flex-col gap-2">
             <label
               htmlFor="orderNumber"
-              className="text-sm font-medium text-[#111827]"
+              className="text-sm font-medium text-[#0F172A]"
             >
               {receiptCodes ? "Receipt code" : "Order number"}{" "}
-              <span className="font-normal text-[#9CA3AF]">(optional)</span>
+              <span className="font-normal text-[#94A3B8]">(optional)</span>
             </label>
             <input
               id="orderNumber"
@@ -464,7 +464,7 @@ export default function FeedbackForm({
               className={FIELD_CLASS}
             />
             {receiptCodes && (
-              <p id="orderNumberHint" className="text-xs text-[#6B7280]">
+              <p id="orderNumberHint" className="text-xs text-[#64748B]">
                 The 4-character code at the bottom of your receipt — it tells us
                 exactly what you had. No receipt? Just leave it blank.
               </p>
@@ -473,7 +473,7 @@ export default function FeedbackForm({
 
           {/* Rating 1–10 ----------------------------------------------------- */}
           <div className="flex flex-col gap-3">
-            <span className="text-base font-semibold text-[#111827]">
+            <span className="text-base font-semibold text-[#0F172A]">
               How was your meal?
             </span>
             {/* Two rows of 5 large, thumb-friendly, square buttons. */}
@@ -489,8 +489,8 @@ export default function FeedbackForm({
                     aria-label={`Rate ${value} out of 10`}
                     className={`flex aspect-square min-h-11 items-center justify-center rounded-2xl text-lg font-semibold transition-all duration-200 ease-out ${
                       selected
-                        ? "scale-105 bg-amber-500 text-white shadow-md shadow-amber-500/30"
-                        : "bg-[#F3F4F6] text-[#111827] hover:bg-[#ECEEF2] active:scale-95"
+                        ? "scale-105 bg-brand text-white shadow-md shadow-brand/25"
+                        : "bg-[#F1F5F9] text-[#0F172A] hover:bg-[#E2E8F0] active:scale-95"
                     }`}
                   >
                     {value}
@@ -499,7 +499,7 @@ export default function FeedbackForm({
               })}
             </div>
             {/* Scale hints: "Poor" under the first button, "Great" under the last. */}
-            <div className="flex justify-between px-1 text-xs font-medium text-[#6B7280]">
+            <div className="flex justify-between px-1 text-xs font-medium text-[#64748B]">
               <span>Poor</span>
               <span>Great</span>
             </div>
@@ -508,11 +508,11 @@ export default function FeedbackForm({
           {/* Quick-tap chips (appear once a rating is chosen) ---------------- */}
           {chips.length > 0 && (
             <div className="flex flex-col gap-3">
-              <span className="text-base font-semibold text-[#111827]">
+              <span className="text-base font-semibold text-[#0F172A]">
                 {rating >= positiveThreshold
                   ? "What did you love?"
                   : "What could be better?"}{" "}
-                <span className="font-normal text-[#9CA3AF]">(optional)</span>
+                <span className="font-normal text-[#94A3B8]">(optional)</span>
               </span>
               <div className="flex flex-wrap gap-2">
                 {chips.map((chip) => {
@@ -525,8 +525,8 @@ export default function FeedbackForm({
                       aria-pressed={on}
                       className={`min-h-11 rounded-full px-4 py-2 text-sm font-medium transition-all duration-200 ease-out ${
                         on
-                          ? "bg-amber-500 text-white shadow-sm shadow-amber-500/30"
-                          : "bg-[#F3F4F6] text-[#111827] hover:bg-[#ECEEF2] active:scale-95"
+                          ? "bg-brand text-white shadow-sm shadow-brand/25"
+                          : "bg-[#F1F5F9] text-[#0F172A] hover:bg-[#E2E8F0] active:scale-95"
                       }`}
                     >
                       {chip}
@@ -541,10 +541,10 @@ export default function FeedbackForm({
           <div className="flex flex-col gap-2">
             <label
               htmlFor="comment"
-              className="text-sm font-medium text-[#111827]"
+              className="text-sm font-medium text-[#0F172A]"
             >
               Comment{" "}
-              <span className="font-normal text-[#9CA3AF]">(optional)</span>
+              <span className="font-normal text-[#94A3B8]">(optional)</span>
             </label>
             <textarea
               id="comment"
@@ -560,12 +560,12 @@ export default function FeedbackForm({
               restaurant's chance to reach out and fix it before it becomes a public
               one-star. Entirely optional; most people skip it, and that's fine. */}
           {isUnhappy && (
-            <div className="flex flex-col gap-3 rounded-2xl bg-[#F9FAFB] p-4">
+            <div className="flex flex-col gap-3 rounded-2xl bg-[#F8FAFC] p-4">
               <div>
-                <p className="text-sm font-semibold text-[#111827]">
+                <p className="text-sm font-semibold text-[#0F172A]">
                   Want the team to make it right?
                 </p>
-                <p className="mt-0.5 text-sm text-[#6B7280]">
+                <p className="mt-0.5 text-sm text-[#64748B]">
                   Leave your details and {restaurantName} will be in touch. Optional.
                 </p>
               </div>
@@ -603,7 +603,7 @@ export default function FeedbackForm({
             type="submit"
             // Disabled while the request is in flight, or until a rating is chosen.
             disabled={status === "submitting" || rating === 0}
-            className={`${PRIMARY_BTN_CLASS} disabled:cursor-not-allowed disabled:bg-[#E5E7EB] disabled:text-[#9CA3AF] disabled:shadow-none disabled:active:scale-100`}
+            className={`${PRIMARY_BTN_CLASS} disabled:cursor-not-allowed disabled:bg-[#E2E8F0] disabled:text-[#94A3B8] disabled:shadow-none disabled:active:scale-100`}
           >
             {status === "submitting" ? "Submitting…" : "Submit feedback"}
           </button>

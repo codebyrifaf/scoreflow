@@ -5,7 +5,7 @@
  *
  * It shows **the customer feedback form** — the screen a guest actually sees — and
  * it stays there. On load it quietly demos itself: the ten rating buttons stagger
- * in, the 9 fills amber, and the Submit button lights up (exactly what the real
+ * in, the 9 fills navy, and the Submit button lights up (exactly what the real
  * form does once a score is picked). It never leaves the form: the two *outcome*
  * screens are told later, in the pinned scroll story.
  *
@@ -55,29 +55,29 @@ export default function HeroPhone() {
           <div className="flex h-[498px] flex-col px-5 py-6">
             {/* Restaurant header */}
             <div className="flex flex-col items-center gap-1.5 text-center">
-              <span className="flex h-11 w-11 items-center justify-center rounded-full bg-amber-500 text-base font-semibold text-white">
+              <span className="flex h-11 w-11 items-center justify-center rounded-full bg-brand text-base font-semibold text-white">
                 F
               </span>
-              <span className="text-[15px] font-semibold text-[#1D1D1F]">
+              <span className="text-[15px] font-semibold text-[#0F172A]">
                 Fucco
               </span>
-              <span className="rounded-full border border-[#E5E5EA] px-2.5 py-0.5 text-[11px] font-medium text-[#6E6E73]">
+              <span className="rounded-full border border-[#E2E8F0] px-2.5 py-0.5 text-[11px] font-medium text-[#64748B]">
                 Table 7
               </span>
             </div>
 
             {/* Order number */}
             <div className="mt-5">
-              <p className="text-[12px] font-medium text-[#1D1D1F]">
+              <p className="text-[12px] font-medium text-[#0F172A]">
                 Order number
               </p>
-              <div className="mt-1.5 rounded-xl border border-[#E5E5EA] px-3 py-2.5 text-[13px] text-[#AEAEB2]">
+              <div className="mt-1.5 rounded-xl border border-[#E2E8F0] px-3 py-2.5 text-[13px] text-[#94A3B8]">
                 1042
               </div>
             </div>
 
             {/* The rating scale — this is what animates */}
-            <p className="mt-5 text-[13px] font-semibold text-[#1D1D1F]">
+            <p className="mt-5 text-[13px] font-semibold text-[#0F172A]">
               How was your meal?
             </p>
             <div className="mt-2 grid grid-cols-5 gap-1.5">
@@ -89,29 +89,29 @@ export default function HeroPhone() {
                     { "--chip-delay": `${700 + i * 50}ms` } as React.CSSProperties
                   }
                 >
-                  <div className="flex aspect-square items-center justify-center rounded-xl bg-[#F2F2F7] text-[13px] font-semibold text-[#1D1D1F]">
+                  <div className="flex aspect-square items-center justify-center rounded-xl bg-[#F1F5F9] text-[13px] font-semibold text-[#0F172A]">
                     {n}
                   </div>
                   {n === PICKED && (
-                    // The pick: an amber layer fades in over the grey chip.
-                    <div className="demo-pick absolute inset-0 flex items-center justify-center rounded-xl bg-amber-500 text-[13px] font-semibold text-white shadow-sm shadow-amber-500/40">
+                    // The pick: a navy layer fades in over the grey chip.
+                    <div className="demo-pick absolute inset-0 flex items-center justify-center rounded-xl bg-brand text-[13px] font-semibold text-white shadow-sm shadow-brand/30">
                       {n}
                     </div>
                   )}
                 </div>
               ))}
             </div>
-            <div className="mt-1.5 flex justify-between px-0.5 text-[10px] font-medium text-[#AEAEB2]">
+            <div className="mt-1.5 flex justify-between px-0.5 text-[10px] font-medium text-[#94A3B8]">
               <span>Poor</span>
               <span>Great</span>
             </div>
 
-            {/* Submit: grey until a score is picked, then it lights up amber. */}
+            {/* Submit: grey until a score is picked, then it lights up navy. */}
             <div className="relative mt-auto">
-              <div className="rounded-xl bg-[#F2F2F7] py-3 text-center text-[13px] font-semibold text-[#AEAEB2]">
+              <div className="rounded-xl bg-[#F1F5F9] py-3 text-center text-[13px] font-semibold text-[#94A3B8]">
                 Submit feedback
               </div>
-              <div className="demo-submit absolute inset-0 rounded-xl bg-amber-500 py-3 text-center text-[13px] font-semibold text-white">
+              <div className="demo-submit absolute inset-0 rounded-xl bg-brand py-3 text-center text-[13px] font-semibold text-white">
                 Submit feedback
               </div>
             </div>

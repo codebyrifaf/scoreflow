@@ -38,7 +38,7 @@ function Screen({
     <div className="flex h-full flex-col">
       <p
         className={`text-[13px] font-semibold ${
-          live ? "text-[#1D1D1F]" : "text-[#AEAEB2]"
+          live ? "text-[#0F172A]" : "text-[#94A3B8]"
         }`}
       >
         {label}
@@ -53,32 +53,32 @@ function Screen({
       <div
         className={`mt-3 h-52 rounded-2xl border bg-white p-6 text-center ${
           live
-            ? "border-[#E5E5EA] shadow-[0_20px_50px_-24px_rgba(0,0,0,0.2)]"
-            : "border-[#E5E5EA]"
+            ? "border-[#E2E8F0] shadow-[0_20px_50px_-24px_rgba(0,0,0,0.2)]"
+            : "border-[#E2E8F0]"
         }`}
       >
         {/* The same guest, the same score, on both sides. */}
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-[#F2F2F7] px-2.5 py-1 text-[11px] font-medium text-[#6E6E73]">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-[#F1F5F9] px-2.5 py-1 text-[11px] font-medium text-[#64748B]">
           Rated 3 / 10
         </span>
         {children}
       </div>
 
-      <p className="mt-4 text-[14px] leading-relaxed text-[#6E6E73]">{caption}</p>
+      <p className="mt-4 text-[14px] leading-relaxed text-[#64748B]">{caption}</p>
     </div>
   );
 }
 
 export default function GatingCompare() {
   return (
-    <section className={`border-y border-[#D2D2D7] bg-[#F5F5F7] ${SECTION}`}>
+    <section className={`border-y border-[#CBD5E1] bg-[#F1F5F9] ${SECTION}`}>
       <div className={CONTAINER}>
         <Reveal>
           <div className="max-w-2xl">
-            <p className="text-[14px] font-medium text-[#6E6E73]">
+            <p className="text-[14px] font-medium text-[#64748B]">
               The bit nobody else says out loud
             </p>
-            <h2 className="mt-4 text-[30px] font-semibold leading-[1.1] tracking-[-0.02em] text-[#1D1D1F] sm:text-[40px]">
+            <h2 className="mt-4 text-[30px] font-semibold leading-[1.1] tracking-[-0.02em] text-[#0F172A] sm:text-[40px]">
               We never hide your review link.
             </h2>
             {/* ⚠️ The {" "} after </strong> is LOAD-BEARING, not a style preference.
@@ -86,13 +86,13 @@ export default function GatingCompare() {
                 node that follows the element and the page renders "review gating— it":
                 a typo, on the most important sentence here. Verified at the byte level
                 in the served HTML, not by eye. */}
-            <p className="mt-5 text-[17px] leading-relaxed text-[#3A3A3C]">
+            <p className="mt-5 text-[17px] leading-relaxed text-[#334155]">
               Plenty of tools show the review button only to guests who rated you well.
               That&apos;s{" "}
               <strong className="font-semibold">review gating</strong>{" "}
               — it breaches Google&apos;s policy and the UK rules on misleading
               reviews. And the listing at risk isn&apos;t ours. It&apos;s{" "}
-              <strong className="font-semibold text-[#1D1D1F]">yours</strong>.
+              <strong className="font-semibold text-[#0F172A]">yours</strong>.
             </p>
           </div>
         </Reveal>
@@ -104,13 +104,13 @@ export default function GatingCompare() {
               label="A gating tool"
               caption="The unhappy guest is quietly steered away — and one day Google notices."
             >
-              <p className="mt-4 text-[15px] font-semibold text-[#1D1D1F]">
+              <p className="mt-4 text-[15px] font-semibold text-[#0F172A]">
                 Thanks for your feedback
               </p>
 
               {/* The absence IS the point, so it has to be drawn, not described. */}
-              <div className="mt-5 flex h-[76px] items-center justify-center rounded-xl border border-dashed border-[#D2D2D7] bg-[#FAFAFB]">
-                <span className="text-[12px] font-medium text-[#AEAEB2]">
+              <div className="mt-5 flex h-[76px] items-center justify-center rounded-xl border border-dashed border-[#CBD5E1] bg-[#F8FAFC]">
+                <span className="text-[12px] font-medium text-[#94A3B8]">
                   No review link shown
                 </span>
               </div>
@@ -123,11 +123,11 @@ export default function GatingCompare() {
               label="ScoreFlow"
               caption="The same invitation everyone else gets — while the complaint reaches you first, privately, in seconds."
             >
-              <p className="mt-4 text-[15px] font-semibold text-[#1D1D1F]">
+              <p className="mt-4 text-[15px] font-semibold text-[#0F172A]">
                 Thank you — we hear you
               </p>
 
-              <p className="mt-4 text-[12px] font-semibold text-[#1D1D1F]">
+              <p className="mt-4 text-[12px] font-semibold text-[#0F172A]">
                 Leave a review
               </p>
               <div className="mt-2.5 flex flex-wrap items-start justify-center gap-2">
@@ -136,7 +136,7 @@ export default function GatingCompare() {
                     key={p.id}
                     className="flex w-[52px] flex-col items-center gap-1"
                   >
-                    <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#E5E7EB] bg-white shadow-sm">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#E2E8F0] bg-white shadow-sm">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={p.logo}
@@ -146,7 +146,7 @@ export default function GatingCompare() {
                         className="h-5 w-5 object-contain"
                       />
                     </span>
-                    <span className="text-[9px] font-medium leading-tight text-[#6E6E73]">
+                    <span className="text-[9px] font-medium leading-tight text-[#64748B]">
                       {p.name}
                     </span>
                   </div>

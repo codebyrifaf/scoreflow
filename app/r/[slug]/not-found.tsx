@@ -10,22 +10,22 @@ import Link from "next/link";
 
 export default function RestaurantNotFound() {
   return (
-    <main className="font-system flex min-h-dvh w-full flex-col items-center justify-center gap-5 bg-white px-5 py-12 text-center text-[#111827]">
-      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#F3F4F6] text-3xl">
+    <main className="font-system flex min-h-dvh w-full flex-col items-center justify-center gap-5 bg-white px-5 py-12 text-center text-[#0F172A]">
+      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#F1F5F9] text-3xl">
         🔎
       </div>
       <div className="space-y-2">
-        <h1 className="text-2xl font-bold tracking-tight text-[#111827]">
+        <h1 className="text-2xl font-bold tracking-tight text-[#0F172A]">
           Restaurant not found
         </h1>
-        <p className="mx-auto max-w-sm text-[15px] leading-relaxed text-[#6B7280]">
+        <p className="mx-auto max-w-sm text-[15px] leading-relaxed text-[#64748B]">
           We couldn&apos;t find a restaurant at this address. Please double-check
           the link — it may be mistyped or no longer active.
         </p>
       </div>
       <Link
         href="/"
-        className="mt-1 rounded-2xl bg-amber-500 px-6 py-3 text-base font-semibold text-white shadow-sm transition-all duration-150 hover:bg-amber-600 active:scale-[0.98]"
+        className="mt-1 rounded-2xl bg-brand px-6 py-3 text-base font-semibold text-white shadow-sm transition-all duration-150 hover:bg-brand-deep active:scale-[0.98]"
       >
         Go to home
       </Link>

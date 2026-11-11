@@ -7,7 +7,7 @@
  * whose entire pitch is "premium and trustworthy", that IS the first impression.
  *
  * Next renders this at build time with the same design language as the site: the
- * wordmark as the logo, near-black on white, one amber accent, no icons.
+ * wordmark as the logo, near-black on white, one teal accent (the logo's), no icons.
  */
 
 import { ImageResponse } from "next/og";
@@ -37,7 +37,7 @@ export default function OpengraphImage() {
               fontSize: 30,
               fontWeight: 600,
               letterSpacing: "-0.02em",
-              color: "#1D1D1F",
+              color: "#0F172A",
             }}
           >
             ScoreFlow
@@ -47,7 +47,7 @@ export default function OpengraphImage() {
               width: 8,
               height: 8,
               borderRadius: 999,
-              background: "#F59E0B",
+              background: "#22D2D2",
             }}
           />
         </div>
@@ -59,7 +59,7 @@ export default function OpengraphImage() {
               fontWeight: 600,
               lineHeight: 1.05,
               letterSpacing: "-0.035em",
-              color: "#1D1D1F",
+              color: "#0F172A",
             }}
           >
             Hear it at the table.
@@ -70,7 +70,7 @@ export default function OpengraphImage() {
               fontWeight: 600,
               lineHeight: 1.05,
               letterSpacing: "-0.035em",
-              color: "#AEAEB2",
+              color: "#94A3B8",
             }}
           >
             Not on Google.
@@ -83,11 +83,11 @@ export default function OpengraphImage() {
             alignItems: "center",
             gap: 20,
             fontSize: 26,
-            color: "#6E6E73",
+            color: "#64748B",
           }}
         >
           <span>Guest feedback for restaurants</span>
-          <span style={{ color: "#D2D2D7" }}>·</span>
+          <span style={{ color: "#CBD5E1" }}>·</span>
           <span>14 days free</span>
         </div>
       </div>

@@ -27,20 +27,20 @@ import { formatGbp } from "@/lib/money";
 
 export const dynamic = "force-dynamic";
 
-const CARD = "rounded-2xl border border-[#E5E7EB] bg-white p-5";
+const CARD = "rounded-2xl border border-[#E2E8F0] bg-white p-5";
 const PILL =
-  "rounded-full border border-[#E5E7EB] px-3 py-1.5 text-sm font-medium text-[#111827] transition-colors hover:bg-[#F9FAFB]";
+  "rounded-full border border-[#E2E8F0] px-3 py-1.5 text-sm font-medium text-[#0F172A] transition-colors hover:bg-[#F8FAFC]";
 
 
 /** Shown if a signed-in NON-operator (an owner) somehow lands here. */
 function NotAuthorized({ homeHref }: { homeHref: string }) {
   return (
-    <main className="font-system flex min-h-dvh w-full flex-col items-center justify-center gap-4 bg-white px-5 py-12 text-center text-[#111827]">
+    <main className="font-system flex min-h-dvh w-full flex-col items-center justify-center gap-4 bg-white px-5 py-12 text-center text-[#0F172A]">
       <h1 className="text-2xl font-bold">Not authorized</h1>
-      <p className="text-[#6B7280]">This area is for ScoreFlow operators only.</p>
+      <p className="text-[#64748B]">This area is for ScoreFlow operators only.</p>
       <Link
         href={homeHref}
-        className="mt-2 rounded-2xl bg-amber-500 px-6 py-3 font-semibold text-white hover:bg-amber-600"
+        className="mt-2 rounded-2xl bg-brand px-6 py-3 font-semibold text-white hover:bg-brand-deep"
       >
         Go back
       </Link>
@@ -64,12 +64,12 @@ function Stat({
       ? "text-green-600"
       : tone === "bad"
         ? "text-red-600"
-        : "text-[#111827]";
+        : "text-[#0F172A]";
   return (
     <div className={CARD}>
-      <div className="text-sm text-[#6B7280]">{label}</div>
+      <div className="text-sm text-[#64748B]">{label}</div>
       <div className={`mt-1 text-3xl font-bold ${color}`}>{value}</div>
-      {hint && <div className="mt-1 text-xs text-[#9CA3AF]">{hint}</div>}
+      {hint && <div className="mt-1 text-xs text-[#94A3B8]">{hint}</div>}
     </div>
   );
 }
@@ -91,12 +91,12 @@ export default async function OperatorPage() {
   const peak = Math.max(1, ...trend.map((d) => d.count));
 
   return (
-    <main className="font-system min-h-dvh w-full bg-[#FAFAFA] text-[#111827]">
+    <main className="font-system min-h-dvh w-full bg-[#F8FAFC] text-[#0F172A]">
       <div className="mx-auto w-full max-w-4xl px-5 py-8">
         {/* Header */}
         <header className="mb-8 flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-[#9CA3AF]">
+            <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-[#94A3B8]">
               Operator
             </p>
             <h1 className="mt-1 text-2xl font-bold tracking-tight">
@@ -104,7 +104,7 @@ export default async function OperatorPage() {
             </h1>
           </div>
           <div className="flex flex-none items-center gap-3">
-            <span className="hidden text-sm text-[#9CA3AF] sm:inline">
+            <span className="hidden text-sm text-[#94A3B8] sm:inline">
               {access.operatorEmail}
             </span>
             <Link href="/operator/customers" className={PILL}>
@@ -171,7 +171,7 @@ export default async function OperatorPage() {
         {/* Signups over time — hand-rolled bars, no chart library. */}
         <section className={`${CARD} mb-8`}>
           <h2 className="text-lg font-semibold">Signups — last 30 days</h2>
-          <p className="mb-4 text-sm text-[#6B7280]">
+          <p className="mb-4 text-sm text-[#64748B]">
             {overview.signups30d} new{" "}
             {overview.signups30d === 1 ? "restaurant" : "restaurants"} found you.
           </p>
@@ -179,7 +179,7 @@ export default async function OperatorPage() {
             {trend.map((d, i) => (
               <div
                 key={i}
-                className="flex-1 rounded-t-sm bg-[#111827] transition-all"
+                className="flex-1 rounded-t-sm bg-aqua-500 transition-all"
                 style={{
                   height: `${(d.count / peak) * 100}%`,
                   minHeight: d.count > 0 ? "4px" : "2px",
@@ -189,7 +189,7 @@ export default async function OperatorPage() {
               />
             ))}
           </div>
-          <div className="mt-2 flex justify-between text-xs text-[#9CA3AF]">
+          <div className="mt-2 flex justify-between text-xs text-[#94A3B8]">
             <span>{trend[0]?.label}</span>
             <span>{trend[trend.length - 1]?.label}</span>
           </div>
@@ -201,19 +201,19 @@ export default async function OperatorPage() {
         <section>
           <Link
             href="/operator/customers"
-            className={`${CARD} flex items-center justify-between gap-4 transition-colors hover:bg-[#F9FAFB]`}
+            className={`${CARD} flex items-center justify-between gap-4 transition-colors hover:bg-[#F8FAFC]`}
           >
             <div>
               <h2 className="text-lg font-semibold">
                 Customers ({overview.totalAccounts})
               </h2>
-              <p className="mt-1 text-sm text-[#6B7280]">
+              <p className="mt-1 text-sm text-[#64748B]">
                 Record payments, filter by status, and spot churn — open the full list.
               </p>
             </div>
             <span
               aria-hidden="true"
-              className="flex-none text-lg font-semibold text-[#6B7280]"
+              className="flex-none text-lg font-semibold text-[#64748B]"
             >
               →
             </span>

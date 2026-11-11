@@ -22,11 +22,11 @@ import {
 
 // Same tokens as MenuManager, so the two panels read as one screen.
 const FIELD =
-  "w-full rounded-2xl border border-[#E5E7EB] bg-white px-4 py-3 text-base text-[#111827] outline-none transition duration-200 focus:border-amber-500 focus:ring-4 focus:ring-amber-500/15";
+  "w-full rounded-2xl border border-[#E2E8F0] bg-white px-4 py-3 text-base text-[#0F172A] outline-none transition duration-200 focus:border-aqua-600 focus:ring-4 focus:ring-aqua-500/25";
 const BTN =
-  "inline-block rounded-2xl bg-amber-500 px-5 py-3 text-base font-semibold text-white shadow-sm transition-all duration-150 hover:bg-amber-600 active:scale-[0.98]";
+  "inline-block rounded-2xl bg-brand px-5 py-3 text-base font-semibold text-white shadow-sm transition-all duration-150 hover:bg-brand-deep active:scale-[0.98]";
 const BTN_QUIET =
-  "rounded-xl border border-[#E5E7EB] px-3 py-1.5 text-sm font-medium text-[#111827] transition-colors hover:bg-[#F9FAFB] disabled:cursor-not-allowed disabled:text-[#9CA3AF]";
+  "rounded-xl border border-[#E2E8F0] px-3 py-1.5 text-sm font-medium text-[#0F172A] transition-colors hover:bg-[#F8FAFC] disabled:cursor-not-allowed disabled:text-[#94A3B8]";
 
 export interface SquareProps {
   configured: boolean;
@@ -76,12 +76,12 @@ export default function SquareConnect({
   const banner = notice ? NOTICES[notice] : undefined;
 
   return (
-    <div className="mt-4 rounded-xl border border-[#E5E7EB] p-4">
+    <div className="mt-4 rounded-xl border border-[#E2E8F0] p-4">
       <div className="flex items-center gap-2">
-        <span className="flex h-6 w-6 items-center justify-center rounded-md bg-[#111827] text-xs font-bold text-white">
+        <span className="flex h-6 w-6 items-center justify-center rounded-md bg-[#0F172A] text-xs font-bold text-white">
           ▢
         </span>
-        <span className="font-semibold text-[#111827]">Square</span>
+        <span className="font-semibold text-[#0F172A]">Square</span>
       </div>
 
       {banner && (
@@ -91,14 +91,14 @@ export default function SquareConnect({
       )}
 
       {!square.configured ? (
-        <p className="mt-2 text-sm text-[#6B7280]">
+        <p className="mt-2 text-sm text-[#64748B]">
           Connecting Square isn&apos;t available on this server yet.
         </p>
       ) : !square.connected ? (
         <>
-          <p className="mt-2 text-sm text-[#6B7280]">
+          <p className="mt-2 text-sm text-[#64748B]">
             Use Square? Connect it in one click — you&apos;ll sign in on Square&apos;s own
-            page and approve. ScoreFlow can <b className="text-[#111827]">read</b> your
+            page and approve. ScoreFlow can <b className="text-[#0F172A]">read</b> your
             orders and menu; it can never change them or touch payments.
           </p>
           {/* A plain link, not a button: this is a trip to Square and back. */}
@@ -131,7 +131,7 @@ export default function SquareConnect({
               {lastOrderAt ? (
                 <span className="font-medium text-green-700">● Last order received {lastOrderAt}</span>
               ) : (
-                <span className="text-[#6B7280]">
+                <span className="text-[#64748B]">
                   ○ Waiting for the first order from this Square location.
                 </span>
               )}
@@ -143,12 +143,12 @@ export default function SquareConnect({
               Couldn&apos;t reach Square just now — refresh the page to try again.
             </p>
           ) : square.locations.length === 0 ? (
-            <p className="mt-3 text-sm text-[#6B7280]">
+            <p className="mt-3 text-sm text-[#64748B]">
               Your Square business has no active locations.
             </p>
           ) : (
             <form action={linkAction} className="mt-3 flex flex-col gap-2">
-              <label htmlFor="square-location" className="text-sm font-medium text-[#111827]">
+              <label htmlFor="square-location" className="text-sm font-medium text-[#0F172A]">
                 Which Square location is this branch?
               </label>
               <select

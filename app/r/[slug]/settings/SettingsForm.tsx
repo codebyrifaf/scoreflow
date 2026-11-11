@@ -6,9 +6,16 @@
  * Everything a restaurant owner can now change WITHOUT phoning the operator.
  * The server action re-validates all of it (see actions.ts); nothing here is
  * trusted.
+ *
+ * It is FOUR Settings sections — Restaurant, Review links, Ratings, Notifications —
+ * but ONE form with ONE Save button: the save action writes all of these fields
+ * together. SettingsShell shows one section at a time, so the other three are
+ * hidden (not removed), and their fields still go with every save.
  */
 
-import { useActionState, useEffect, useState, useTransition } from "react";
+import { useActionState, useEffect, useRef, useState, useTransition } from "react";
+import { useSettingsSection } from "./SettingsShell";
+import { FORM_SECTIONS, type SectionId } from "./sections";
 import {
   saveSettings,
   checkEmailDelivery,
@@ -39,11 +46,23 @@ interface SettingsFormProps {
   emailConfigured: boolean;
 }
 
+/** Which section each field lives in — so a failed save can open the right one.
+ *  (The ids match the inputs' `id`s, which is how the field then gets focused.) */
+const FIELD_SECTION: Record<string, SectionId> = {
+  name: "restaurant",
+  googleReviewUrl: "reviews",
+  tripadvisorUrl: "reviews",
+  yelpUrl: "reviews",
+  zomatoUrl: "reviews",
+  positiveThreshold: "ratings",
+  alertThreshold: "ratings",
+};
+
 const FIELD =
-  "w-full rounded-2xl border border-[#E5E7EB] bg-white px-4 py-3.5 text-base text-[#111827] outline-none transition duration-200 placeholder:text-[#9CA3AF] focus:border-amber-500 focus:ring-4 focus:ring-amber-500/15";
-const LABEL = "text-sm font-medium text-[#111827]";
-const HINT = "text-sm text-[#6B7280]";
-const CARD = "rounded-2xl border border-[#E5E7EB] bg-white p-5";
+  "w-full rounded-2xl border border-[#E2E8F0] bg-white px-4 py-3.5 text-base text-[#0F172A] outline-none transition duration-200 placeholder:text-[#94A3B8] focus:border-aqua-600 focus:ring-4 focus:ring-aqua-500/25";
+const LABEL = "text-sm font-medium text-[#0F172A]";
+const HINT = "text-sm text-[#64748B]";
+const CARD = "rounded-2xl border border-[#E2E8F0] bg-white p-5";
 
 function FieldError({ message }: { message?: string }) {
   return message ? (
@@ -69,7 +88,7 @@ function Toggle({
   return (
     <label className="flex cursor-pointer items-start justify-between gap-4">
       <span className="min-w-0">
-        <span className="block text-[15px] font-medium text-[#111827]">{title}</span>
+        <span className="block text-[15px] font-medium text-[#0F172A]">{title}</span>
         <span className={`mt-0.5 block ${HINT}`}>{description}</span>
       </span>
       {/* The real checkbox carries the value into the form post; the pill is the UI. */}
@@ -83,7 +102,7 @@ function Toggle({
       <span
         aria-hidden="true"
         className={`relative mt-1 h-6 w-11 flex-none rounded-full transition-colors duration-200 ${
-          on ? "bg-amber-500" : "bg-[#E5E7EB]"
+          on ? "bg-brand" : "bg-[#E2E8F0]"
         }`}
       >
         <span
@@ -153,7 +172,7 @@ function ReviewLinkField({
           className="h-5 w-5 flex-none object-contain"
         />
         {platform.name}
-        <span className="font-normal text-[#9CA3AF]">Optional</span>
+        <span className="font-normal text-[#94A3B8]">Optional</span>
       </label>
 
       <input
@@ -173,7 +192,7 @@ function ReviewLinkField({
             href={trimmed}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex-none text-sm font-medium text-amber-600 underline-offset-2 hover:underline"
+            className="flex-none text-sm font-medium text-aqua-700 underline-offset-2 hover:underline"
           >
             Test this link ↗
           </a>
@@ -192,7 +211,7 @@ function ReviewLinkField({
           owner could never actually check what they'd pasted. Plain React text, so
           it's escaped and inert. */}
       {trimmed !== "" && (
-        <p className="break-all text-xs text-[#9CA3AF]">Goes to: {trimmed}</p>
+        <p className="break-all text-xs text-[#94A3B8]">Goes to: {trimmed}</p>
       )}
 
       {/* Operator switched this off (M39) — the tile is hidden from diners until it's
@@ -259,7 +278,7 @@ function EmailCheck({ slug }: { slug: string }) {
             }
           })
         }
-        className="rounded-xl border border-[#E5E7EB] px-3 py-1.5 text-sm font-medium text-[#111827] transition-colors hover:bg-[#F9FAFB] disabled:cursor-not-allowed disabled:text-[#9CA3AF]"
+        className="rounded-xl border border-[#E2E8F0] px-3 py-1.5 text-sm font-medium text-[#0F172A] transition-colors hover:bg-[#F8FAFC] disabled:cursor-not-allowed disabled:text-[#94A3B8]"
       >
         {checking ? "Checking…" : "Check email delivery"}
       </button>
@@ -299,6 +318,32 @@ export default function SettingsForm(props: SettingsFormProps) {
 
   const errors = state && "errors" in state ? state.errors : {};
 
+  // ── A failed save must never hide its own error ──────────────────────────────
+  // The owner can press Save while looking at Ratings with a bad link sitting in
+  // the (hidden) Review links section. So after a failed save, if the section on
+  // screen has no error, open the first section that does — then put the cursor in
+  // the field to fix.
+  const { active, go } = useSettingsSection();
+  const handledState = useRef(state);
+  const fieldToFocus = useRef<string | null>(null);
+  useEffect(() => {
+    if (handledState.current === state) return; // only once per save
+    handledState.current = state;
+    if (!state || !("errors" in state)) return;
+    const bad = Object.keys(state.errors).filter((field) => field in FIELD_SECTION);
+    if (bad.some((field) => FIELD_SECTION[field] === active)) return; // already visible
+    const target = FORM_SECTIONS.find((s) => bad.some((field) => FIELD_SECTION[field] === s));
+    if (!target) return;
+    fieldToFocus.current = bad.find((field) => FIELD_SECTION[field] === target) ?? null;
+    go(target);
+  }, [state, active, go]);
+  useEffect(() => {
+    if (!fieldToFocus.current) return;
+    document.getElementById(fieldToFocus.current)?.focus();
+    fieldToFocus.current = null;
+  }, [active]);
+  const show = (id: SectionId) => active === id;
+
   // Has the owner set ANY review link? Drives the "nobody is being invited anywhere"
   // warning. Checked across all four platforms — an owner who has deliberately chosen
   // Tripadvisor-only must not be nagged about Google.
@@ -307,10 +352,19 @@ export default function SettingsForm(props: SettingsFormProps) {
   );
 
   return (
-    <form action={action} className="flex flex-col gap-6">
+    // `noValidate`: the browser's own checks (the 1–10 number boxes) would silently
+    // refuse to submit when the offending box is in a HIDDEN section — the owner
+    // would press Save and nothing would happen. The server checks everything
+    // anyway, and its errors open the right section (above).
+    <form
+      action={action}
+      noValidate
+      hidden={!FORM_SECTIONS.includes(active)}
+      className="flex flex-col gap-6"
+    >
       {/* ── Your restaurant ─────────────────────────────────────────────────── */}
-      <section className={CARD}>
-        <h2 className="mb-4 text-lg font-semibold text-[#111827]">
+      <section hidden={!show("restaurant")} className={CARD}>
+        <h2 className="mb-4 text-lg font-semibold text-[#0F172A]">
           Your restaurant
         </h2>
 
@@ -328,6 +382,17 @@ export default function SettingsForm(props: SettingsFormProps) {
             <FieldError message={errors.name} />
           </div>
 
+          {/* The slug is NOT editable, on purpose — see actions.ts. Say why, so the
+              owner doesn't go hunting for it. */}
+          <p className="rounded-xl bg-[#F8FAFC] px-3 py-2.5 text-sm text-[#64748B]">
+            Your feedback link is{" "}
+            <span className="break-all font-mono text-[#0F172A]">
+              /r/{props.slug}/feedback
+            </span>
+            . It can&apos;t be changed, because it&apos;s written onto the NFC chips
+            on your tables — changing it would stop every chip working.
+          </p>
+
         </div>
       </section>
 
@@ -335,8 +400,8 @@ export default function SettingsForm(props: SettingsFormProps) {
           Four platforms, all optional and independent. A link you set becomes a logo
           tile on your feedback page; one you leave blank shows nothing at all — never
           a dead button (the M18 silent-failure rule). */}
-      <section className={CARD}>
-        <h2 className="mb-1 text-lg font-semibold text-[#111827]">Review links</h2>
+      <section hidden={!show("reviews")} className={CARD}>
+        <h2 className="mb-1 text-lg font-semibold text-[#0F172A]">Review links</h2>
         <p className={`mb-4 ${HINT}`}>
           Add the ones you actually care about. Each link you set appears as a logo on
           your feedback page after a guest submits; the rest simply don&apos;t show.
@@ -352,11 +417,11 @@ export default function SettingsForm(props: SettingsFormProps) {
         {/* ⚠️ Paste YOUR restaurant's page on each site. We check the link really
             belongs to that platform, but we can't tell whose restaurant it points at —
             so use "Test this link" and make sure it opens YOUR page. */}
-        <p className="mb-5 rounded-xl bg-[#F9FAFB] px-3 py-2.5 text-sm text-[#6B7280]">
-          Paste the link to <b className="text-[#111827]">your own page</b> on each
+        <p className="mb-5 rounded-xl bg-[#F8FAFC] px-3 py-2.5 text-sm text-[#64748B]">
+          Paste the link to <b className="text-[#0F172A]">your own page</b> on each
           site. We check it really is a Google/Tripadvisor/Yelp/Zomato link — but we
           can&apos;t tell whether it&apos;s <i>your</i> restaurant, so tap{" "}
-          <b className="text-[#111827]">Test this link</b> and make sure it opens your
+          <b className="text-[#0F172A]">Test this link</b> and make sure it opens your
           page, not someone else&apos;s.
         </p>
 
@@ -374,8 +439,8 @@ export default function SettingsForm(props: SettingsFormProps) {
       </section>
 
       {/* ── The two scores ──────────────────────────────────────────────────── */}
-      <section className={CARD}>
-        <h2 className="mb-1 text-lg font-semibold text-[#111827]">
+      <section hidden={!show("ratings")} className={CARD}>
+        <h2 className="mb-1 text-lg font-semibold text-[#0F172A]">
           Ratings that matter
         </h2>
         <p className={`mb-4 ${HINT}`}>
@@ -385,8 +450,8 @@ export default function SettingsForm(props: SettingsFormProps) {
         {/* Be upfront with the restaurant that we do NOT gate reviews. It's a
             selling point, and it's the honest thing to tell someone whose Google
             listing is on the line. */}
-        <p className="mb-5 rounded-xl bg-[#F9FAFB] px-3 py-2.5 text-sm text-[#6B7280]">
-          <b className="text-[#111827]">Every guest is invited to review you.</b>{" "}
+        <p className="mb-5 rounded-xl bg-[#F8FAFC] px-3 py-2.5 text-sm text-[#64748B]">
+          <b className="text-[#0F172A]">Every guest is invited to review you.</b>{" "}
           We never hide the review link from unhappy diners — showing it only to happy
           ones breaches Google&apos;s policy and UK review rules, and puts{" "}
           <i>your</i> listing at risk. Complaints still come straight to you, first.
@@ -440,8 +505,8 @@ export default function SettingsForm(props: SettingsFormProps) {
       </section>
 
       {/* ── Notifications (this person's own inbox) ─────────────────────────── */}
-      <section className={CARD}>
-        <h2 className="mb-1 text-lg font-semibold text-[#111827]">
+      <section hidden={!show("notifications")} className={CARD}>
+        <h2 className="mb-1 text-lg font-semibold text-[#0F172A]">
           Your notifications
         </h2>
         <p className={`mb-4 ${HINT}`}>
@@ -492,7 +557,7 @@ export default function SettingsForm(props: SettingsFormProps) {
         <button
           type="submit"
           disabled={pending}
-          className="rounded-2xl bg-amber-500 px-6 py-3.5 text-base font-semibold text-white shadow-sm transition-all duration-150 hover:bg-amber-600 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-[#E5E7EB] disabled:text-[#9CA3AF]"
+          className="rounded-2xl bg-brand px-6 py-3.5 text-base font-semibold text-white shadow-sm transition-all duration-150 hover:bg-brand-deep active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-[#E2E8F0] disabled:text-[#94A3B8]"
         >
           {pending ? "Saving…" : "Save changes"}
         </button>

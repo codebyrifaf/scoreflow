@@ -6,12 +6,14 @@
  * Fully transparent at the very top; once you scroll, it gains a blurred
  * translucent background and a hairline — Apple's exact behaviour.
  *
- * The wordmark IS the logo: "ScoreFlow" set in the system font, tight tracking,
- * near-black. No mark, no disc, no icon.
+ * The logo sits top-left — the SF mark beside the two-tone name (BrandLogo), the
+ * same place every product puts it, and the first thing seen after the opening
+ * video, which ends on that same mark.
  */
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import BrandLogo from "./BrandLogo";
 
 export default function SiteNav() {
   const [scrolled, setScrolled] = useState(false);
@@ -37,35 +39,32 @@ export default function SiteNav() {
         // `bg-white/80 backdrop-blur-xl` was missing — blur alone reads as grey fog;
         // it's the saturation that makes colour bloom through and look like glass.
         scrolled
-          ? "glass-nav border-[#D2D2D7]/60"
+          ? "glass-nav border-[#CBD5E1]/60"
           : "border-transparent bg-transparent"
       }`}
     >
       <nav className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between px-6">
-        <Link
-          href="/"
-          className="text-[17px] font-semibold tracking-[-0.02em] text-[#1D1D1F]"
-        >
-          ScoreFlow
+        <Link href="/" className="flex-none" aria-label="ScoreFlow home">
+          <BrandLogo markOnlyOnTinyScreens />
         </Link>
         <div className="flex items-center gap-5">
           {/* Pricing in the nav is not decoration: an SMB buyer who can't find a
               price assumes it's expensive and leaves. */}
           <Link
             href="/#pricing"
-            className="link-underline hidden text-[14px] font-medium text-[#6E6E73] transition-colors hover:text-[#1D1D1F] sm:block"
+            className="link-underline hidden whitespace-nowrap text-[14px] font-medium text-[#64748B] transition-colors hover:text-[#0F172A] sm:block"
           >
             Pricing
           </Link>
           <Link
             href="/login"
-            className="link-underline text-[14px] font-medium text-[#6E6E73] transition-colors hover:text-[#1D1D1F]"
+            className="link-underline whitespace-nowrap text-[14px] font-medium text-[#64748B] transition-colors hover:text-[#0F172A]"
           >
             Sign in
           </Link>
           <Link
             href="/signup"
-            className="rounded-full bg-[#1D1D1F] px-4 py-2 text-[14px] font-medium text-white transition-colors hover:bg-black"
+            className="whitespace-nowrap rounded-full bg-brand px-4 py-2 text-[14px] font-medium text-white transition-colors hover:bg-brand-deep"
           >
             Get started
           </Link>

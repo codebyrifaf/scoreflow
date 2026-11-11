@@ -66,11 +66,11 @@ const STEPS = [
 function ScreenHeader() {
   return (
     <div className="flex flex-col items-center gap-1 text-center">
-      <span className="flex h-9 w-9 items-center justify-center rounded-full bg-amber-500 text-[13px] font-semibold text-white">
+      <span className="flex h-9 w-9 items-center justify-center rounded-full bg-brand text-[13px] font-semibold text-white">
         F
       </span>
-      <span className="text-[13px] font-semibold text-[#1D1D1F]">Fucco</span>
-      <span className="rounded-full border border-[#E5E5EA] px-2 py-0.5 text-[9px] font-medium text-[#6E6E73]">
+      <span className="text-[13px] font-semibold text-[#0F172A]">Fucco</span>
+      <span className="rounded-full border border-[#E2E8F0] px-2 py-0.5 text-[9px] font-medium text-[#64748B]">
         Table 7
       </span>
     </div>
@@ -91,13 +91,13 @@ function FormScreen({ picked }: { picked: boolean }) {
       <ScreenHeader />
 
       <div className="mt-4">
-        <p className="text-[10px] font-medium text-[#1D1D1F]">Order number</p>
-        <div className="mt-1 rounded-lg border border-[#E5E5EA] px-2.5 py-1.5 text-[11px] text-[#AEAEB2]">
+        <p className="text-[10px] font-medium text-[#0F172A]">Order number</p>
+        <div className="mt-1 rounded-lg border border-[#E2E8F0] px-2.5 py-1.5 text-[11px] text-[#94A3B8]">
           1042
         </div>
       </div>
 
-      <p className="mt-4 text-[11px] font-semibold text-[#1D1D1F]">
+      <p className="mt-4 text-[11px] font-semibold text-[#0F172A]">
         How was your meal?
       </p>
       <div className="mt-1.5 grid grid-cols-5 gap-1">
@@ -108,8 +108,8 @@ function FormScreen({ picked }: { picked: boolean }) {
               key={n}
               className={`flex aspect-square items-center justify-center rounded-lg text-[11px] font-semibold transition-all duration-500 ${
                 on
-                  ? "scale-105 bg-amber-500 text-white shadow-sm shadow-amber-500/40"
-                  : "bg-[#F2F2F7] text-[#1D1D1F]"
+                  ? "scale-105 bg-brand text-white shadow-sm shadow-brand/30"
+                  : "bg-[#F1F5F9] text-[#0F172A]"
               }`}
             >
               {n}
@@ -117,7 +117,7 @@ function FormScreen({ picked }: { picked: boolean }) {
           );
         })}
       </div>
-      <div className="mt-1 flex justify-between px-0.5 text-[9px] font-medium text-[#AEAEB2]">
+      <div className="mt-1 flex justify-between px-0.5 text-[9px] font-medium text-[#94A3B8]">
         <span>Poor</span>
         <span>Great</span>
       </div>
@@ -129,7 +129,7 @@ function FormScreen({ picked }: { picked: boolean }) {
           picked ? "opacity-100" : "opacity-0"
         }`}
       >
-        <p className="text-[10px] font-semibold text-[#1D1D1F]">
+        <p className="text-[10px] font-semibold text-[#0F172A]">
           What could be better?
         </p>
         <div className="mt-1.5 flex flex-wrap gap-1">
@@ -138,8 +138,8 @@ function FormScreen({ picked }: { picked: boolean }) {
               key={t}
               className={`rounded-full px-2 py-1 text-[9px] font-medium ${
                 i === 1
-                  ? "bg-amber-500 text-white"
-                  : "bg-[#F2F2F7] text-[#1D1D1F]"
+                  ? "bg-brand text-white"
+                  : "bg-[#F1F5F9] text-[#0F172A]"
               }`}
             >
               {t}
@@ -150,7 +150,7 @@ function FormScreen({ picked }: { picked: boolean }) {
 
       <div
         className={`mt-auto rounded-lg py-2.5 text-center text-[11px] font-semibold transition-colors duration-500 ${
-          picked ? "bg-amber-500 text-white" : "bg-[#F2F2F7] text-[#AEAEB2]"
+          picked ? "bg-brand text-white" : "bg-[#F1F5F9] text-[#94A3B8]"
         }`}
       >
         Submit feedback
@@ -167,7 +167,7 @@ function FormScreen({ picked }: { picked: boolean }) {
  * else gets. If you're going to say "we don't gate reviews", the picture had better
  * show it.
  *
- * ⚠️ It used to show ONE amber "Leave a review on Google" button — which stopped
+ * ⚠️ It used to show ONE brand-coloured "Leave a review on Google" button — which stopped
  * being the truth at M29, when the invite became a row of equal-weight logo tiles
  * (Google, Tripadvisor, Yelp, Zomato — whichever the restaurant has set). So the
  * page was hiding a whole feature *and* misrepresenting the screen it was using as
@@ -180,29 +180,29 @@ function FormScreen({ picked }: { picked: boolean }) {
 function ThankYouScreen() {
   return (
     <div className="flex h-full flex-col items-center justify-center gap-2.5 px-4 text-center">
-      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#F2F2F7] text-xl text-[#8E8E93]">
+      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#F1F5F9] text-xl text-[#64748B]">
         ✓
       </div>
-      <p className="text-[13px] font-semibold text-[#1D1D1F]">
+      <p className="text-[13px] font-semibold text-[#0F172A]">
         Thank you — we hear you
       </p>
-      <p className="text-[10px] leading-relaxed text-[#6E6E73]">
+      <p className="text-[10px] leading-relaxed text-[#64748B]">
         We&apos;re sorry your experience at Fucco fell short.
       </p>
 
-      <p className="w-full rounded-lg bg-[#F2F2F7] px-3 py-1.5 text-[9px] leading-relaxed text-[#3A3A3C]">
+      <p className="w-full rounded-lg bg-[#F1F5F9] px-3 py-1.5 text-[9px] leading-relaxed text-[#334155]">
         What you told us has gone straight to the Fucco team so they can put it
         right.
       </p>
 
       {/* The same invite everyone gets — shown here to a 3/10. That's the point. */}
-      <p className="mt-1 text-[10px] font-semibold text-[#1D1D1F]">
+      <p className="mt-1 text-[10px] font-semibold text-[#0F172A]">
         Leave a review
       </p>
       <div className="flex items-start justify-center gap-1.5">
         {REVIEW_PLATFORMS.map((p) => (
           <div key={p.id} className="flex w-10.5 flex-col items-center gap-0.5">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#E5E5EA] bg-white shadow-sm">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#E2E8F0] bg-white shadow-sm">
               {/* Local SVG — the CSP (M25) forbids remote images. Decorative here:
                   the platform is named underneath. */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -214,13 +214,13 @@ function ThankYouScreen() {
                 className="h-4.5 w-4.5 object-contain"
               />
             </span>
-            <span className="text-[7px] font-medium leading-tight text-[#6E6E73]">
+            <span className="text-[7px] font-medium leading-tight text-[#64748B]">
               {p.name}
             </span>
           </div>
         ))}
       </div>
-      <p className="text-[8px] text-[#AEAEB2]">
+      <p className="text-[8px] text-[#94A3B8]">
         Sharing your honest experience publicly is entirely up to you.
       </p>
     </div>
@@ -236,45 +236,45 @@ function ThankYouScreen() {
 function AlertScreen() {
   return (
     <div className="flex h-full flex-col px-4 py-5">
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-[#AEAEB2]">
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-[#94A3B8]">
         Inbox
       </p>
 
-      <div className="mt-3 rounded-xl border border-[#E5E5EA] p-3 shadow-sm">
+      <div className="mt-3 rounded-xl border border-[#E2E8F0] p-3 shadow-sm">
         <div className="flex items-center gap-2">
-          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#1D1D1F] text-[10px] font-semibold text-white">
+          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-brand text-[10px] font-semibold text-white">
             S
           </span>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[11px] font-semibold text-[#1D1D1F]">
+            <p className="truncate text-[11px] font-semibold text-[#0F172A]">
               ScoreFlow
             </p>
-            <p className="text-[9px] text-[#AEAEB2]">now</p>
+            <p className="text-[9px] text-[#94A3B8]">now</p>
           </div>
         </div>
 
-        <p className="mt-2.5 text-[11px] font-semibold leading-snug text-[#1D1D1F]">
+        <p className="mt-2.5 text-[11px] font-semibold leading-snug text-[#0F172A]">
           Fucco: an unhappy diner (3/10)
         </p>
 
-        <div className="mt-2 rounded-lg bg-[#F2F2F7] p-2">
-          <p className="text-[10px] font-semibold text-[#1D1D1F]">
+        <div className="mt-2 rounded-lg bg-[#F1F5F9] p-2">
+          <p className="text-[10px] font-semibold text-[#0F172A]">
             3/10 — order 1042, table 7
           </p>
-          <p className="mt-0.5 text-[9px] text-[#6E6E73]">
+          <p className="mt-0.5 text-[9px] text-[#64748B]">
             Tagged: Food was cold
           </p>
         </div>
 
-        <div className="mt-2.5 rounded-lg bg-amber-500 py-2 text-center text-[10px] font-semibold text-white">
+        <div className="mt-2.5 rounded-lg bg-brand py-2 text-center text-[10px] font-semibold text-white">
           Open dashboard
         </div>
       </div>
 
-      <p className="mt-auto text-center text-[10px] leading-relaxed text-[#6E6E73]">
+      <p className="mt-auto text-center text-[10px] leading-relaxed text-[#64748B]">
         They&apos;re still at table 7.
         <br />
-        <span className="font-semibold text-[#1D1D1F]">
+        <span className="font-semibold text-[#0F172A]">
           You have about four minutes.
         </span>
       </p>
@@ -287,13 +287,13 @@ function DashboardScreen() {
   const bars = [7.8, 8.2, 6.9, 8.8, 9.1, 8.4, 8.9];
   return (
     <div className="flex h-full flex-col px-4 py-5">
-      <p className="text-[13px] font-semibold text-[#1D1D1F]">Fucco</p>
-      <p className="text-[10px] text-[#6E6E73]">Feedback dashboard</p>
+      <p className="text-[13px] font-semibold text-[#0F172A]">Fucco</p>
+      <p className="text-[10px] text-[#64748B]">Feedback dashboard</p>
 
       {/* Needs attention — the worklist, which is what an owner actually opens. */}
       <div className="mt-3 rounded-lg border border-red-200 bg-red-50/50 p-2.5">
         <div className="flex items-center gap-1.5">
-          <p className="text-[10px] font-semibold text-[#1D1D1F]">
+          <p className="text-[10px] font-semibold text-[#0F172A]">
             Needs attention
           </p>
           <span className="rounded-full bg-red-100 px-1.5 py-0.5 text-[8px] font-bold text-red-700">
@@ -305,32 +305,35 @@ function DashboardScreen() {
             3
           </span>
           <div className="min-w-0">
-            <p className="truncate text-[9px] font-semibold text-[#1D1D1F]">
+            <p className="truncate text-[9px] font-semibold text-[#0F172A]">
               Order 1042 · Table 7
             </p>
-            <p className="truncate text-[9px] text-[#6E6E73]">Food was cold</p>
+            <p className="truncate text-[9px] text-[#64748B]">Food was cold</p>
           </div>
         </div>
       </div>
 
       <div className="mt-2.5 grid grid-cols-2 gap-2">
-        <div className="rounded-lg border border-[#E5E5EA] p-2.5">
-          <p className="text-[9px] text-[#6E6E73]">Responses</p>
-          <p className="text-[17px] font-bold text-[#1D1D1F]">128</p>
+        <div className="rounded-lg border border-[#E2E8F0] p-2.5">
+          <p className="text-[9px] text-[#64748B]">Responses</p>
+          <p className="text-[17px] font-bold text-[#0F172A]">128</p>
         </div>
-        <div className="rounded-lg border border-[#E5E5EA] p-2.5">
-          <p className="text-[9px] text-[#6E6E73]">Average</p>
-          <p className="text-[17px] font-bold text-[#1D1D1F]">8.6</p>
+        <div className="rounded-lg border border-[#E2E8F0] p-2.5">
+          <p className="text-[9px] text-[#64748B]">Average</p>
+          <p className="text-[17px] font-bold text-[#0F172A]">8.6</p>
         </div>
       </div>
 
-      <div className="mt-2.5 rounded-lg border border-[#E5E5EA] p-2.5">
-        <p className="text-[9px] text-[#6E6E73]">Last 7 days</p>
-        <div className="mt-2 flex h-11 items-end gap-1">
+      <div className="mt-2.5 rounded-lg border border-[#E2E8F0] p-2.5">
+        <p className="text-[9px] text-[#64748B]">Last 7 days</p>
+        {/* Columns stretch to the row's height (no `items-end` here), so each bar's
+            percentage height has something to be a percentage OF — otherwise every
+            bar is 0px. The column's own `items-end` sits the bar on the baseline. */}
+        <div className="mt-2 flex h-11 gap-1">
           {bars.map((v, i) => (
-            <div key={i} className="flex-1">
+            <div key={i} className="flex flex-1 items-end">
               <div
-                className="w-full rounded-t bg-amber-500"
+                className="w-full rounded-t bg-aqua-500"
                 style={{ height: `${(v / 10) * 100}%` }}
               />
             </div>
@@ -383,7 +386,7 @@ export default function ScrollStory() {
   ];
 
   return (
-    <section ref={sectionRef} className="relative h-[500vh] bg-[#F5F5F7]">
+    <section ref={sectionRef} className="relative h-[500vh] bg-[#F1F5F9]">
       <div className="sticky top-0 flex h-dvh items-center overflow-hidden">
         <div className="mx-auto w-full max-w-5xl px-6">
           <div className="grid items-center gap-5 sm:gap-8 lg:grid-cols-2 lg:gap-16">
@@ -428,7 +431,7 @@ export default function ScrollStory() {
                   <span
                     key={i}
                     className={`story-tick h-[3px] rounded-full ${
-                      i === active ? "w-8 bg-[#1D1D1F]" : "w-4 bg-[#D2D2D7]"
+                      i === active ? "w-8 bg-brand" : "w-4 bg-[#CBD5E1]"
                     }`}
                   />
                 ))}
@@ -444,10 +447,10 @@ export default function ScrollStory() {
                     data-active={active === i}
                     className="story-layer absolute inset-0"
                   >
-                    <h3 className="text-[22px] font-semibold leading-[1.15] tracking-[-0.02em] text-[#1D1D1F] sm:text-[26px] sm:leading-[1.1] lg:text-[40px]">
+                    <h3 className="text-[22px] font-semibold leading-[1.15] tracking-[-0.02em] text-[#0F172A] sm:text-[26px] sm:leading-[1.1] lg:text-[40px]">
                       {s.title}
                     </h3>
-                    <p className="mt-2.5 max-w-md text-[14px] leading-relaxed text-[#6E6E73] sm:mt-3 sm:text-[15px] lg:mt-5 lg:text-[17px]">
+                    <p className="mt-2.5 max-w-md text-[14px] leading-relaxed text-[#64748B] sm:mt-3 sm:text-[15px] lg:mt-5 lg:text-[17px]">
                       {s.copy}
                     </p>
                   </div>

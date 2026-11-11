@@ -5,7 +5,7 @@
  * marketing, no "Get started", no link back to the customer site. It doesn't
  * advertise itself and nothing on the customer-facing pages links here.
  *
- * Visually it's the INVERSE of the customer login (near-black, not amber), so you
+ * Visually it's the INVERSE of the customer login (near-black, not brand navy), so you
  * can never be confused about which side of the product you're signing in to.
  */
 
@@ -26,13 +26,13 @@ export default async function OperatorLoginPage() {
   }
 
   return (
-    <main className="font-system flex min-h-dvh w-full flex-col items-center justify-center bg-white px-5 py-10 text-[#111827]">
+    <main className="font-system flex min-h-dvh w-full flex-col items-center justify-center bg-white px-5 py-10 text-[#0F172A]">
       <div className="animate-card-in w-full max-w-[400px]">
         <header className="mb-8">
-          <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-[#9CA3AF]">
+          <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-[#94A3B8]">
             Operator
           </p>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight text-[#111827]">
+          <h1 className="mt-1 text-2xl font-bold tracking-tight text-[#0F172A]">
             ScoreFlow console
           </h1>
         </header>

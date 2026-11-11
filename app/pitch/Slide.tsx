@@ -42,8 +42,8 @@ export default function Slide({
       // slide is never split across two pages when saved as PDF.
       className={`qr-card relative mx-auto flex aspect-[4/5] w-full max-w-[480px] flex-col overflow-hidden rounded-[28px] border ${
         dark
-          ? "border-[#1D1D1F] bg-[#1D1D1F] text-white"
-          : "border-[#D2D2D7] bg-white text-[#1D1D1F]"
+          ? "border-brand bg-brand text-white"
+          : "border-[#CBD5E1] bg-white text-[#0F172A]"
       } ${className}`}
     >
       {/* The colour wash the frosted surfaces pick up. Decorative only — the same
@@ -73,7 +73,7 @@ export default function Slide({
           own — an unbranded slide is a slide nobody can trace back to you. */}
       <div
         className={`pointer-events-none absolute inset-x-8 bottom-5 z-10 flex items-center justify-between text-[11px] font-medium sm:inset-x-10 ${
-          dark ? "text-white/40" : "text-[#AEAEB2]"
+          dark ? "text-white/40" : "text-[#94A3B8]"
         }`}
       >
         <span className="tracking-[-0.01em]">ScoreFlow</span>
@@ -113,7 +113,7 @@ export function SlideBody({
   return (
     <p
       className={`mt-3 text-[15px] leading-relaxed sm:text-[17px] ${
-        dark ? "text-white/70" : "text-[#6E6E73]"
+        dark ? "text-white/70" : "text-[#64748B]"
       }`}
     >
       {children}
@@ -159,7 +159,7 @@ export function SlideKicker({
   return (
     <p
       className={`text-[12px] font-semibold uppercase tracking-[0.18em] ${
-        dark ? "text-white/45" : "text-[#AEAEB2]"
+        dark ? "text-white/45" : "text-[#94A3B8]"
       }`}
     >
       {children}

@@ -3,8 +3,8 @@
  * — served at `/`.
  *
  * Design brief unchanged: premium, restrained, Apple in spirit. The wordmark IS the
- * logo. No icons, no emoji. Amber appears ONLY inside the product screens, so the
- * product is the single splash of colour on a black-and-white page. And **no fake
+ * logo. No icons, no emoji. Colour is the brand navy & teal (globals.css): navy on the
+ * calls to action and inside the product screens, slate on white everywhere else. And **no fake
  * testimonials, logos or invented stats** — there are no customers yet, and
  * fabricated proof would destroy the trust the page is trying to build. (The example
  * numbers inside the product mocks are plainly a screenshot of an example, and are
@@ -63,6 +63,7 @@ import PlatformRow from "./landing/PlatformRow";
 import ProofCards from "./landing/ProofCards";
 import GatingCompare from "./landing/GatingCompare";
 import { CONTAINER, SECTION, BTN_DARK, BTN_LIGHT, TRIAL_DAYS } from "./landing/tokens";
+import BrandLogo from "./BrandLogo";
 import { appUrl } from "@/lib/app-url";
 import { qrMatrix } from "@/lib/qr";
 
@@ -100,23 +101,23 @@ function PriceCard({
     <div
       className={`flex h-full flex-col rounded-3xl p-8 ${
         featured
-          ? // The featured card stays SOLID near-black. Glass on the card you most
+          ? // The featured card stays SOLID brand navy. Glass on the card you most
             // want read would be a strange thing to do — it needs to be the most
             // legible object on the page, not the most decorative.
-            "bg-[#1D1D1F] text-white shadow-[0_24px_60px_-20px_rgba(0,0,0,0.45)]"
-          : "glass text-[#1D1D1F]"
+            "bg-brand text-white shadow-[0_24px_60px_-20px_rgba(11,46,92,0.55)]"
+          : "glass text-[#0F172A]"
       }`}
     >
       <p
         className={`text-[15px] font-semibold ${
-          featured ? "text-white" : "text-[#1D1D1F]"
+          featured ? "text-white" : "text-[#0F172A]"
         }`}
       >
         {name}
       </p>
       <p
         className={`mt-1 text-[14px] leading-relaxed ${
-          featured ? "text-white/60" : "text-[#6E6E73]"
+          featured ? "text-white/60" : "text-[#64748B]"
         }`}
       >
         {blurb}
@@ -127,7 +128,7 @@ function PriceCard({
           {price}
         </span>
         <span
-          className={`text-[14px] ${featured ? "text-white/60" : "text-[#6E6E73]"}`}
+          className={`text-[14px] ${featured ? "text-white/60" : "text-[#64748B]"}`}
         >
           {unit}
         </span>
@@ -138,7 +139,7 @@ function PriceCard({
           <li
             key={p}
             className={`text-[14px] leading-relaxed ${
-              featured ? "text-white/80" : "text-[#3A3A3C]"
+              featured ? "text-white/80" : "text-[#334155]"
             }`}
           >
             {p}
@@ -153,7 +154,7 @@ function PriceCard({
           href="/signup"
           className={
             featured
-              ? "inline-flex w-full items-center justify-center rounded-full bg-white px-7 py-3 text-[15px] font-medium text-[#1D1D1F] transition-all duration-150 hover:-translate-y-px active:scale-[0.98]"
+              ? "inline-flex w-full items-center justify-center rounded-full bg-white px-7 py-3 text-[15px] font-medium text-brand transition-all duration-150 hover:-translate-y-px active:scale-[0.98]"
               : `w-full ${BTN_LIGHT}`
           }
         >
@@ -167,14 +168,14 @@ function PriceCard({
 /** One FAQ entry — a native <details>, so it works with no JavaScript. */
 function Faq({ q, children }: { q: string; children: React.ReactNode }) {
   return (
-    <details className="group border-b border-[#D2D2D7] py-6">
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-6 text-[17px] font-medium text-[#1D1D1F] marker:hidden">
+    <details className="group border-b border-[#CBD5E1] py-6">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-6 text-[17px] font-medium text-[#0F172A] marker:hidden">
         {q}
-        <span className="flex-none text-[#AEAEB2] transition-transform duration-200 group-open:rotate-45">
+        <span className="flex-none text-[#94A3B8] transition-transform duration-200 group-open:rotate-45">
           +
         </span>
       </summary>
-      <p className="mt-4 max-w-2xl text-[15px] leading-relaxed text-[#6E6E73]">
+      <p className="mt-4 max-w-2xl text-[15px] leading-relaxed text-[#64748B]">
         {children}
       </p>
     </details>
@@ -197,7 +198,7 @@ export default function Home() {
   const signupQr = qrMatrix(`${appUrl()}/signup`);
 
   return (
-    <div className="font-system min-h-dvh w-full bg-white text-[#1D1D1F] antialiased">
+    <div className="font-system min-h-dvh w-full bg-white text-[#0F172A] antialiased">
       <SiteNav />
 
       {/* ── Hero ──────────────────────────────────────────────────────────── */}
@@ -208,7 +209,7 @@ export default function Home() {
 
         <div className={`relative z-10 ${CONTAINER} text-center`}>
           <p
-            className="animate-rise text-[14px] font-medium text-[#6E6E73]"
+            className="animate-rise text-[14px] font-medium text-[#64748B]"
             style={{ "--rise-delay": "0ms" } as React.CSSProperties}
           >
             For restaurants
@@ -223,12 +224,15 @@ export default function Home() {
               30px lets each line land intact even on the narrowest phone still in use.
               `sm:` restores the desktop values exactly. */}
           <h1
-            className="animate-rise mx-auto mt-4 max-w-3xl text-[30px] font-semibold leading-[1.12] tracking-[-0.03em] text-[#1D1D1F] sm:text-[60px] sm:leading-[1.05] lg:text-[68px]"
+            className="animate-rise mx-auto mt-4 max-w-3xl text-[30px] font-semibold leading-[1.12] tracking-[-0.03em] text-[#0F172A] sm:text-[60px] sm:leading-[1.05] lg:text-[68px]"
             style={{ "--rise-delay": "90ms" } as React.CSSProperties}
           >
             Hear it at the table.
             <br />
-            Not on Google.
+            {/* The one place both brand colours meet: navy fading into the logo's teal. */}
+            <span className="bg-linear-to-r from-brand to-aqua-600 bg-clip-text text-transparent">
+              Not on Google.
+            </span>
           </h1>
 
           {/* ⚠️ This used to read "…by tapping a chip on the table" — which sold NFC
@@ -236,7 +240,7 @@ export default function Home() {
               honest and far easier answer is a printed QR card, so that's what leads.
               NFC is still offered; it's just no longer the price of entry. */}
           <p
-            className="animate-rise mx-auto mt-6 max-w-xl text-[18px] leading-relaxed text-[#6E6E73] sm:text-[19px]"
+            className="animate-rise mx-auto mt-6 max-w-xl text-[18px] leading-relaxed text-[#64748B] sm:text-[19px]"
             style={{ "--rise-delay": "180ms" } as React.CSSProperties}
           >
             Guests scan the card on the table and rate their meal out of ten. If
@@ -256,7 +260,7 @@ export default function Home() {
             </Link>
             <Link
               href="#story"
-              className="link-underline text-[15px] font-medium text-[#1D1D1F]"
+              className="link-underline text-[15px] font-medium text-[#0F172A]"
             >
               See how it works&nbsp;›
             </Link>
@@ -273,7 +277,7 @@ export default function Home() {
               the middot between the pairs shown on desktop only. Result: two clean
               centred lines on a phone, and the exact same single line on `sm:` up. */}
           <p
-            className="animate-rise mt-7 text-[13px] text-[#AEAEB2]"
+            className="animate-rise mt-7 text-[13px] text-[#94A3B8]"
             style={{ "--rise-delay": "360ms" } as React.CSSProperties}
           >
             <span className="whitespace-nowrap">Live tonight</span>
@@ -332,10 +336,10 @@ export default function Home() {
         <div className={`relative z-10 ${CONTAINER}`}>
           <Reveal>
             <div className="text-center">
-              <h2 className="text-[30px] font-semibold leading-[1.1] tracking-[-0.02em] text-[#1D1D1F] sm:text-[44px]">
+              <h2 className="text-[30px] font-semibold leading-[1.1] tracking-[-0.02em] text-[#0F172A] sm:text-[44px]">
                 One price. Everything included.
               </h2>
-              <p className="mx-auto mt-5 max-w-lg text-[17px] leading-relaxed text-[#6E6E73]">
+              <p className="mx-auto mt-5 max-w-lg text-[17px] leading-relaxed text-[#64748B]">
                 No setup fee, no per-response charge, no upsell for the features that
                 matter. Cancel whenever you like.
               </p>
@@ -382,7 +386,7 @@ export default function Home() {
           </div>
 
           <Reveal delay={200}>
-            <p className="mt-10 text-center text-[14px] text-[#6E6E73]">
+            <p className="mt-10 text-center text-[14px] text-[#64748B]">
               {TRIAL_DAYS} days free, no card required. Prices exclude VAT.
             </p>
           </Reveal>
@@ -390,10 +394,10 @@ export default function Home() {
       </section>
 
       {/* ── FAQ: kill the obvious objections ──────────────────────────────── */}
-      <section className={`border-t border-[#D2D2D7] ${SECTION}`}>
+      <section className={`border-t border-[#CBD5E1] ${SECTION}`}>
         <div className={CONTAINER}>
           <Reveal>
-            <h2 className="text-[30px] font-semibold leading-[1.1] tracking-[-0.02em] text-[#1D1D1F] sm:text-[40px]">
+            <h2 className="text-[30px] font-semibold leading-[1.1] tracking-[-0.02em] text-[#0F172A] sm:text-[40px]">
               Reasonable questions
             </h2>
           </Reveal>
@@ -464,13 +468,13 @@ export default function Home() {
       </section>
 
       {/* ── Close ─────────────────────────────────────────────────────────── */}
-      <section className={`bg-[#F5F5F7] ${SECTION}`}>
+      <section className={`bg-[#F1F5F9] ${SECTION}`}>
         <div className={`${CONTAINER} text-center`}>
           <Reveal>
-            <h2 className="mx-auto max-w-2xl text-[30px] font-semibold leading-[1.1] tracking-[-0.03em] text-[#1D1D1F] sm:text-[52px] sm:leading-[1.05]">
+            <h2 className="mx-auto max-w-2xl text-[30px] font-semibold leading-[1.1] tracking-[-0.03em] text-[#0F172A] sm:text-[52px] sm:leading-[1.05]">
               Put it on the table.
             </h2>
-            <p className="mx-auto mt-5 max-w-md text-[17px] leading-relaxed text-[#6E6E73]">
+            <p className="mx-auto mt-5 max-w-md text-[17px] leading-relaxed text-[#64748B]">
               {TRIAL_DAYS} days free. No card. The next unhappy guest tells you
               instead of Google.
             </p>
@@ -484,26 +488,24 @@ export default function Home() {
       </section>
 
       {/* ── Footer ────────────────────────────────────────────────────────── */}
-      <footer className="border-t border-[#D2D2D7]">
+      <footer className="border-t border-[#CBD5E1]">
         <div
           className={`${CONTAINER} flex flex-col items-center justify-between gap-4 py-10 sm:flex-row`}
         >
-          <span className="text-[15px] font-semibold tracking-[-0.02em] text-[#1D1D1F]">
-            ScoreFlow
-          </span>
-          <span className="text-[13px] text-[#AEAEB2]">
+          <BrandLogo size="sm" />
+          <span className="text-[13px] text-[#94A3B8]">
             © {new Date().getFullYear()} ScoreFlow
           </span>
           <div className="flex items-center gap-5">
             <Link
               href="#pricing"
-              className="link-underline text-[13px] font-medium text-[#6E6E73] transition-colors hover:text-[#1D1D1F]"
+              className="link-underline text-[13px] font-medium text-[#64748B] transition-colors hover:text-[#0F172A]"
             >
               Pricing
             </Link>
             <Link
               href="/login"
-              className="link-underline text-[13px] font-medium text-[#6E6E73] transition-colors hover:text-[#1D1D1F]"
+              className="link-underline text-[13px] font-medium text-[#64748B] transition-colors hover:text-[#0F172A]"
             >
               Sign in
             </Link>

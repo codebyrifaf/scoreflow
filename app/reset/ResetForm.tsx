@@ -6,8 +6,8 @@ import CodeInput from "@/app/CodeInput";
 import PasswordInput from "@/app/PasswordInput";
 
 const FIELD =
-  "w-full rounded-2xl border border-[#E5E7EB] bg-white px-4 py-3.5 text-base text-[#111827] outline-none transition duration-200 placeholder:text-[#9CA3AF] focus:border-amber-500 focus:ring-4 focus:ring-amber-500/15";
-const LABEL = "text-sm font-medium text-[#111827]";
+  "w-full rounded-2xl border border-[#E2E8F0] bg-white px-4 py-3.5 text-base text-[#0F172A] outline-none transition duration-200 placeholder:text-[#94A3B8] focus:border-aqua-600 focus:ring-4 focus:ring-aqua-500/25";
+const LABEL = "text-sm font-medium text-[#0F172A]";
 
 /** Seconds the "Resend" button stays disabled after landing / after a resend. */
 const RESEND_COOLDOWN = 60;
@@ -66,13 +66,13 @@ export default function ResetForm({
       <div className="flex flex-col gap-1.5">
         <label className={`text-center ${LABEL}`}>Code from your email</label>
         <CodeInput name="code" defaultValue={code} autoFocus={!code} />
-        <p className="text-center text-sm text-[#6B7280]">
+        <p className="text-center text-sm text-[#64748B]">
           Didn&apos;t get it?{" "}
           <button
             type="button"
             onClick={resend}
             disabled={!canResend}
-            className="font-medium text-amber-600 hover:underline disabled:cursor-not-allowed disabled:text-[#9CA3AF] disabled:no-underline"
+            className="font-medium text-aqua-700 hover:underline disabled:cursor-not-allowed disabled:text-[#94A3B8] disabled:no-underline"
           >
             {resent
               ? "Sent!"
@@ -93,7 +93,7 @@ export default function ResetForm({
       <div className="flex flex-col gap-1.5">
         <label htmlFor="newPassword" className={LABEL}>
           New password{" "}
-          <span className="font-normal text-[#9CA3AF]">(at least 12 characters)</span>
+          <span className="font-normal text-[#94A3B8]">(at least 12 characters)</span>
         </label>
         <PasswordInput
           id="newPassword"
@@ -124,7 +124,7 @@ export default function ResetForm({
       <button
         type="submit"
         disabled={pending}
-        className="w-full rounded-2xl bg-amber-500 px-6 py-4 text-base font-semibold text-white shadow-sm transition-all duration-150 hover:bg-amber-600 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-[#E5E7EB] disabled:text-[#9CA3AF]"
+        className="w-full rounded-2xl bg-brand px-6 py-4 text-base font-semibold text-white shadow-sm transition-all duration-150 hover:bg-brand-deep active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-[#E2E8F0] disabled:text-[#94A3B8]"
       >
         {pending ? "Saving…" : "Set new password"}
       </button>

@@ -74,7 +74,7 @@ export default function PasswordInput({
         aria-label={show ? "Hide password" : "Show password"}
         aria-pressed={show}
         title={show ? "Hide password" : "Show password"}
-        className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-[#9CA3AF] transition-colors hover:text-[#6B7280]"
+        className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-[#94A3B8] transition-colors hover:text-[#64748B]"
       >
         {show ? <EyeOffIcon /> : <EyeIcon />}
       </button>
