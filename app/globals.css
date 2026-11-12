@@ -38,6 +38,13 @@
   --color-aqua-700: #0B7480;
   --color-aqua-800: #0A5D67;
   --color-aqua-900: #0B4D55;
+
+  /* The logo's own "F" — sampled from public/scoreflow-mark.png (teal on its left
+     edge, mint on its right tips). Used ONLY for the "Flow" of the wordmark, so the
+     word continues the F's colour. Logos are exempt from text-contrast rules; don't
+     use these for ordinary text (use aqua-700). */
+  --color-logo-teal: #1CCBCE;
+  --color-logo-mint: #4DECD0;
 }
 
 /* The product's typeface: the platform's own UI font (SF on Apple, Segoe on

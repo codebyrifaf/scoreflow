@@ -4,8 +4,10 @@
  *   • The mark is public/scoreflow-mark.png — the owner's own logo
  *     (public/scoreflow_logo.png) with its white "S" turned brand navy so it shows
  *     on white, the teal "F" untouched, and the empty margin trimmed.
- *   • The name is two-tone like the opening video: "Score" in navy, "Flow" in teal
- *     (aqua-700, the teal that's readable as text on white).
+ *   • The name is two-tone like the opening video: "Score" in navy, and "Flow" in
+ *     the F's own teal-to-mint gradient (logo-teal → logo-mint, globals.css), so
+ *     the word continues the mark's colour. (A logo is exempt from text-contrast
+ *     rules; ordinary teal TEXT elsewhere uses the darker aqua-700.)
  *
  * Used in the landing page's top bar and footer. On the navy opening screen and the
  * app icons the original white-S logo is used instead.
@@ -45,7 +47,9 @@ export default function BrandLogo({
         }`}
       >
         <span className="text-brand">Score</span>
-        <span className="text-aqua-700">Flow</span>
+        <span className="bg-linear-to-r from-logo-teal to-logo-mint bg-clip-text text-transparent">
+          Flow
+        </span>
       </span>
     </span>
   );
